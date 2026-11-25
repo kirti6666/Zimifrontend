@@ -87,6 +87,7 @@ const homeData = { hosts: [mira], stage: [mira], featured: mira, total: 1, page:
     const loading = (resource, value, extra = {}) => receive('data.loading', { resource, loading: value, ...extra });
     const lastSent = type => page.evaluate(value => window.__sent.filter(message => message.type === value).at(-1)?.data, type);
     const sentCount = type => page.evaluate(value => window.__sent.filter(message => message.type === value).length, type);
+    const waitSentCount = (type, count) => page.waitForFunction(({ type, count }) => window.__sent.filter(message => message.type === type).length >= count, { type, count });
     const navigate = view => page.evaluate(value => go(value), view);
     const rows = () => page.locator('button.zc-row:not([data-official-chat])');
     const names = () => rows().evaluateAll(nodes => nodes.map(node => node.innerText));
@@ -294,9 +295,25 @@ const homeData = { hosts: [mira], stage: [mira], featured: mira, total: 1, page:
     assert.match(await page.locator('#tf').innerText(), /A real thread response/);
     assert.doesNotMatch(await page.locator('#tf').innerText(), /automated/i, 'Automated welcomes read like any other message');
     const draft = page.getByRole('textbox', { name: 'Message Mira North', exact: true });
+    const typingBeforeDraft = await sentCount('chat.typing');
+    await draft.fill('Keep');
     await draft.fill('Keep this unsent draft');
+    assert.equal(await sentCount('chat.typing'), typingBeforeDraft + 1, 'Rapid input sends one typing start, not one request per key');
+    assert.deepEqual(await lastSent('chat.typing'), { to: mira.id, typing: true });
+    await page.waitForTimeout(1300);
+    assert.deepEqual(await lastSent('chat.typing'), { to: mira.id, typing: false }, 'Typing stops after a short idle pause');
+    const composerNode = await draft.evaluate(input => { window.__chatComposerNode = input; input.setSelectionRange(4, 9); return true; });
+    assert.equal(composerNode, true);
+    await receive('chat.typing', { from: asha.id, typing: true, expiresAt: new Date(Date.now() + 6000).toISOString() });
+    assert.equal(await page.locator('#zc-thread-status').textContent(), 'Online', 'Typing from another conversation is ignored');
+    await receive('chat.typing', { from: mira.id, typing: true, expiresAt: new Date(Date.now() + 6000).toISOString() });
+    assert.equal(await page.locator('#zc-thread-status').textContent(), 'Typing…');
+    assert.equal(await page.locator('#zc-thread-status').getAttribute('aria-live'), 'polite');
+    assert.deepEqual(await draft.evaluate(input => ({ same: input === window.__chatComposerNode, focused: input === document.activeElement, value: input.value, start: input.selectionStart, end: input.selectionEnd })),
+      { same: true, focused: true, value: 'Keep this unsent draft', start: 4, end: 9 }, 'Incoming typing updates only the header and preserves the composer node, focus and selection');
     const openedBeforeIncoming = await sentCount('chat.open');
     await receive('chat.message', { from: mira.id, text: 'A new message in the active thread', id: id('31'), createdAt: new Date().toISOString(), automated: true });
+    assert.equal(await page.locator('#zc-thread-status').textContent(), 'Online', 'A real message clears stale typing presence immediately');
     assert.match(await page.locator('#tf').innerText(), /A new message in the active thread/, 'Realtime automated messages stay visible');
     assert.doesNotMatch(await page.locator('#tf').innerText(), /automated/i, 'Realtime automated messages carry no label');
     assert.equal(await sentCount('chat.open'), openedBeforeIncoming + 1, 'An incoming message in the active thread requests a server read acknowledgment');
@@ -310,17 +327,80 @@ const homeData = { hosts: [mira], stage: [mira], featured: mira, total: 1, page:
     await receive('chat.message', { from: asha.id, text: 'Message in another conversation', id: id('32') });
     await receive('chat.message', { from: mira.id, text: 'An in-call message', inCall: true, id: id('33') });
     assert.equal(await sentCount('chat.open'), openedBeforeIncoming + 1, 'Other conversations and in-call events do not mark the active thread read');
-    await settle('data.thread', { with: mira.id, messages: [{ mine: true, text: 'Seen already', createdAt: at(3), status: 'read' }, { mine: true, text: 'Not seen yet', createdAt: at(2), status: 'sent' }, { mine: false, text: 'Reply from Mira', createdAt: at(1) }], readAt: new Date().toISOString() }, 'thread');
-    assert.deepEqual(await page.locator('#tf .zc-tick').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['Read', 'Sent'], 'Read ticks follow the server read state of own messages');
+    await settle('data.thread', { with: mira.id, messages: [{ id: id('34'), mine: true, text: 'Seen already', createdAt: at(3), status: 'read' }, { id: id('35'), mine: true, text: 'Not seen yet', createdAt: at(2), status: 'sent' }, { id: id('36'), mine: false, text: 'Reply from Mira', createdAt: at(1) }], readAt: new Date().toISOString() }, 'thread');
+    assert.deepEqual(await page.locator('#tf .zc-tick').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['Sent'], 'Only the group-ending outgoing bubble repeats a delivery tick');
+    assert.equal(await page.locator('#tf .zc-seen').count(), 1, 'Only one Instagram-style Seen label is shown');
+    assert.equal(await page.locator('#tf .zc-seen').getAttribute('data-message-id'), id('34'));
+    assert.equal(await page.locator(`#zc-m-${id('34')}`).getAttribute('class').then(value => value.includes('zc-receipt-boundary')), true, 'Seen creates a clean visual break before a newer outgoing message');
+    await draft.evaluate(input => { window.__seenComposerNode = input; input.focus(); input.setSelectionRange(2, 7); });
+    const transcriptNodeId = await page.locator(`#zc-m-${id('35')}`).evaluate(node => { window.__seenMessageNode = node; return node.id; });
+    await receive('chat.read', { with: mira.id, conversationIds: [id('50')], messageIds: [id('35')], readAt: new Date().toISOString() });
+    assert.equal(await page.locator('#tf .zc-tick').count(), 0, 'Seen replaces the group-ending Read tick instead of duplicating receipt metadata');
+    assert.equal(await page.locator('#tf .zc-seen').count(), 1);
+    assert.equal(await page.locator('#tf .zc-seen').getAttribute('data-message-id'), id('35'), 'Seen advances to the newest read outgoing message');
+    assert.equal(await page.locator(`#zc-m-${id('34')}`).getAttribute('class').then(value => value.includes('zc-receipt-boundary')), false, 'The old Seen boundary clears without repainting the thread');
+    assert.equal(await page.locator(`#zc-m-${id('35')}`).getAttribute('class').then(value => value.includes('zc-receipt-boundary')), true, 'The Seen boundary follows the latest read message');
+    assert.equal(await page.locator(`#${transcriptNodeId}`).evaluate(node => node === window.__seenMessageNode), true, 'A Seen-only update preserves message DOM nodes');
+    assert.deepEqual(await draft.evaluate(input => ({ same: input === window.__seenComposerNode, focused: input === document.activeElement, start: input.selectionStart, end: input.selectionEnd })),
+      { same: true, focused: true, start: 2, end: 7 }, 'A Seen-only update preserves composer focus and selection');
+    const openedBeforeBulkReceipt = await sentCount('chat.open');
+    await receive('chat.read', { with: mira.id, conversationIds: [id('50')], readAt: new Date().toISOString() });
+    assert.equal(await sentCount('chat.open'), openedBeforeBulkReceipt + 1, 'A bounded refresh confirms bulk receipts that omit message IDs');
     // Calls with this person sit in the conversation at their time, from this account's side.
-    assert.deepEqual(await page.locator('.zc-thread-day').allTextContents(), ['Yesterday', 'Today']);
+    const datedTimelineMarkers = await page.locator('#tf .zc-thread-time').allTextContents();
+    assert.ok(datedTimelineMarkers.some(label => /Yesterday/.test(label)) && datedTimelineMarkers.some(label => /Today/.test(label)), 'Conversation time markers retain both dated sections');
     assert.deepEqual(await page.locator('#tf .zc-msg').evaluateAll(nodes => nodes.map(node => node.classList.contains('zc-msg-call') ? node.getAttribute('aria-label') : node.querySelector('.bub').innerText.trim())),
       ['A real thread response', 'A new message in the active thread', 'An in-call message', 'Outgoing video call, Declined', 'Outgoing video call, 7:05', 'Seen already', 'Not seen yet', 'Reply from Mira'], 'Calls sit between dated messages by time');
     assert.equal(await page.locator('#tf .zc-msg-call [data-message-id], #tf .zc-msg-call .zc-tick').count(), 0, 'Call entries are not messages: no menu, reply or ticks');
     assert.equal(await page.locator('.zc-voice, .zc-gift-card, .zc-thread-live').count(), 0, 'Production threads show only server history, without preview content');
     assert.equal(await page.locator('.zc-thread-header small').textContent(), 'Online', 'An unknown call rate is never presented as a price');
+    await settle('data.calls', { calls: [] }, 'calls');
+    const clusterStart = new Date(); clusterStart.setDate(clusterStart.getDate() - 1); clusterStart.setHours(9, 0, 0, 0);
+    const clusterAt = minutes => new Date(clusterStart.getTime() + minutes * 60000).toISOString();
+    const nextDay = new Date(clusterStart); nextDay.setDate(nextDay.getDate() + 1);
+    const groupedMessages = [
+      { id: id('37'), mine: false, text: 'Incoming group start', createdAt: clusterAt(0) },
+      { id: id('38'), mine: false, text: 'Incoming group middle', createdAt: clusterAt(1) },
+      { id: id('39'), mine: false, text: 'Incoming group end', createdAt: clusterAt(2) },
+      { id: id('40'), mine: true, text: 'Outgoing single', createdAt: clusterAt(4), status: 'sent' },
+      { id: id('41'), mine: true, text: 'Outgoing after a gap', createdAt: clusterAt(19), status: 'sent' },
+      { id: id('42'), mine: false, text: 'Next day start', createdAt: nextDay.toISOString() },
+      { id: id('43'), mine: false, text: 'Next day end', createdAt: new Date(nextDay.getTime() + 60000).toISOString() },
+    ];
+    await page.evaluate(() => { S.msgs = []; });
+    await settle('data.thread', { with: mira.id, messages: groupedMessages, readAt: new Date().toISOString() }, 'thread');
+    const timeMarkers = page.locator('#tf .zc-thread-time');
+    assert.equal(await timeMarkers.count(), 3, 'Instagram-style time appears only at conversation start, a 15-minute gap and a day change');
+    assert.equal(await page.locator('#tf .zc-meta time').count(), 0, 'Individual message metadata never repeats a timestamp');
+    assert.equal(await timeMarkers.evaluateAll(nodes => nodes.every(node => { const style = getComputedStyle(node); return style.textAlign === 'center' || style.justifyContent === 'center'; })), true, 'Conversation time markers stay centered');
+    assert.deepEqual(await page.locator('#tf .zc-msg').evaluateAll(nodes => Object.fromEntries(nodes.map(node => [node.id, [...node.classList].filter(name => name.startsWith('zc-group-'))]))), {
+      [`zc-m-${id('37')}`]: ['zc-group-start'],
+      [`zc-m-${id('38')}`]: ['zc-group-middle'],
+      [`zc-m-${id('39')}`]: ['zc-group-end'],
+      [`zc-m-${id('40')}`]: ['zc-group-single'],
+      [`zc-m-${id('41')}`]: ['zc-group-single'],
+      [`zc-m-${id('42')}`]: ['zc-group-start'],
+      [`zc-m-${id('43')}`]: ['zc-group-end'],
+    }, 'Messages group only with the same sender inside five minutes');
+    assert.deepEqual(await page.locator('#tf .zc-msg-avatar').evaluateAll(nodes => nodes.map(node => node.closest('.zc-msg')?.id)), [`zc-m-${id('39')}`, `zc-m-${id('43')}`], 'Only the final incoming bubble in each group carries the real avatar');
+    const timestampRules = await page.evaluate(() => {
+      const start = '2026-11-21T10:05:00.000Z';
+      return {
+        afterNearbyCall: zcTimelineStamp({ createdAt: '2026-11-21T10:06:00.000Z' }, { kind: 'call', at: start }, false),
+        afterDistantCall: zcTimelineStamp({ createdAt: '2026-11-21T10:20:00.000Z' }, { kind: 'call', at: start }, false),
+        firstLegacy: zcTimelineStamp({ time: '12:00' }, null, false),
+        nextLegacy: zcTimelineStamp({ time: '12:01' }, { time: '12:00' }, false),
+      };
+    });
+    assert.equal(timestampRules.afterNearbyCall, '', 'A nearby call already owns its time and does not force another timestamp');
+    assert.match(timestampRules.afterDistantCall, /zc-thread-time/, 'A message at least 15 minutes after a call starts a new time cluster');
+    assert.match(timestampRules.firstLegacy, /zc-thread-time/, 'A legacy time-only conversation still receives one starting timestamp');
+    assert.equal(timestampRules.nextLegacy, '', 'Legacy time-only messages never repeat timestamps without a trustworthy gap');
+    const typingBeforeSend = await sentCount('chat.typing');
     await draft.fill('Hello Mira');
     await draft.press('Enter');
+    assert.equal(await sentCount('chat.typing'), typingBeforeSend + 2, 'Sending emits one typing start and one immediate stop');
+    assert.deepEqual(await lastSent('chat.typing'), { to: mira.id, typing: false });
     assert.equal((await lastSent('chat.send')).text, 'Hello Mira');
     assert.equal(await draft.inputValue(), '', 'Sending clears the draft');
     await receive('operation.error', { action: 'chat.send', message: 'Message could not be sent.' });
@@ -350,6 +430,7 @@ const homeData = { hosts: [mira], stage: [mira], featured: mira, total: 1, page:
     await settle('data.home', homeData, 'home');
     assert.deepEqual(await picker.getByRole('textbox').evaluate(input => ({ focused: document.activeElement === input, value: input.value, start: input.selectionStart, end: input.selectionEnd })), { focused: true, value: 'Asha', start: 1, end: 3 }, 'Background creator updates preserve contact search focus and selection');
     await picker.getByRole('button').filter({ hasText: 'Asha Sen' }).click();
+    await page.waitForFunction(expected => __sent.some(message => message.type === 'chat.open' && message.data.with === expected), asha.id);
     assert.equal((await lastSent('chat.open')).with, asha.id);
     assert.equal(await page.evaluate(() => S.v), 'thread');
     assert.equal(await page.locator('.zc-thread-header small').textContent(),'Offline','An offline chat host keeps truthful presence');
@@ -414,7 +495,7 @@ const homeData = { hosts: [mira], stage: [mira], featured: mira, total: 1, page:
     assert.equal(await sentCount('chat.send'), sendsBeforeGuard);
     assert.equal(await guardedDraft.inputValue(), 'Keep my draft through failed thread loads');
 
-    await loading('thread', false, { error: 'Connections are allowed only between a member and an approved host' });
+    await loading('thread', false, { error: 'Connections are allowed only between a user and an approved host' });
     await page.getByRole('alert').filter({ hasText: 'Connections are allowed only between' }).waitFor();
     assert.equal(await sendButton.isDisabled(), true, 'A forbidden thread cannot keep a working send control');
     assert.equal(await giftButton.isDisabled(), true);
@@ -472,12 +553,15 @@ const homeData = { hosts: [mira], stage: [mira], featured: mira, total: 1, page:
     opened = await sentCount('chat.open');
     await page.evaluate(value => go('thread', value), mira.id);
     assert.equal(await page.evaluate(() => S.v), 'thread');
+    await waitSentCount('chat.open', opened + 1);
     assert.equal((await lastSent('chat.open')).with, mira.id, 'An approved creator can open a chat with another creator');
     await page.evaluate(value => go('thread', value), id('98'));
+    await waitSentCount('chat.open', opened + 2);
     assert.equal((await lastSent('chat.open')).with, id('98'), 'The server decides whether a creator may message an unfamiliar account');
     assert.equal(await sentCount('chat.open'), opened + 2);
     await page.evaluate(value => go('thread', value), rohan.id);
     assert.equal(await page.evaluate(() => S.v), 'thread');
+    await waitSentCount('chat.open', opened + 3);
     assert.equal((await lastSent('chat.open')).with, rohan.id, 'Existing member conversations remain accessible to approved creators');
     await settle('data.thread', { with: rohan.id, messages: [], canSend: true }, 'thread');
     await page.evaluate(() => document.getElementById('app-notice')?.remove());
@@ -495,12 +579,15 @@ const homeData = { hosts: [mira], stage: [mira], featured: mira, total: 1, page:
     assert.equal(await profileMessage.isEnabled(), true, 'An approved creator can reply from an existing member profile');
     opened = await sentCount('chat.open');
     await profileMessage.click();
+    await waitSentCount('chat.open', opened + 1);
     assert.equal(await sentCount('chat.open'), opened + 1);
     assert.equal((await lastSent('chat.open')).with, rohan.id, 'Profile Message targets the displayed member rather than the previous creator profile');
     assert.equal(await page.evaluate(() => S.h), rohan.id);
     await page.evaluate(value => go('host', value), mira.id);
     assert.equal(await profileMessage.isEnabled(), true, 'A creator can message another creator from their profile');
+    opened = await sentCount('chat.open');
     await profileMessage.click();
+    await waitSentCount('chat.open', opened + 1);
     assert.equal((await lastSent('chat.open')).with, mira.id);
     console.log('PASS chats: member profile Message targets its displayed account despite a stale creator back target');
 

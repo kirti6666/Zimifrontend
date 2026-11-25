@@ -77,7 +77,7 @@ function zciAfter(){
   if(S.v==='home'){if(!CallInvitations.requested)zciRequest();else zciPaint()}
   const waiting=S.hostTopupWaiting;
   if(waiting&&['dial','dialback'].includes(S.v)&&waiting.callId===S.callId&&Date.parse(waiting.until)>Date.now()){
-    const root=document.querySelector('.dialscr,.dial,.ringscr');if(root&&!root.querySelector('.zci-host-waiting'))root.insertAdjacentHTML('beforeend',`<p class="zci-host-waiting" role="status">The member is adding coins. Waiting until ${esc(new Date(waiting.until).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))}. You can end the call at any time.</p>`);
+    const root=document.querySelector('.dialscr,.dial,.ringscr');if(root&&!root.querySelector('.zci-host-waiting'))root.insertAdjacentHTML('beforeend',`<p class="zci-host-waiting" role="status">The user is adding coins. Waiting until ${esc(new Date(waiting.until).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))}. You can end the call at any time.</p>`);
   }
   if(S.automaticCall&&['dial','dialback','ring','call','voice','hcall'].includes(S.v)&&!document.querySelector('.zci-source')){
     const root=document.querySelector('.ringscr,.dialscr,.dial,.zr-room,.zh-call-room');if(root)root.insertAdjacentHTML('afterbegin',zciSourceBadge());

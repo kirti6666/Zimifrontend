@@ -22,7 +22,7 @@ function zuFeedPost(post,index){
   const p=zuPostAuthor(),src=imageSrc(post.mediaUrl),video=post.kind==='video',id=domId(post.id),caption=post.caption||'';
   const time=post.createdAt?`<time class="zu-feed-time" datetime="${esc(post.createdAt)}">${esc(zuAgo(post.createdAt))}</time>`:'';
   return `<article class="zu-feed-post" id="zu-post-${id}" data-post-id="${esc(post.id)}" tabindex="-1" aria-posinset="${index+1}" aria-setsize="${Math.max(Zu.total,Zu.posts.length)}" aria-label="Post ${index+1} by ${esc(p.name||'this account')}">
-    <header class="zu-feed-author"><span class="av zu-feed-avatar">${zuAvatar(p)}</span><div class="zu-feed-who"><strong>${esc(p.name||'BinzoLive member')}</strong>${zuApproved(p)?homeVerified(p):''}</div>
+    <header class="zu-feed-author"><span class="av zu-feed-avatar">${zuAvatar(p)}</span><div class="zu-feed-who"><strong>${esc(p.name||'BinzoLive user')}</strong>${zuApproved(p)?homeVerified(p):''}</div>
       ${zuSelf()?`<button type="button" class="zu-feed-options" aria-label="Post options" onclick="zuPostOptions(${index})">${ci('more',20)}</button>`:''}</header>
     <div class="zu-feed-media ${video?'is-video':''}" ${video?'':`onpointerup="zuFeedTap(event,${index})"`}>
       <div class="zu-post-loading" role="status" aria-label="Loading post ${video?'video':'photo'}" aria-busy="true">${skeletonLine('100px',14)}</div>
@@ -144,7 +144,7 @@ function zuCommentsMarkup(){
   if(c.loading&&!c.items.length)return `<div class="zu-comments-state" role="status" aria-label="Loading comments" aria-busy="true">${[0,1,2].map(()=>`<div class="zu-comment">${'<span class="av zh-skeleton-shape"></span>'}<div>${skeletonLine('70%',12)}${skeletonLine('40%',10)}</div></div>`).join('')}</div>`;
   if(c.error&&!c.items.length)return `<div class="zu-comments-state" role="alert"><p>${esc(c.error)}</p><button type="button" class="zu-secondary" onclick="zuLoadComments()">Try again</button></div>`;
   if(!c.items.length)return `<div class="zu-comments-state"><h4>No comments yet</h4><p>Start the conversation.</p></div>`;
-  return c.items.map(comment=>{const mine=comment.user?.id===me,canDelete=mine||owner;return `<div class="zu-comment" data-comment-id="${esc(comment.id)}"><span class="av">${zuAvatar({name:comment.user?.name,avatarUrl:comment.user?.avatarUrl})}</span><div><p><strong>${esc(comment.user?.name||'BinzoLive member')}</strong> ${esc(comment.text)}</p><span class="zu-comment-meta">${esc(zuAgo(comment.createdAt,true))}${canDelete?`<button type="button" onclick="zuDeleteComment('${domId(comment.id)}')" ${c.deleting===comment.id?'disabled':''}>${c.deleting===comment.id?'Deleting…':'Delete'}</button>`:''}</span></div></div>`}).join('')
+  return c.items.map(comment=>{const mine=comment.user?.id===me,canDelete=mine||owner;return `<div class="zu-comment" data-comment-id="${esc(comment.id)}"><span class="av">${zuAvatar({name:comment.user?.name,avatarUrl:comment.user?.avatarUrl})}</span><div><p><strong>${esc(comment.user?.name||'BinzoLive user')}</strong> ${esc(comment.text)}</p><span class="zu-comment-meta">${esc(zuAgo(comment.createdAt,true))}${canDelete?`<button type="button" onclick="zuDeleteComment('${domId(comment.id)}')" ${c.deleting===comment.id?'disabled':''}>${c.deleting===comment.id?'Deleting…':'Delete'}</button>`:''}</span></div></div>`}).join('')
     +(c.items.length<c.total?`<button type="button" class="zu-comments-more" onclick="zuLoadComments(true)" ${c.loading?'disabled':''}>${c.loading?'Loading…':'Load more comments'}</button>`:'');
 }
 function zuPaintComments(){

@@ -18,7 +18,11 @@ async function checkGeometry(page, label, slots = 2) {
     if (layout.fullScreen !== videoRoute) return false;
     return layout.slots.every(slot => {
       const video = document.querySelector(`video[data-zimi-${slot.kind}]`), rect = video.getBoundingClientRect();
-      return video.hasAttribute('data-zimi-native-video') && getComputedStyle(video).objectFit === slot.fit && ['x', 'y', 'width', 'height'].every(key => Math.abs(slot[key] - rect[key]) < 0.6);
+      const topContained = slot.kind === 'local' && !!video.closest('.hc-reference.zb-previewing');
+      const geometry = topContained ? Math.abs(slot.y - rect.y) < 0.6 && slot.x >= rect.x - 0.6 && slot.width <= rect.width + 0.6 && slot.height <= rect.height + 0.6 &&
+        (Math.abs(slot.width - rect.width) < 0.6 || Math.abs(slot.height - rect.height) < 0.6) :
+        ['x', 'y', 'width', 'height'].every(key => Math.abs(slot[key] - rect[key]) < 0.6);
+      return video.hasAttribute('data-zimi-native-video') && getComputedStyle(video).objectFit === slot.fit && geometry;
     });
   }, slots).catch(async error => {
     const diagnostic = await page.evaluate(() => ({ view: S.v, layout: __sent.filter(message => message.type === 'native.media.layout').at(-1)?.data,
@@ -31,7 +35,7 @@ async function checkGeometry(page, label, slots = 2) {
     const stage = video.parentElement.matches('.zr-call:not(.zb-previewing)>.zr-video,.ringscr.dial.is-video>.ringbg') || video.hasAttribute('data-zimi-local') && !!video.closest('.zr-call.zb-previewing');
     return { kind: slot.kind, emitted: slot.fit, css: getComputedStyle(video).objectFit, expected: stage ? 'cover' : 'contain', native: video.hasAttribute('data-zimi-native-video'), view: S.v };
   }));
-  assert.ok(fitting.every(value => value.emitted === value.expected && value.css === value.emitted), label + ': main call video fills its stage while PiP/setup/beauty retain their framing: ' + JSON.stringify(fitting));
+  assert.ok(fitting.every(value => value.emitted === value.expected && value.css === value.emitted), label + ': calls fill their stage while PiP and setup Beauty retain the complete frame: ' + JSON.stringify(fitting));
 }
 
 (async () => {
@@ -141,8 +145,8 @@ async function checkGeometry(page, label, slots = 2) {
     await page.evaluate(() => ZimiMedia.stop());
     await page.waitForFunction(() => __sent.filter(message => message.type === 'native.media.layout').at(-1).data.slots.length === 0);
     assert.equal(await page.locator('[data-zimi-native-underlay]').count(), 0, 'Stopping restores normal opaque page backgrounds');
-    // Setup and its smaller beauty preview must retain the same camera field
-    // of view as the call instead of cropping it to fill a different ratio.
+    // Ordinary setup retains the whole camera frame. Opening Beauty promotes
+    // the camera to a full-bleed background so it cannot become letterboxed.
     await receive(page, 'session', { user: { ...creator, hostStatus: 'approved', isVerifiedHost: true, isPhoneVerified: true }, verification: 'verified', requiresOnboarding: false });
     await page.evaluate(async member => {
       S.cam = S.mic = 1; S.swap = false; S.bgCall = null;
@@ -183,11 +187,24 @@ async function checkGeometry(page, label, slots = 2) {
     await page.locator('.hc-setup').waitFor();
     await checkGeometry(page, 'Host camera setup', 1);
     assert.equal(await page.evaluate(() => __sent.filter(message => message.type === 'native.media.layout').at(-1).data.fullScreen), false, 'Host setup retains native safe-area padding and whole-camera preview');
+    assert.equal(await page.evaluate(() => __sent.filter(message => message.type === 'native.media.layout').at(-1).data.slots[0].fit), 'contain', 'Ordinary host setup retains the whole camera frame');
+    await receive(page, 'native.media.dimensions', { kind: 'local', width: 720, height: 1280 });
+    await page.waitForFunction(() => document.querySelector('.hc-stage>video').dataset.zimiShape === 'portrait');
     await page.evaluate(() => hsOpenSheet('appearance'));
     await page.locator('.hc-setup.zb-previewing [data-zimi-beauty-panel]').waitFor();
     await checkGeometry(page, 'Host setup beauty preview', 1);
-    await receive(page, 'native.media.dimensions', { kind: 'local', width: 720, height: 1280 });
-    await page.waitForFunction(() => document.querySelector('.hc-stage>video').dataset.zimiShape === 'portrait');
+    assert.equal(await page.locator('.hc-stage>video[data-zimi-local]').evaluate(video => {
+      const rect = video.getBoundingClientRect(), panel = document.querySelector('.zb-reference-panel').getBoundingClientRect();
+      const layout = __sent.filter(message => message.type === 'native.media.layout').at(-1).data, slot = layout.slots[0];
+      return layout.fullScreen === false && slot.fit === 'contain' && getComputedStyle(video).objectFit === 'contain' && getComputedStyle(video).objectPosition === '50% 0%' &&
+        Math.abs(rect.x) < 1 && Math.abs(rect.y) < 1 && Math.abs(rect.width - innerWidth) < 1 && Math.abs(rect.height - innerHeight) < 1 &&
+        Math.abs(slot.x) < 1 && Math.abs(slot.y) < 1 && Math.abs(slot.width - innerWidth) < 1 && Math.abs(slot.width / slot.height - 720 / 1280) < 0.001 && panel.top <= slot.y + slot.height + 1;
+    }), true, 'Beauty preview keeps the complete camera frame at the top and hides unused bottom space behind the panel');
+    await receive(page, 'native.media.dimensions', { kind: 'local', width: 1440, height: 1920 });
+    await page.waitForFunction(() => {
+      const slot = __sent.filter(message => message.type === 'native.media.layout').at(-1)?.data.slots[0];
+      return slot && Math.abs(slot.width / slot.height - 1440 / 1920) < 0.001;
+    });
     await checkGeometry(page, 'Host portrait beauty preview', 1);
     await page.evaluate(() => { hsCloseSheet(); ZimiMedia.stop(); });
     await page.waitForFunction(() => __sent.filter(message => message.type === 'native.media.layout').at(-1).data.slots.length === 0);

@@ -24,6 +24,7 @@ const directoryMember = { id: '507f1f77bcf86cd799439081', name: 'Directory membe
 const directoryPage = (users = [directoryMember], page = 1) => ({ users, total: users.length, page, limit: 20 });
 const directoryHost = { id: '507f1f77bcf86cd799439082', name: 'Active directory host', role: 'host', serverRole: 'host', verified: true, online: true, availableForCall: false };
 const activeHostsPage = (hosts = [directoryHost], page = 1) => ({ hosts, total: hosts.length, page, limit: 20 });
+const profileDirectoryPage = (profiles = [directoryMember, directoryHost], page = 1, filter = 'all') => ({ profiles, total: profiles.length, page, limit: 20, filter });
 
 function harness(initialAppState = 'active', initialLink = null, liveStreaming = false, initialIncoming = null) {
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], keyboards = [], links = [], shares = [], backs = [], alerts = [], exits = [];
@@ -167,6 +168,58 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
 // at the mocked module boundary. Normal tests run with the production default.
 const streamingHarness = (state = 'active', link = null) => harness(state, link, true);
 const findShellWeb = node => !node || typeof node !== 'object' ? null : node.type === 'WebView' ? node : [node.props?.children].flat().map(findShellWeb).find(Boolean) || null;
+
+test('profile directory messages require bounded search, page and filter fields only', async () => {
+  const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
+  for (const data of [{ q: '', filter: 'all' }, { q: '  Riya  ', page: 1, filter: 'online' }, { q: 'x'.repeat(100), page: 10000, filter: 'all' }])
+    assert.ok(parse({ type: 'profiles.search', data }), JSON.stringify(data));
+  for (const data of [{}, { q: '' }, { filter: 'all' }, { q: null, filter: 'all' }, { q: 1, filter: 'all' }, { q: 'x'.repeat(101), filter: 'all' },
+    { q: '', page: 0, filter: 'all' }, { q: '', page: -1, filter: 'all' }, { q: '', page: 1.5, filter: 'all' },
+    { q: '', page: 10001, filter: 'all' }, { q: '', page: '2', filter: 'all' }, { q: '', page: null, filter: 'all' },
+    { q: '', filter: 'active' }, { q: '', filter: 'Online' }, { q: '', filter: null }, { q: '', filter: true },
+    { q: '', filter: 'all', role: 'host' }, { q: '', filter: 'all', audience: 'all' }, { q: '', filter: 'all', userId: 'another-user' },
+    { q: '', filter: 'all', isOnline: true }, { q: '', filter: 'all', limit: 100 }]) {
+    const message = { type: 'profiles.search', data };
+    assert.equal(parse(message), null, JSON.stringify(data)); h.bridge.handle(message);
+  }
+  await settle(); assert.equal(h.count('profileDirectory'), 0); assert.equal(h.count('me'), 0);
+  h.bridge.close();
+});
+
+test('profile directory emits mixed User and approved Host rows with the selected filter', async () => {
+  const h = harness();
+  h.overrides.profileDirectory = (q, page, filter) => filter === 'online'
+    ? profileDirectoryPage([directoryHost], page, filter)
+    : profileDirectoryPage([directoryMember, directoryHost], page, filter);
+  h.bridge.handle({ type: 'profiles.search', data: { q: '  Directory  ', page: 2, filter: 'all' } }); await settle();
+  assert.deepEqual(plain(h.calls.find(call => call.name === 'profileDirectory').args), ['Directory', 2, 'all']);
+  assert.deepEqual(plain(h.find('data.search').at(-1).data), { q: 'Directory', filter: 'all', hosts: [directoryMember, directoryHost], total: 2, page: 2 });
+  assert.equal(h.find('data.search').at(-1).data.hosts[0].serverRole, 'user');
+  assert.equal(h.find('data.search').at(-1).data.hosts[1].serverRole, 'host');
+  assert.equal(h.count('me'), 0, 'Profile search is not restricted to an approved Host');
+  h.bridge.handle({ type: 'profiles.search', data: { q: '', filter: 'online' } }); await settle();
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'profileDirectory').at(-1).args), ['', 1, 'online']);
+  assert.deepEqual(plain(h.find('data.search').at(-1).data), { q: '', filter: 'online', hosts: [directoryHost], total: 1, page: 1 });
+  assert.ok(h.find('data.search').at(-1).data.hosts.every(profile => profile.online === true), 'The Online filter emits only online rows');
+  h.bridge.close();
+});
+
+test('profile directory discards stale rows and failures without completing the latest search', async () => {
+  const h = harness(), staleRows = deferred(), staleFailure = deferred(), latest = deferred();
+  h.overrides.profileDirectory = (_q, page) => page === 1 ? staleRows.promise : page === 2 ? staleFailure.promise : latest.promise;
+  h.bridge.handle({ type: 'profiles.search', data: { q: 'same', page: 1, filter: 'all' } }); await settle();
+  h.bridge.handle({ type: 'profiles.search', data: { q: 'same', page: 2, filter: 'all' } }); await settle();
+  h.bridge.handle({ type: 'profiles.search', data: { q: 'same', page: 3, filter: 'online' } }); await settle();
+  latest.resolve(profileDirectoryPage([directoryHost], 3, 'online')); await settle();
+  staleRows.resolve(profileDirectoryPage([directoryMember], 1, 'all'));
+  staleFailure.reject(new h.ApiError('Retired profile search error', 503)); await settle();
+  assert.deepEqual(h.find('data.search').map(event => ({ page: event.data.page, filter: event.data.filter, ids: event.data.hosts.map(profile => profile.id) })),
+    [{ page: 3, filter: 'online', ids: [directoryHost.id] }]);
+  assert.equal(h.find('operation.error').filter(event => event.data.action === 'profiles.search').length, 0, 'Retired failures never replace current search results');
+  const completed = h.find('data.loading').filter(event => event.data.resource === 'search' && event.data.loading === false);
+  assert.deepEqual(completed.map(event => event.data.page), [3], 'Retired reads cannot complete the latest loading state');
+  h.bridge.close();
+});
 
 test('active host directory messages bound search and page and reject client authority fields', async () => {
   const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
@@ -401,55 +454,88 @@ test('member directory retires approval checks, results and failures after accou
 });
 
 const officialFixture = () => {
-  const identity={id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:true};
-  const message={id:'support:507f1f77bcf86cd799439041',kind:'support',senderType:'user',body:'Please help',createdAt:'2026-11-02T10:00:00Z',read:true,ticketId:'507f1f77bcf86cd799439042',sequence:1,clientMessageId:'official-native-01'};
-  return {data:{...identity,messages:[],total:0,hasMore:false,before:null,unreadCount:1},receipt:{message,official:{...identity,unread:1,lastMessage:message}}};
+  const identity={id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:false};
+  const message={id:'announcement:507f1f77bcf86cd799439041',kind:'announcement',senderType:'official',body:'An official rule update',createdAt:'2026-11-02T10:00:00Z',read:false};
+  return {data:{...identity,messages:[message],total:1,hasMore:false,before:null,unreadCount:1},summary:{...identity,unread:1,lastMessage:message},message};
 };
 async function officialHarness(){
   const h=harness(),fixture=officialFixture(),self='507f1f77bcf86cd799439031';
   h.overrides.me=()=>({...account(self),requiresOnboarding:false});
-  h.overrides.officialChat=()=>fixture.data;h.overrides.sendOfficialMessage=()=>fixture.receipt;h.overrides.readOfficialChat=()=>({read:true,official:{...fixture.receipt.official,unread:0}});
+  h.overrides.officialChat=()=>fixture.data;h.overrides.readOfficialChat=()=>({read:true,official:{...fixture.summary,unread:0}});
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();return{h,fixture,self};
 }
-test('official native actions use dedicated API routes and correlate coalesced support receipts',async()=>{
+test('official native actions use dedicated read-only routes and never acquire person-chat authority',async()=>{
   const {h,fixture}=await officialHarness();
   try{
     h.bridge.handle({type:'official.activity',data:{active:true}});h.bridge.handle({type:'official.load',data:{requestId:81}});await settle();
     assert.equal(h.find('data.official').at(-1).data.requestId,81);assert.equal(h.find('data.official').at(-1).data.verified,true);
-    const pending=deferred();h.overrides.sendOfficialMessage=()=>pending.promise;
-    const message={type:'official.send',data:{body:fixture.receipt.message.body,clientMessageId:fixture.receipt.message.clientMessageId,requestId:82}};
-    h.bridge.handle(message);h.bridge.handle({...message,data:{...message.data,requestId:83}});await settle();assert.equal(h.count('sendOfficialMessage'),1);
-    pending.resolve(fixture.receipt);await settle();assert.deepEqual(h.find('official.sent').map(event=>event.data.requestId),[82,83]);
-    h.bridge.handle({type:'official.read',data:{ids:[fixture.receipt.message.id],requestId:84}});await settle();assert.equal(h.find('official.saved').at(-1).data.requestId,84);
-    assert.equal(h.count('thread'),0);assert.equal(h.count('sendMessage'),0);assert.equal(h.count('startCall'),0);assert.equal(h.count('acceptCall'),0);assert.equal(h.count('sendGift'),0,'Official support never acquires person-chat or spending authority');
+    h.bridge.handle({type:'official.send',data:{body:'forged write',clientMessageId:'official-native-01',requestId:82}});await settle();
+    h.bridge.handle({type:'official.read',data:{ids:[fixture.message.id],requestId:84}});await settle();assert.equal(h.find('official.saved').at(-1).data.requestId,84);
+    assert.equal(h.count('sendOfficialMessage'),0);assert.equal(h.find('official.sent').length,0);assert.equal(h.count('thread'),0);assert.equal(h.count('sendMessage'),0);assert.equal(h.count('startCall'),0);assert.equal(h.count('acceptCall'),0);assert.equal(h.count('sendGift'),0,'Team Chat never acquires write, person-chat or spending authority');
   }finally{h.bridge.close();}
 });
-test('official live invalidation, reconnect and foreground revalidate the active private conversation',async()=>{
+test('pending hosts fetch the negotiated Team Chat summary without receiving person chats',async()=>{
+  const h=harness(),fixture=officialFixture(),self='507f1f77bcf86cd799439031';
+  h.overrides.me=()=>({...account(self),user:{...account(self).user,role:'host',serverRole:'host',hostStatus:'pending'},requiresOnboarding:false});
+  h.overrides.chats=page=>({chats:[{user:{id:'507f1f77bcf86cd799439099'},unread:4}],official:fixture.summary,total:1,page,limit:20,unreadCount:4,unreadConversations:1});
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  try{
+    assert.ok(h.count('chats')>0,'pending hosts call the negotiated chats endpoint');
+    const data=h.find('data.chats').at(-1).data;
+    assert.deepEqual(plain(data.chats),[],'person chats stay hidden without host approval');assert.equal(data.total,0);assert.equal(data.unreadCount,0);assert.equal(data.unreadConversations,0);
+    assert.equal(data.official.id,'bingo-live-official');assert.equal(data.official.lastMessage.kind,'announcement');
+  }finally{h.bridge.close();}
+});
+test('official chat-list summaries retire late responses across same-account role changes',async()=>{
+  const h=harness(),fixture=officialFixture(),self='507f1f77bcf86cd799439031';
+  h.overrides.me=()=>({...account(self),user:{...account(self).user,serverRole:'user'},requiresOnboarding:false});
+  h.overrides.chats=()=>({chats:[],official:fixture.summary,total:0,page:1,limit:20,unreadCount:0,unreadConversations:0});
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  const old=deferred(),fresh=deferred(),before=h.find('data.chats').length;
+  let reads=0;h.overrides.chats=()=>++reads===1?old.promise:fresh.promise;
+  try{
+    h.bridge.handle({type:'chats.reload',data:{page:1}});await settle();
+    h.overrides.me=()=>({...account(self),user:{...account(self).user,role:'host',serverRole:'host',hostStatus:'pending'},requiresOnboarding:false});
+    h.live.at(-1).onEvent({type:'account.updated',data:{}});await settle();
+    assert.equal(reads,2,'the new server role starts an authoritative chat-list read');
+    const hostMessage={...fixture.message,id:'announcement:507f1f77bcf86cd799439043',body:'Host-only Team Chat rule'};
+    fresh.resolve({chats:[{user:{id:'507f1f77bcf86cd799439099'},unread:2}],official:{...fixture.summary,lastMessage:hostMessage},total:1,page:1,limit:20,unreadCount:2,unreadConversations:1});await settle();
+    old.resolve({chats:[],official:{...fixture.summary,lastMessage:{...fixture.message,body:'Sender-only Team Chat update'}},total:0,page:1,limit:20,unreadCount:0,unreadConversations:0});await settle();
+    const delivered=h.find('data.chats').slice(before);
+    assert.equal(delivered.length,1,'the response begun under the previous role is retired');
+    assert.equal(delivered[0].data.official.lastMessage.body,'Host-only Team Chat rule');
+    assert.deepEqual(plain(delivered[0].data.chats),[],'pending-host person rows remain hidden after the role refresh');
+  }finally{h.bridge.close();}
+});
+test('official live invalidation, reconnect and foreground revalidate the active announcement channel',async()=>{
   const {h}=await officialHarness();try{
     h.bridge.handle({type:'official.activity',data:{active:true}});const initial=h.count('officialChat');
-    h.live.at(-1).onEvent({type:'support.updated',data:{ticketId:'507f1f77bcf86cd799439042'}});await settle();assert.equal(h.count('officialChat'),initial+1);assert.equal(h.find('data.official').at(-1).data.background,true);assert.ok(h.find('notifications.changed').length>0);
+    h.live.at(-1).onEvent({type:'support.updated',data:{ticketId:'507f1f77bcf86cd799439042'}});await settle();assert.equal(h.count('officialChat'),initial,'private support invalidation does not refresh Team Chat');assert.ok(h.find('notifications.changed').length>0);
+    h.live.at(-1).onEvent({type:'official.changed',data:{}});await settle();assert.equal(h.count('officialChat'),initial+1);assert.equal(h.find('data.official').at(-1).data.background,true);
     h.live.at(-1).onEvent({type:'realtime.status',data:{connected:true}});await settle();assert.equal(h.count('officialChat'),initial+2);
     h.activities.forEach(listener=>listener('background'));await settle();const reads=h.count('officialChat');h.live.at(-1).onEvent({type:'official.changed',data:{}});await settle();assert.equal(h.count('officialChat'),reads);
     h.activities.forEach(listener=>listener('active'));await settle();assert.equal(h.count('officialChat'),reads+1);
-    h.bridge.handle({type:'official.activity',data:{active:false}});const closed=h.count('officialChat');h.live.at(-1).onEvent({type:'support.updated',data:{ticketId:'507f1f77bcf86cd799439042'}});await settle();assert.equal(h.count('officialChat'),closed);
+    h.bridge.handle({type:'official.activity',data:{active:false}});const closed=h.count('officialChat');h.live.at(-1).onEvent({type:'official.changed',data:{}});await settle();assert.equal(h.count('officialChat'),closed);
   }finally{h.bridge.close();}
 });
-test('official late content and send errors are retired with native account or document changes',async()=>{
-  for(const change of ['account','document'])for(const operation of ['load','send']){
+test('official late content is retired with native account or document changes',async()=>{
+  for(const change of ['account','document']){
     const {h,fixture}=await officialHarness(),pending=deferred();try{
-      h.overrides[operation==='load'?'officialChat':'sendOfficialMessage']=()=>pending.promise;
-      h.bridge.handle(operation==='load'?{type:'official.load',data:{requestId:91}}:{type:'official.send',data:{body:fixture.receipt.message.body,clientMessageId:fixture.receipt.message.clientMessageId,requestId:91}});await settle();
+      h.overrides.officialChat=()=>pending.promise;
+      h.bridge.handle({type:'official.load',data:{requestId:91}});await settle();
       if(change==='account')await h.session.setSessionTokens(tokenPair('bob'));else h.bridge.documentLoading();
-      if(operation==='load')pending.resolve(fixture.data);else pending.reject(new h.ApiError('Retired private support failure',503));await settle();
-      assert.equal(h.find('data.official').length,0);assert.equal(h.find('official.sent').length,0);assert.equal(h.find('official.error').length,0);
+      pending.resolve(fixture.data);await settle();
+      assert.equal(h.find('data.official').length,0);assert.equal(h.find('official.error').length,0);
     }finally{h.bridge.close();}
   }
 });
-test('official push hints check the recipient and never resolve legacy support as a person or accept a call',async()=>{
+test('official and support push hints stay on separate verified surfaces',async()=>{
   const {h,self}=await officialHarness();try{
     h.push.open({targetType:'support',targetId:'507f1f77bcf86cd799439042',recipientId:'507f1f77bcf86cd799439099'});await settle();assert.equal(h.find('official.open').length,0);
-    for(const targetType of ['support','official','inbox']){h.push.open({targetType,targetId:'507f1f77bcf86cd799439042',recipientId:self});await settle();}
-    assert.equal(h.find('official.open').length,3);assert.equal(h.count('publicProfile'),0);assert.equal(h.count('supportTicket'),0);assert.equal(h.count('notificationCall'),0);assert.equal(h.count('acceptCall'),0);
+    h.push.open({targetType:'support',targetId:'507f1f77bcf86cd799439042',recipientId:self});await settle();assert.equal(h.find('push.opened').at(-1).data.targetType,'support');
+    h.push.open({targetType:'inbox',targetId:'507f1f77bcf86cd799439042',recipientId:self});await settle();assert.equal(h.find('push.opened').at(-1).data.targetType,'inbox');
+    h.push.open({targetType:'official',targetId:'507f1f77bcf86cd799439042',recipientId:self});await settle();
+    assert.equal(h.find('official.open').length,1);assert.equal(h.count('publicProfile'),0);assert.equal(h.count('supportTicket'),0);assert.equal(h.count('notificationCall'),0);assert.equal(h.count('acceptCall'),0);
   }finally{h.bridge.close();}
 });
 
@@ -554,6 +640,39 @@ test('conversation activity serializes old close/new open, renews and releases i
   assert.equal(h.find('operation.error').length,0,'Best-effort engagement failures do not interrupt manual conversations');h.bridge.close();
 });
 
+test('typing messages validate an identity-free contract and failures stay best-effort', async () => {
+  const h=harness(),parse=message=>h.webMessages.parseWebMessage(JSON.stringify(message));
+  const started={type:'chat.typing',data:{to:'peer-a',typing:true}},stopped={type:'chat.typing',data:{to:'peer-a',typing:false}};
+  assert.deepEqual(plain(parse(started)),started);assert.deepEqual(plain(parse(stopped)),stopped);
+  for(const data of [
+    {},
+    {to:'',typing:true},
+    {to:'peer/a',typing:true},
+    {to:'bingo-live-official',typing:true},
+    {to:'peer-a',typing:1},
+    {with:'peer-a',typing:true},
+    {to:'peer-a',typing:true,userId:'forged'},
+    {to:'peer-a',typing:true,expiresAt:'2026-11-21T10:00:00.000Z'},
+  ]){
+    const message={type:'chat.typing',data};assert.equal(parse(message),null,JSON.stringify(data));h.bridge.handle(message);
+  }
+  assert.equal(h.count('setChatTyping'),0,'Rejected WebMessages never reach the API');
+  const pending=deferred();let attempts=0;
+  h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  h.overrides.setChatTyping=()=>++attempts===1?pending.promise:undefined;
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.bridge.handle(started);h.bridge.handle(stopped);await settle();
+  assert.deepEqual(plain(h.calls.filter(call=>call.name==='setChatTyping').map(call=>call.args)),[['peer-a',true]],'A stop cannot overtake a pending typing start');
+  assert.equal(h.find('chat.typing').length,0,'The bridge does not fabricate a typing acknowledgment');
+  pending.resolve();await settle();
+  assert.deepEqual(plain(h.calls.filter(call=>call.name==='setChatTyping').map(call=>call.args)),[['peer-a',true],['peer-a',false]],'Typing transitions keep their server arrival order');
+  h.overrides.setChatTyping=()=>{throw new h.ApiError('Typing presence unavailable',503)};
+  h.bridge.handle(started);await settle();
+  assert.equal(h.count('setChatTyping'),3);
+  assert.equal(h.find('operation.error').filter(event=>event.data.action==='chat.typing').length,0,'Typing presence failures never interrupt the conversation');
+  h.bridge.close();
+});
+
 test('chat acknowledgments preserve client identity and committed server ordering while background reads stay unobtrusive', async () => {
   const h=harness();h.overrides.me=()=>({...account(),requiresOnboarding:false});
   const delivered={id:'server-message',text:'Delivered text',createdAt:'2026-10-30T10:00:00Z',sequence:8};
@@ -571,21 +690,39 @@ test('chat acknowledgments preserve client identity and committed server orderin
   assert.equal(h.find('operation.error').length,0,'A failed background reconciliation retains visible messages and the active draft');h.bridge.close();
 });
 
-test('agency messages validate identity-free payloads and retain request correlation without granting host access', async () => {
+test('agency messages validate payloads and publish authoritative Host access before activation success', async () => {
   const h = harness();
-  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  let activated = false;
+  h.overrides.me = () => activated ? approvedAccount() : ({ ...account(), requiresOnboarding: false });
   const status = { agency: { id: 'agency-1', name: 'Dream Star', recruitmentCode: 'BINZO7K9Q2M', status: 'ACTIVE' }, joiningCode: 'BINZO7K9Q2M8X4R', codeType: 'host-invite', canJoin: true, hostStatus: 'none', isVerifiedHost: false, eligible: true, requirements: [], nextStep: 'application' };
-  h.overrides.hostAgency = () => status; h.overrides.verifyAgencyCode = () => status; h.overrides.joinAgency = () => status;
+  const activeStatus = { ...status, hostStatus: 'approved', isVerifiedHost: true, nextStep: 'active' };
+  h.overrides.hostAgency = () => status; h.overrides.verifyAgencyCode = () => status;
+  h.overrides.joinAgency = () => { activated = true; return activeStatus; };
   await h.session.setSessionTokens(tokenPair());
   h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
-  for (const [action, result] of [['load', 'loaded'], ['verify', 'verified'], ['join', 'joined']]) {
+  for (const [action, result] of [['load', 'loaded'], ['verify', 'verified']]) {
     const data = { requestId: 9, ...(action === 'load' ? {} : { agencyCode: 'BINZO7K9Q2M8X4R' }) };
     assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: `agency.${action}`, data })));
     assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: `agency.${action}`, data: { ...data, userId: 'someone-else' } })), null);
     await h.bridge.handle({ type: `agency.${action}`, data }); await settle();
     assert.deepEqual(plain(h.find(`agency.${result}`).at(-1).data), { ...status, requestId: 9 });
   }
-  assert.equal(h.find('host.access').some(event => event.data.approved), false);
+  assert.equal(h.find('host.access').some(event => event.data.approved), false, 'Previewing a valid code cannot grant Host access');
+  const beforeJoin = h.posts.length;
+  const joinData = { requestId: 9, agencyCode: 'BINZO7K9Q2M8X4R' };
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'agency.join', data: joinData })));
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'agency.join', data: { ...joinData, userId: 'someone-else' } })), null);
+  await h.bridge.handle({ type: 'agency.join', data: joinData }); await settle();
+  assert.deepEqual(plain(h.find('agency.joined').at(-1).data), { ...activeStatus, requestId: 9 });
+  const activationPosts = h.posts.slice(beforeJoin);
+  const accessIndex = activationPosts.findIndex(event => event.type === 'host.access' && event.data.approved === true);
+  const joinedIndex = activationPosts.findIndex(event => event.type === 'agency.joined');
+  assert.ok(accessIndex >= 0 && accessIndex < joinedIndex, 'The authoritative account refresh grants Host access before activation success');
+  const joinedCount = h.find('agency.joined').length;
+  activated = false; h.overrides.joinAgency = () => activeStatus;
+  await h.bridge.handle({ type: 'agency.join', data: { ...joinData, requestId: 91 } }); await settle();
+  assert.equal(h.find('agency.joined').length, joinedCount, 'An activation response cannot grant UI success without matching account authority');
+  assert.deepEqual(plain(h.find('agency.error').at(-1).data), { action: 'agency.join', message: 'Host activation could not be confirmed. Please try again.', requestId: 91 });
   assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'agency.join', data: { agencyCode: 'BINZO7K9Q2M', requestId: 10 } })), null, 'A common agency ID never reaches activation through the web bridge');
   assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'agency.verify', data: { agencyCode: 'BINZO7K9Q2M', requestId: 10 } })), 'A common code can only be checked for agency identity');
   h.overrides.verifyAgencyCode = () => { throw new h.ApiError('Agency suspended', 403); };
@@ -1005,32 +1142,46 @@ test('closing the bridge removes session observers and prevents pending UI deliv
   assert.equal(h.count('sendOtp'), 1);
 });
 
-test('the native update gate mounts app content only after an allowed policy', () => {
+test('the native update gate owns one root launch layer across policy and content startup', () => {
   const h = harness(), app = h.load('App.tsx');
-  for (const status of ['checking', 'required', 'error']) {
+  for (const [status, ready] of [['checking', false], ['error', true], ['required', true]]) {
     h.overrides.appUpdatesState = { status };
-    const tree = [app.default().props.children].flat()[0];
-    assert.equal(tree.type, 'AppUpdateScreen', `${status} cannot mount the WebView or session bridge`);
-    assert.equal(tree.props.state.status, status);
-    assert.equal(h.effects.length, 0, 'Blocked builds do not start app-content effects');
+    const root = app.default();
+    const [gate, launch] = [root.props.children].flat().filter(Boolean);
+    assert.equal(gate.type, 'AppUpdateScreen', `${status} keeps policy UI below the root launch layer`);
+    assert.equal(gate.props.state.status, status);
+    assert.equal(launch.type, 'LaunchScreen', `${status} uses the single root launch layer`);
+    assert.equal(launch.props.ready, ready, `${status} has the expected policy-settled launch state`);
+    assert.equal(findShellWeb(root), null, `${status} never mounts gated app content`);
   }
   h.overrides.appUpdatesState = { status: 'allowed' };
-  assert.equal([app.default().props.children].flat()[0].type, app.AppContent);
-  assert.equal(h.effects.length, 0, 'The wrapper leaves content mounting to React');
+  const root = app.default();
+  const [allowed, launch] = [root.props.children].flat().filter(Boolean);
+  assert.equal(allowed.type, app.AppContent);
+  assert.equal(allowed.props.startupCovered, true, 'The root logo owns startup while admitted content initializes');
+  assert.equal(typeof allowed.props.onStartupReady, 'function');
+  assert.equal(launch.type, 'LaunchScreen', 'The same root layer remains beside admitted content');
+  assert.equal(launch.props.ready, false, 'The logo waits for the admitted page readiness signal');
+  assert.equal([root.props.children].flat().filter(node => node?.type === 'LaunchScreen').length, 1, 'The root never renders a second launch layer');
 });
 
 test('native incoming surface covers update checking without mounting app content and preserves its stable root', () => {
   const h=harness(),app=h.load('App.tsx'),action={actionId:'native-first-frame',action:'open',recipientId:'507f1f77bcf86cd799439101',callId:'507f1f77bcf86cd799439103',expiresAt:new Date(Date.now()+30000).toISOString(),callerName:'Mira',callKind:'video'};
   h.overrides.incomingState={action};
-  for(const status of ['checking','required','error']) {
-    h.overrides.appUpdatesState={status};const tree=app.default(),[content,overlay]=[tree.props.children].flat();
-    assert.equal(tree.type,'View');assert.equal(content.type,'AppUpdateScreen');assert.equal(overlay.type,'IncomingCallScreen');assert.equal(overlay.props.action.actionId,action.actionId);assert.equal(overlay.props.allowed,false);
-    assert.equal(h.effects.length,0,'A pending notification does not mount the gated WebView or account effects');
+  for(const status of ['checking','error']) {
+    h.overrides.appUpdatesState={status};const tree=app.default(),[content,overlay]=[tree.props.children].flat().filter(Boolean);
+    assert.equal(tree.type,'View');assert.equal(content.type,'AppUpdateScreen');assert.equal(content.props.state.status,status);assert.equal(overlay.type,'IncomingCallScreen');assert.equal(overlay.props.action.actionId,action.actionId);assert.equal(overlay.props.allowed,false);
+    assert.equal([tree.props.children].flat().some(node=>node?.type==='LaunchScreen'),false,'The trusted incoming route is never covered by launch artwork');
+    assert.equal(findShellWeb(tree),null,'A pending notification does not mount the gated WebView');
   }
-  h.overrides.appUpdatesState={status:'allowed'};const admitted=app.default(),[content,overlay]=[admitted.props.children].flat();
-  assert.equal(content.type,app.AppContent);assert.equal(content.props.priorityIncoming,true);assert.equal(overlay.props.allowed,true);
-  h.overrides.incomingState={action:null};const cleared=app.default(),[sameContent,empty]=[cleared.props.children].flat();
-  assert.equal(cleared.type,admitted.type);assert.equal(sameContent.type,content.type,'Clearing the ring overlay preserves the content component at the same root position');assert.equal(empty,null);
+  h.overrides.appUpdatesState={status:'required'};const blocked=app.default(),[update,blockedOverlay]=[blocked.props.children].flat().filter(Boolean);
+  assert.equal(update.type,'AppUpdateScreen');assert.equal(update.props.state.status,'required');assert.equal(blockedOverlay.type,'IncomingCallScreen');assert.equal(blockedOverlay.props.allowed,false);
+  assert.equal(findShellWeb(blocked),null,'A mandatory update does not mount the gated WebView');
+  h.overrides.appUpdatesState={status:'allowed'};const admitted=app.default(),[content,overlay]=[admitted.props.children].flat().filter(Boolean);
+  assert.equal(content.type,app.AppContent);assert.equal(content.props.priorityIncoming,true);assert.equal(content.props.startupCovered,false,'The priority incoming route remains uncovered');assert.equal(overlay.props.allowed,true);
+  assert.equal([admitted.props.children].flat().some(node=>node?.type==='LaunchScreen'),false,'Allowed priority incoming content also skips the root logo');
+  h.overrides.incomingState={action:null};const cleared=app.default(),[sameContent,launch]=[cleared.props.children].flat().filter(Boolean);
+  assert.equal(cleared.type,admitted.type);assert.equal(sameContent.type,content.type,'Clearing the ring overlay preserves the content component at the same root position');assert.equal(launch.type,'LaunchScreen','Normal startup coverage returns when there is no priority incoming route');
   h.bridge.close();
 });
 
@@ -1083,6 +1234,9 @@ test('the animated logo covers the app at launch instead of a loading skeleton',
   assert.equal(web.props.startInLoadingState, undefined);
   assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'app.launched', data: {} })));
   assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'app.launched', data: { at: 1 } })), null);
+  const externallyCovered = h.load('App.tsx').AppContent({ startupCovered: true });
+  const externalLaunch = [externallyCovered.props.children].flat()[1];
+  assert.equal(externalLaunch, false, 'Root-owned startup coverage suppresses the nested launch layer');
   h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
 });
 
@@ -1345,12 +1499,13 @@ function nativeAppHarness() {
   return { h, web, received, send, close };
 }
 
-test('Android Back forwards every press to the ready trusted document and resets on loading or failure', async () => {
+test('Android Back stays inside the app while loading and forwards every ready press to the trusted document', async () => {
   const { h, web, received, send, close } = nativeAppHarness();
-  assert.equal(h.backs[0](), false, 'An unready document cannot intercept Back');
-  send('ready', { demo: false }, 'https://evil.test/'); assert.equal(h.backs[0](), false);
-  send('ready', { demo: 'false' }); assert.equal(h.backs[0](), false);
-  send('chat.photoViewer', { open: true }); assert.equal(h.backs[0](), false, 'Photo state cannot establish readiness');
+  assert.equal(h.backs[0](), true, 'Loading cannot fall through and background the Android task');
+  send('ready', { demo: false }, 'https://evil.test/'); assert.equal(h.backs[0](), true);
+  send('ready', { demo: 'false' }); assert.equal(h.backs[0](), true);
+  send('chat.photoViewer', { open: true }); assert.equal(h.backs[0](), true, 'Photo state cannot establish readiness');
+  assert.equal(received.length, 0, 'Unready Back presses stay native and are not sent to a retired document');
   send('ready', { demo: false });
   for (const listener of h.activities) listener('inactive');
   assert.equal(h.backs[0](), true, 'Temporary native dialogs do not discard document readiness');
@@ -1359,8 +1514,8 @@ test('Android Back forwards every press to the ready trusted document and resets
   send('chat.photoViewer', { open: false }); assert.equal(h.backs[0](), true, 'Back works outside photo viewers');
   assert.equal(received.filter(message => message.type === 'app.back').length, 3);
   for (const reset of [() => web.props.onLoadStart(), () => web.props.onError({ nativeEvent: { description: 'fixture failure' } }), () => web.props.onRenderProcessGone(), () => web.props.onContentProcessDidTerminate()]) {
-    reset(); assert.equal(h.backs[0](), false, 'A retired WebView cannot intercept Back');
-    send('chat.photoViewer', { open: true }); assert.equal(h.backs[0](), false);
+    reset(); assert.equal(h.backs[0](), true, 'Recovery cannot fall through and background the Android task');
+    send('chat.photoViewer', { open: true }); assert.equal(h.backs[0](), true);
     send('ready', { demo: false }); assert.equal(h.backs[0](), true, 'The new document restores navigation after ready');
   }
   assert.equal(h.exits.length, 0, 'Native Back never exits a ready app directly');
@@ -1554,6 +1709,55 @@ test('staff verification calls ring applicants and answer through their own endp
   h.bridge.handle({ type: 'verify.end', data: { callId: 'verify-3' } }); await settle();
   assert.equal(h.count('endVerificationCall'), 2);
   assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'verify.accept', data: { callId: '../calls' } })), null);
+  h.bridge.close();
+});
+
+test('authoritative verification acceptance survives a lost HTTP receipt', async () => {
+  const h = harness(), accepted = deferred(), activity = h.load('src/app-update-activity.ts');
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const live = h.live.at(-1);
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-race', status: 'ringing' } });
+  h.overrides.acceptVerificationCall = () => accepted.promise;
+  h.bridge.handle({ type: 'verify.accept', data: { callId: 'verify-race' } }); await settle();
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-race', status: 'accepted' } }); await settle();
+  assert.deepEqual(plain(h.find('verify.connected').map(event => event.data)), [{ callId: 'verify-race', peerId: 'zimi-team', initiator: false, voice: false }]);
+  accepted.reject(new h.ApiError('The answer response was interrupted.', 503, 'CONNECTION_INTERRUPTED')); await settle();
+  assert.equal(h.find('verify.connected').length, 1, 'HTTP completion cannot duplicate the server-confirmed connection');
+  assert.equal(h.find('verify.error').length, 0); assert.equal(h.find('verify.ended').length, 0);
+  assert.equal(activity.isUpdateActivityBusy(), true, 'The accepted verification call remains protected');
+  h.bridge.close();
+});
+
+test('another-device verification acceptance still dismisses a provisional local answer', async () => {
+  const h = harness(), accepted = deferred(), activity = h.load('src/app-update-activity.ts');
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const live = h.live.at(-1);
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-other-device', status: 'ringing' } });
+  h.overrides.acceptVerificationCall = () => accepted.promise;
+  h.bridge.handle({ type: 'verify.accept', data: { callId: 'verify-other-device' } }); await settle();
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-other-device', status: 'accepted' } }); await settle();
+  assert.equal(h.find('verify.connected').length, 1, 'The broadcast can provisionally connect while the local answer is pending');
+  accepted.reject(new h.ApiError('This call is no longer ringing', 409, 'CALL_ANSWERED_ELSEWHERE')); await settle();
+  assert.deepEqual(plain(h.find('verify.ended').at(-1).data), { callId: 'verify-other-device', status: 'accepted' });
+  assert.equal(activity.isUpdateActivityBusy(), false, 'A definitive refusal releases the losing device');
+  h.bridge.close();
+});
+
+test('transient verification accept failure stays retryable and permits a late accepted event', async () => {
+  const h = harness(), activity = h.load('src/app-update-activity.ts');
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const live = h.live.at(-1);
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-retry', status: 'ringing' } });
+  h.overrides.acceptVerificationCall = () => { throw new h.ApiError("Can't reach BinzoLive. Check your connection and try again.", 0, 'NETWORK_ERROR'); };
+  h.bridge.handle({ type: 'verify.accept', data: { callId: 'verify-retry' } }); await settle();
+  assert.deepEqual(plain(h.find('verify.error').at(-1).data), { callId: 'verify-retry', message: "Can't reach BinzoLive. Check your connection and try again." });
+  assert.equal(h.find('verify.ended').length, 0); assert.equal(activity.isUpdateActivityBusy(), true);
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-retry', status: 'accepted' } }); await settle();
+  assert.equal(h.find('verify.connected').length, 1, 'A late committed acceptance still connects this pending local answer');
+  assert.equal(h.find('verify.ended').length, 0);
   h.bridge.close();
 });
 
@@ -2577,6 +2781,25 @@ test('insufficient outgoing call coins reach the recharge screen with the server
   h.bridge.close();
 });
 
+test('financial account-policy failures use contextual copy without exposing backend terminology', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const refuse = () => { throw new h.ApiError('This financial interaction is not allowed between these accounts', 403, 'FINANCIAL_SELF_DEALING'); };
+  h.overrides.startCall = refuse;
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id', voice: false } }); await settle();
+  assert.equal(h.find('call.failed').at(-1).data.message, "This call isn't available for this account.");
+  h.overrides.acceptCall = refuse;
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'incoming-call' } }); await settle();
+  assert.equal(h.find('call.failed').at(-1).data.message, "This call isn't available for this account.");
+  h.overrides.sendGift = refuse;
+  h.bridge.handle({ type: 'gift.send', data: { to: 'host-id', gift: 'gift-id', coins: 10, inCall: false, idempotencyKey: 'policy-gift-attempt' } }); await settle();
+  const giftError = h.find('operation.error').filter(event => event.data.action === 'gift.send').at(-1).data;
+  assert.equal(giftError.message, "This gift can't be sent to this account.");
+  assert.doesNotMatch(JSON.stringify([...h.find('call.failed'), giftError]), /financial interaction|between these accounts/i);
+  h.bridge.close();
+});
+
 test('prepareForUpdate preserves an active billed call until its normal terminal event', async () => {
   const h = harness();
   await h.session.setSessionTokens(tokenPair());
@@ -2911,6 +3134,55 @@ test('approved native host actions revalidate server approval before execution',
   for (const name of ['startStream','setPresence','acceptCall','createPost']) assert.equal(h.count(name), 1);
   assert.equal(h.count('me'), 4); assert.ok(h.calls.filter(call => call.name === 'me').every(call => call.args[0] === true), 'Each host action bypasses older cached account reads');
   assert.equal(h.find('stream.opened').length, 1); assert.equal(h.find('call.connected').length, 1); assert.equal(h.find('post.saved').length, 1);
+  h.bridge.close();
+});
+
+test('approved host accept failures stay on the retryable ring and expose the real error', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'retryable-host-call', from: { id: 'member-id', name: 'Member' }, voice: false } }); await settle();
+  h.overrides.acceptCall = () => { throw new h.ApiError('The call service is temporarily unavailable.', 503, 'CALL_ACCEPT_UNAVAILABLE'); };
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'retryable-host-call' } }); await settle();
+  assert.deepEqual(plain(h.find('call.failed').at(-1).data), { callId: 'retryable-host-call', message: 'The call service is temporarily unavailable.', code: 'CALL_ACCEPT_UNAVAILABLE' });
+  assert.equal(h.find('call.ended').length, 0, 'A failed host answer must not navigate away as a locally ended call');
+  assert.equal(h.count('endCall'), 0, 'An uncertain answer failure must not cancel a call that may still be ringing');
+  assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(), true, 'The incoming ring remains protected while the host can retry');
+  h.overrides.acceptCall = () => ({ peerId: 'member-id', voice: false });
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'retryable-host-call' } }); await settle();
+  assert.equal(h.count('acceptCall'), 2);
+  assert.deepEqual(plain(h.find('call.connected').at(-1).data), { callId: 'retryable-host-call', initiator: false, peerId: 'member-id', voice: false });
+  h.bridge.close();
+});
+
+test('authoritative connected event wins when the host accept HTTP response fails', async () => {
+  const h = harness(), accepted = deferred();
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'accepted-host-call', from: { id: 'member-id', name: 'Member' }, voice: true } }); await settle();
+  h.overrides.acceptCall = () => accepted.promise;
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'accepted-host-call' } }); await settle();
+  h.live[0].onEvent({ type: 'call.connected', data: { callId: 'accepted-host-call', initiator: false, peerId: 'member-id', voice: true } }); await settle();
+  accepted.reject(new h.ApiError('The answer response was interrupted.', 503, 'CONNECTION_INTERRUPTED')); await settle();
+  assert.equal(h.find('call.connected').length, 1, 'The server-confirmed accepted call stays connected');
+  assert.equal(h.find('call.failed').length, 0, 'A failed HTTP receipt cannot tear down authoritative accepted media');
+  assert.equal(h.find('call.ended').length, 0);
+  assert.equal(h.count('endCall'), 0, 'The accepted call is never cancelled by the failed receipt');
+  h.bridge.close();
+});
+
+test('late connected event is not suppressed after a host accept HTTP failure', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'late-accepted-host-call', from: { id: 'member-id', name: 'Member' }, voice: false } }); await settle();
+  h.overrides.acceptCall = () => { throw new h.ApiError('The answer response was interrupted.', 503, 'CONNECTION_INTERRUPTED'); };
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'late-accepted-host-call' } }); await settle();
+  assert.equal(h.find('call.failed').length, 1);
+  h.live[0].onEvent({ type: 'call.connected', data: { callId: 'late-accepted-host-call', initiator: false, peerId: 'member-id', voice: false } }); await settle();
+  assert.equal(h.find('call.connected').length, 1, 'A later server acceptance still opens the call');
+  assert.equal(h.find('call.ended').length, 0, 'The failed HTTP receipt never blacklists the call ID');
+  assert.equal(h.count('endCall'), 0);
   h.bridge.close();
 });
 
@@ -3257,7 +3529,7 @@ test('approved hosts message other hosts, while unapproved hosts are stopped bef
       assert.equal(h.count('sendMessage'), 1, 'Approved hosts message other hosts');
     } else {
       assert.equal(h.count('thread'), 0); assert.equal(h.count('sendMessage'), 0);
-      assert.match(h.find('operation.error').at(-1).data.message, /admin approval/);
+      assert.match(h.find('operation.error').at(-1).data.message, /Host profile is not active/);
     }
     h.bridge.close();
   }
@@ -3468,6 +3740,46 @@ test('public profiles and posts validate target IDs and keep target/request meta
   assert.equal(failure.id, 'host'); assert.equal(failure.page, 2); assert.equal(failure.requestId, 6); assert.equal(failure.loading, false); assert.equal(failure.error, 'Posts are temporarily unavailable');
   assert.equal(h.find('data.publicPosts').length, 0, 'Media failure does not fabricate an empty gallery');
   assert.equal(h.find('data.publicProfile').length, 1, 'A failed gallery does not remove the loaded identity');
+  h.bridge.close();
+});
+
+test('profile MVP requests validate periods and correlate real supporters, stale reads and failures', async () => {
+  const h = harness(), target = '507f1f77bcf86cd799439021', supporter = '507f1f77bcf86cd799439022';
+  const parse = data => h.webMessages.parseWebMessage(JSON.stringify({ type: 'profile.mvps.load', data }));
+  for (const period of ['week', 'all']) assert.ok(parse({ id: target, period, requestId: 1 }));
+  for (const data of [
+    {}, { id: target, period: 'week' }, { id: target, period: 'week', requestId: 0 },
+    { id: target, period: 'daily', requestId: 1 }, { id: '../profile', period: 'week', requestId: 1 },
+    { id: target, period: 'all', requestId: 1, userId: target },
+  ]) {
+    assert.equal(parse(data), null, JSON.stringify(data));
+    h.bridge.handle({ type: 'profile.mvps.load', data });
+  }
+  assert.equal(h.count('profileMvps'), 0, 'Rejected WebMessages never reach the API');
+  const supporters = [{ id: supporter, name: 'Riya', avatarUrl: null, coins: 12500, serverRole: 'user', verified: false }];
+  h.overrides.profileMvps = (id, period) => ({ id, period, supporters });
+  h.bridge.handle({ type: 'profile.mvps.load', data: { id: target, period: 'week', requestId: 7 } }); await settle();
+  assert.deepEqual(plain(h.calls.find(call => call.name === 'profileMvps').args), [target, 'week']);
+  assert.deepEqual(plain(h.find('data.profileMvps')[0].data), { id: target, period: 'week', supporters, requestId: 7 });
+  assert.deepEqual(plain(h.find('data.loading').map(event => event.data)), [
+    { resource: 'profileMvps', loading: true, id: target, period: 'week', requestId: 7 },
+    { resource: 'profileMvps', loading: false, id: target, period: 'week', requestId: 7 },
+  ]);
+
+  const old = deferred(), latest = deferred();
+  h.overrides.profileMvps = (_id, period) => period === 'week' ? old.promise : latest.promise;
+  h.bridge.handle({ type: 'profile.mvps.load', data: { id: target, period: 'week', requestId: 8 } });
+  h.bridge.handle({ type: 'profile.mvps.load', data: { id: target, period: 'all', requestId: 9 } });
+  old.resolve({ id: target, period: 'week', supporters: [{ ...supporters[0], coins: 500 }] });
+  latest.resolve({ id: target, period: 'all', supporters: [{ ...supporters[0], coins: 15000 }] }); await settle();
+  assert.deepEqual(plain(h.find('data.profileMvps').map(event => [event.data.period, event.data.requestId, event.data.supporters[0].coins])),
+    [['week', 7, 12500], ['all', 9, 15000]], 'A superseded period cannot replace the latest tab');
+
+  h.overrides.profileMvps = () => { throw new h.ApiError('Supporters are temporarily unavailable', 503); };
+  h.bridge.handle({ type: 'profile.mvps.load', data: { id: target, period: 'week', requestId: 10 } }); await settle();
+  const failure = h.find('data.loading').at(-1).data;
+  assert.deepEqual(plain(failure), { resource: 'profileMvps', loading: false, id: target, period: 'week', requestId: 10, error: 'Supporters are temporarily unavailable' });
+  assert.equal(h.find('data.profileMvps').length, 2, 'A failed refresh never fabricates an empty ranking');
   h.bridge.close();
 });
 
@@ -4304,16 +4616,16 @@ test('a tapped notification opens the verified official conversation once a sign
   const h = harness();
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
   await h.session.setSessionTokens(tokenPair());
-  h.push.open(); await settle();
+  h.push.open({ targetType: 'official' }); await settle();
   assert.equal(h.find('official.open').length, 0, 'The app launched from a notification waits for its document');
   h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
   assert.equal(h.find('official.open').length, 1);
   assert.ok(h.posts.findIndex(post => post.type === 'session') < h.posts.findIndex(post => post.type === 'official.open'));
-  h.push.open(); await settle();
+  h.push.open({ targetType: 'official' }); await settle();
   assert.equal(h.find('official.open').length, 2);
 
   h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
-  h.push.open(); await settle();
+  h.push.open({ targetType: 'official' }); await settle();
   assert.equal(h.find('official.open').length, 2, 'Signed out: nothing opens');
   h.overrides.verifyOtp = () => ({ ...account(), tokens: tokenPair(), isNew: true });
   h.bridge.handle(verifyMessage()); await settle();
@@ -4784,12 +5096,16 @@ test('Home feeds, the leaderboard and Refer a Friend pass the message check and 
   for (const mode of ['following', 'popular', 'foryou', 'new']) assert.ok(parse({ type: 'home.reload', data: { page: 1, mode } }), mode);
   assert.ok(parse({ type: 'home.reload', data: { page: 1, mode: 'new', country: 'India' } }));
   for (const data of [{ mode: 'trending' }, { country: '' }, { country: 'x'.repeat(101) }, { country: 7 }]) assert.equal(parse({ type: 'home.reload', data }), null);
-  assert.ok(parse({ type: 'leaderboard.load', data: { period: 'weekly' } }));
-  for (const data of [{}, { period: 'monthly' }, { period: 'daily', page: 2 }]) assert.equal(parse({ type: 'leaderboard.load', data }), null);
+  for (const period of ['daily', 'weekly', 'monthly']) assert.ok(parse({ type: 'leaderboard.load', data: { period } }));
+  for (const data of [{}, { period: 'all' }, { period: ['monthly'] }, { period: 'daily', page: 2 }]) assert.equal(parse({ type: 'leaderboard.load', data }), null);
   for (const type of ['referral.load', 'referral.share']) { assert.ok(parse({ type, data: {} })); assert.equal(parse({ type, data: { code: 'AB2CD3' } }), null); }
   assert.ok(parse({ type: 'referral.apply', data: { code: 'ab2-cd3', requestId: 4 } }));
   for (const data of [{ code: 'AB2CD3' }, { code: ' ', requestId: 1 }, { code: 'x'.repeat(21), requestId: 1 }, { code: 'AB2CD3', requestId: 1, extra: true }])
     assert.equal(parse({ type: 'referral.apply', data }), null);
+
+  h.overrides.leaderboard = period => ({ period, items: [], total: 0 });
+  h.bridge.handle({ type: 'leaderboard.load', data: { period: 'monthly' } }); await settle();
+  assert.deepEqual(plain(h.find('data.leaderboard').at(-1).data), { period: 'monthly', items: [], total: 0 });
 
   const summary = { code: 'AB2CD3', shareUrl: 'https://binzolive.com/?ref=AB2CD3', rewardCoins: 1000, friendBonusCoins: 100, applyDays: 7, friendsJoined: 0, friendsRewarded: 0, coinsEarned: 0, appliedCode: null, canApplyCode: true };
   h.overrides.referral = () => summary;
@@ -4807,6 +5123,23 @@ test('Home feeds, the leaderboard and Refer a Friend pass the message check and 
   h.bridge.handle({ type: 'referral.share', data: {} }); await settle();
   assert.equal(h.shares.length, 1);
   assert.equal(h.shares[0].message, 'Join me on BinzoLive! Use my code AB2CD3 when you sign up and get 100 free coins. https://binzolive.com/?ref=AB2CD3');
+  h.bridge.close();
+});
+
+test('profile sharing passes native validation and opens the phone share sheet', async () => {
+  const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
+  const message = { type: 'profile.share', data: { id: '507f1f77bcf86cd799439011', name: 'Kashvi' } };
+  assert.ok(parse(message), 'A real profile share request passes the WebView boundary');
+  for (const data of [
+    { id: '', name: 'Kashvi' },
+    { id: '   ', name: 'Kashvi' },
+    { id: 'x'.repeat(129), name: 'Kashvi' },
+    { id: message.data.id, name: 'x'.repeat(101) },
+    { id: message.data.id, name: 'Kashvi', extra: true },
+  ]) assert.equal(parse({ type: 'profile.share', data }), null, 'Malformed profile share data is rejected');
+  h.bridge.handle(message); await settle();
+  assert.equal(h.shares.length, 1);
+  assert.deepEqual(plain(h.shares[0]), { title: 'BinzoLive', message: 'Find Kashvi on BinzoLive. Profile ID: 507f1f77bcf86cd799439011' });
   h.bridge.close();
 });
 

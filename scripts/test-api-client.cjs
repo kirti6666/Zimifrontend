@@ -98,6 +98,22 @@ test('insufficient call coins retain only a valid server recharge requirement', 
   }
 });
 
+test('financial account-policy errors never display raw server terminology', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokens());
+  h.setFetch(() => json(403, {
+    success: false,
+    code: 'FINANCIAL_SELF_DEALING',
+    message: 'This financial interaction is not allowed between these accounts',
+  }));
+  await assert.rejects(h.client.request('POST', '/calls', { calleeId: 'host', kind: 'video' }), error => {
+    assert.equal(error.code, 'FINANCIAL_SELF_DEALING');
+    assert.equal(error.message, "This action isn't available for this account.");
+    assert.doesNotMatch(error.message, /financial|between these accounts/i);
+    return true;
+  });
+});
+
 test('concurrent 401s share one refresh, atomically store rotation, and retry once', async () => {
   const h = harness();
   const first = tokens();

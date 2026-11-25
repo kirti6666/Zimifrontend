@@ -130,8 +130,28 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   socket.on("chat:read", payload => {
     try {
       const receipt = record(payload);
-      if (idOf(receipt.userId) && Array.isArray(receipt.conversationIds) && receipt.conversationIds.length > 0 && receipt.conversationIds.every(id => typeof id === "string" && id.length > 0) && typeof receipt.readAt === "string") emit("chats.updated", {});
+      const withId = idOf(receipt.userId), conversationIds = receipt.conversationIds;
+      const messageIds = receipt.messageIds;
+      const ids = (value: unknown): value is string[] => Array.isArray(value) && value.length > 0 && value.length <= 200 &&
+        value.every(id => typeof id === "string" && id.length > 0 && id.length <= 128) && new Set(value).size === value.length;
+      if (!withId || !ids(conversationIds) || typeof receipt.readAt !== "string" || !Number.isFinite(Date.parse(receipt.readAt)) ||
+        (messageIds !== undefined && !ids(messageIds))) return;
+      emit("chat.read", { with: withId, conversationIds: [...conversationIds], readAt: receipt.readAt,
+        ...(messageIds !== undefined ? { messageIds: [...messageIds] } : {}) });
+      emit("chats.updated", {});
     } catch { /* Ignore malformed read receipts. */ }
+  });
+  socket.on("chat:typing", payload => {
+    try {
+      const presence = record(payload), from = idOf(presence.userId);
+      if (!from || typeof presence.typing !== "boolean" || from === userId) return;
+      if (!presence.typing) { emit("chat.typing", { from, typing: false }); return; }
+      if (typeof presence.expiresAt !== "string") return;
+      const expires = Date.parse(presence.expiresAt), now = Date.now();
+      // Typing is intentionally short-lived; reject stale or accidentally durable presence.
+      if (!Number.isFinite(expires) || expires <= now || expires > now + 15000) return;
+      emit("chat.typing", { from, typing: true, expiresAt: presence.expiresAt });
+    } catch { /* Ignore malformed typing presence. */ }
   });
   const receiveGift = (payload: unknown) => {
     try {
@@ -228,10 +248,23 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   }
   socket.on("wallet:updated", refreshWallet);
   socket.on("home:updated", () => emit("home.updated", {}));
-  // The inbox and badge read their authenticated counts; socket content is only an invalidation.
-  socket.on("notification:new", () => { emit("notifications.changed", {}); emit("official.changed", {}); emit("chats.updated", {}); emit("home.updated", {}); });
-  // Read receipts already have the server's home:updated signal for the badge.
-  socket.on("notifications:read", () => { emit("notifications.changed", {}); emit("official.changed", {}); emit("chats.updated", {}); });
+  // The inbox and badge read their authenticated counts; socket content is only an
+  // invalidation. Only the server's explicit Team Chat marker refreshes that channel.
+  socket.on("notification:new", payload => {
+    let official = false, chatMessage = false;
+    try {
+      const notice = record(payload);
+      official = notice.targetType === "official" || notice.officialChat === true;
+      chatMessage = notice.category === "messages" || notice.event === "message.new";
+    } catch { /* The generic inbox still refreshes. */ }
+    if (chatMessage) { emit("chats.updated", {}); return; }
+    emit("notifications.changed", {});
+    if (official) emit("official.changed", {});
+    emit("chats.updated", {});emit("home.updated", {});
+  });
+  // Generic notification reads do not describe which Team Chat row changed. Its own
+  // read endpoint updates the current thread after the authenticated response.
+  socket.on("notifications:read", () => { emit("notifications.changed", {}); emit("chats.updated", {}); });
   socket.on("account:updated", () => emit("account.updated", {}));
   // Owner identity is fetched over the authenticated API, never trusted from a socket payload.
   socket.on("profile:updated", () => emit("profile.updated", {}));

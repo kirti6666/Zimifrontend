@@ -5,7 +5,7 @@ import { notificationTargetFrom } from "../notification-target";
 import type { ChatGift } from "./types";
 import { officialChatSummaryFrom } from "./official";
 export { officialChatFrom, officialChatSummaryFrom } from "./official";
-import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, ReferralSummary, UserPost, Verification, Wallet, PostComment, PostComments, RechargePrompt, CallTargets } from "./types";
+import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, ProfileMvpSupporter, ProfileMvps, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, ReferralSummary, UserPost, Verification, Wallet, PostComment, PostComments, RechargePrompt, CallTargets } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -66,7 +66,7 @@ export function commentFrom(value: unknown): PostComment {
   const id = idOf(comment);
   if (!id || typeof comment.text !== "string") throw new ApiError("This comment could not be loaded. Try again.", 502);
   return { id, text: comment.text, ...(typeof comment.createdAt === "string" && Number.isFinite(Date.parse(comment.createdAt)) ? { createdAt: comment.createdAt } : {}),
-    user: { id: idOf(comment.userId), name: string(author.name) || "BinzoLive member", avatarUrl: string(author.avatarUrl || avatar.url) } };
+    user: { id: idOf(comment.userId), name: string(author.name) || "BinzoLive user", avatarUrl: string(author.avatarUrl || avatar.url) } };
 }
 export function commentsFrom(value: unknown, postId: string): PostComments {
   const data = record(value);
@@ -105,9 +105,28 @@ export function memberUsersFrom(value: unknown): import("./types").MemberUsers {
     if (!/^[a-f\d]{24}$/i.test(id) || seen.has(id) || peer.role !== "user" || peer.isVerifiedHost === true ||
       (peer.name != null && (typeof peer.name !== "string" || peer.name.length > 120))) throw invalid();
     seen.add(id);
-    return hostFrom({ ...peer, name: typeof peer.name === "string" && peer.name.trim() ? peer.name : "BinzoLive member", role: "user", isVerifiedHost: false, stream: null });
+    return hostFrom({ ...peer, name: typeof peer.name === "string" && peer.name.trim() ? peer.name : "BinzoLive user", role: "user", isVerifiedHost: false, stream: null });
   });
   return { users, total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };
+}
+export function profileDirectoryFrom(value: unknown): import("./types").ProfileDirectory {
+  const data = record(value);
+  const invalid = () => new ApiError("Profiles could not be loaded. Please try again.", 502);
+  if (!Array.isArray(data.items) || !Number.isSafeInteger(data.total) || Number(data.total) < data.items.length ||
+    !Number.isSafeInteger(data.page) || Number(data.page) < 1 || Number(data.page) > 10000 ||
+    !Number.isSafeInteger(data.limit) || Number(data.limit) < 1 || Number(data.limit) > 100 || data.items.length > Number(data.limit) ||
+    (data.filter !== "all" && data.filter !== "online")) throw invalid();
+  const seen = new Set<string>();
+  const profiles = data.items.map(value => {
+    const peer = record(value), id = idOf(peer), host = peer.role === "host";
+    if (!/^[a-f\d]{24}$/i.test(id) || seen.has(id) || (peer.role !== "user" && !host) ||
+      host && (peer.hostStatus !== "approved" || peer.isVerifiedHost !== true) ||
+      !host && peer.isVerifiedHost === true || typeof peer.isOnline !== "boolean" ||
+      (peer.name != null && (typeof peer.name !== "string" || peer.name.length > 120))) throw invalid();
+    seen.add(id);
+    return hostFrom({ ...peer, name: typeof peer.name === "string" && peer.name.trim() ? peer.name : host ? "BinzoLive host" : "BinzoLive user", isVerifiedHost: host, stream: null });
+  });
+  return { profiles, total: Number(data.total), page: Number(data.page), limit: Number(data.limit), filter: data.filter };
 }
 export function activeHostsFrom(value: unknown): import("./types").ActiveHosts {
   const data = record(value);
@@ -134,7 +153,7 @@ export function relationshipsFrom(value: unknown, kind: "followers" | "following
   const users = data.items.map(value => {
     const entry = record(value), peer = record(entry.user ?? entry[kind === "followers" ? "userId" : "followingId"]);
     if (!idOf(peer) || (peer.name != null && typeof peer.name !== "string")) throw new ApiError("Your connections could not be loaded. Try again.", 502);
-    const name = typeof peer.name === "string" && peer.name.trim() ? peer.name : "BinzoLive member";
+    const name = typeof peer.name === "string" && peer.name.trim() ? peer.name : "BinzoLive user";
     return { ...hostFrom({ ...peer, name }), canViewProfile: peer.canViewProfile === true };
   });
   return { users, total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };
@@ -145,7 +164,7 @@ export function publicProfileFrom(value: unknown): PublicProfile {
   if (!idOf(profile) || typeof profile.name !== "string" ||
     [profile.followers, profile.following].some(value => typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) ||
     typeof profile.isFollowing !== "boolean") throw new ApiError("This profile could not be loaded. Try again.", 502);
-  // This route exposes phone verification and admin approval separately.
+  // This route exposes phone verification and authoritative Host approval separately.
   const verified = profile.role === "host" && profile.hostStatus === "approved" &&
     (typeof profile.isVerifiedHost === "boolean" ? profile.isVerifiedHost : profile.isPhoneVerified === true);
   return {
@@ -167,6 +186,29 @@ export function publicPostsFrom(value: unknown): PublicPosts {
     Number(data.total) < 0 || Number(data.page) < 1 || Number(data.limit) < 1) throw new ApiError("These posts could not be loaded. Try again.", 502);
   return { posts: items(data).map(postFrom), total: data.total as number, page: data.page as number, limit: data.limit as number };
 }
+export function profileMvpsFrom(value: unknown): ProfileMvps {
+  const data = record(value), targetId = idOf(data), invalid = () => new ApiError("Top supporters could not be loaded. Try again.", 502);
+  if (!targetId || (data.period !== "week" && data.period !== "all") || !Array.isArray(data.supporters) || data.supporters.length > 20) throw invalid();
+  const seen = new Set<string>();
+  const supporters = data.supporters.map((value): ProfileMvpSupporter => {
+    const supporter = record(value), id = idOf(supporter), avatarUrl = supporter.avatarUrl;
+    const serverRole = supporter.serverRole === "user" || supporter.serverRole === "host" ? supporter.serverRole : undefined;
+    if (!id || seen.has(id) || typeof supporter.name !== "string" || supporter.name.length > 120 ||
+      !Number.isSafeInteger(supporter.coins) || Number(supporter.coins) <= 0 ||
+      (avatarUrl !== null && (typeof avatarUrl !== "string" || avatarUrl.length > 2048 || !/^https:\/\/[^\s"'<>]+$/.test(avatarUrl))) ||
+      (supporter.serverRole !== undefined && supporter.serverRole !== "user" && supporter.serverRole !== "host") ||
+      (supporter.isVerifiedHost !== undefined && typeof supporter.isVerifiedHost !== "boolean")) throw invalid();
+    seen.add(id);
+    return {
+      id, name: supporter.name, avatarUrl: avatarUrl as string | null, coins: supporter.coins as number,
+      ...(serverRole ? { serverRole } : {}),
+      ...(typeof supporter.isVerifiedHost === "boolean" ? { verified: supporter.isVerifiedHost } : {}),
+    };
+  });
+  if (supporters.some((supporter, index) => index > 0 &&
+    (supporter.coins > supporters[index - 1].coins || supporter.coins === supporters[index - 1].coins && supporter.id < supporters[index - 1].id))) throw invalid();
+  return { id: targetId, period: data.period, supporters };
+}
 export function streamFrom(value: unknown, fallbackHost = ""): HomeStream {
   const stream = record(value), hostId = idOf(stream.hostId) || fallbackHost;
   return { id: idOf(stream), hostId, ...(stream.host && typeof stream.host === "object" ? { host: hostFrom(stream.host) } : stream.hostId && typeof stream.hostId === "object" ? { host: hostFrom(stream.hostId) } : {}),
@@ -185,12 +227,38 @@ export function homeFrom(value: unknown): HomeData {
     categories: stringList(data.categories), broadcasterCount: count(data.broadcasterCount), availableCount: count(data.availableCount),
     speedMatchEnabled: data.speedMatchEnabled === true, bonus: data.bonus ? missionFrom(data.bonus) : null, unreadCount: count(data.unreadNotifications) };
 }
-export function notificationsFrom(value: unknown): NotificationsData {
-  const data = record(value), list = items(data).map(record).map(note => ({ id: idOf(note), title: string(note.title), body: string(note.body), read: note.read === true, createdAt: string(note.createdAt), audience: idOf(note.userId) ? "personal" as const : "announcements" as const,
-    ...(note.targetType ? notificationTargetFrom(note) ?? {} : {}) }));
-  return { items: list, unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : list.filter(note => !note.read).length,
-    total: typeof data.total === "number" ? count(data.total) : list.length, totalCount: typeof data.totalCount === "number" ? count(data.totalCount) : typeof data.total === "number" ? count(data.total) : list.length,
-    page: count(data.page) || 1, limit: count(data.limit) || 100 };
+export function notificationsFrom(value: unknown, expectedRecipientId?: string): NotificationsData {
+  const data = record(value), source = items(data).map(record), list: NotificationsData["items"] = [];
+  let hidden = 0, hiddenUnread = 0;
+  const identity = (value: unknown) => {
+    const result = idOf(value);
+    return result && result.length <= 100 && /^[A-Za-z0-9_-]+$/.test(result) ? result : "";
+  };
+  for (const note of source) {
+    const ownerId = identity(note.userId), metadataRecipientId = identity(note.recipientId);
+    const recipientId = metadataRecipientId || ownerId;
+    // The authenticated API owner and record owner must agree. Conflicting or
+    // foreign rows are discarded before they can reach the WebView.
+    const conflictingRecipient = !!ownerId && !!metadataRecipientId && ownerId !== metadataRecipientId;
+    const foreignRecipient = !!expectedRecipientId && !!recipientId && recipientId !== expectedRecipientId;
+    // Ignore recipient metadata while parsing navigation: test fixtures use
+    // readable IDs, whereas push navigation deliberately accepts Mongo IDs only.
+    const target = notificationTargetFrom({ ...note, recipientId: undefined });
+    const category = target?.category;
+    const chatMessage = category === "messages" || note.event === "message.new";
+    const ownerlessActivity = !!category && category !== "appUpdates" && !recipientId;
+    if (conflictingRecipient || foreignRecipient || chatMessage || ownerlessActivity) {
+      hidden += 1;
+      if (note.read !== true) hiddenUnread += 1;
+      continue;
+    }
+    list.push({ id: idOf(note), title: string(note.title), body: string(note.body), read: note.read === true, createdAt: string(note.createdAt), audience: ownerId ? "personal" : "announcements",
+      ...(category ? { category } : {}), ...(note.targetType && target ? target : {}), ...(recipientId ? { recipientId } : {}) });
+  }
+  const unread = typeof data.unreadCount === "number" ? Math.max(0, count(data.unreadCount) - hiddenUnread) : list.filter(note => !note.read).length;
+  const total = typeof data.total === "number" ? Math.max(list.length, count(data.total) - hidden) : list.length;
+  const totalCount = typeof data.totalCount === "number" ? Math.max(list.length, count(data.totalCount) - hidden) : typeof data.total === "number" ? total : list.length;
+  return { items: list, unreadCount: unread, total, totalCount, page: count(data.page) || 1, limit: count(data.limit) || 100 };
 }
 export function notificationReadFrom(value: unknown): NotificationReadResult {
   const data = record(value);
@@ -441,6 +509,8 @@ export function walletFrom(value: unknown): Wallet {
   for (const key of ["alreadyPaidPaise", "alreadyPaidDiamondUnits"])
     if (wallet[key] !== undefined && (!Number.isSafeInteger(wallet[key]) || Number(wallet[key]) < 0))
       throw new ApiError("Your paid withdrawal totals could not be loaded. Try again.", 502);
+  if (wallet.lastPaidAt !== undefined && (typeof wallet.lastPaidAt !== "string" || !Number.isFinite(Date.parse(wallet.lastPaidAt))))
+    throw new ApiError("Your last paid withdrawal date could not be loaded. Try again.", 502);
   return {
     coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number,
     ...(wallet.currency === "coins" || wallet.currency === "diamonds" ? { currency: wallet.currency } : {}),
@@ -449,6 +519,7 @@ export function walletFrom(value: unknown): Wallet {
     withdrawalsEnabled: wallet.withdrawalsEnabled === true,
     ...(wallet.alreadyPaidPaise !== undefined ? { alreadyPaidPaise: Number(wallet.alreadyPaidPaise) } : {}),
     ...(wallet.alreadyPaidDiamondUnits !== undefined ? { alreadyPaidDiamondUnits: Number(wallet.alreadyPaidDiamondUnits) } : {}),
+    ...(wallet.lastPaidAt !== undefined ? { lastPaidAt: wallet.lastPaidAt } : {}),
     ...(wallet.hostEarningsPolicy !== undefined ? { hostEarningsPolicy: policy ? {
       enabled: true as const, ...financialVersion(policy),
       ...(policy.version !== undefined ? { version: Number(policy.version) } : {}),
@@ -588,13 +659,17 @@ export function referralFrom(value: unknown): ReferralSummary {
   };
 }
 export function leaderboardFrom(value: unknown, period: LeaderboardPeriod): Leaderboard {
-  const data = record(value);
+  const data = record(value), invalid = () => new ApiError("The leaderboard could not be loaded. Try again.", 502);
+  if (data.period !== period || typeof data.total !== "number" || !Number.isSafeInteger(data.total) || data.total < 0) throw invalid();
   return {
-    period, total: finite(data.total) ?? 0,
-    items: items(value).map(record).map((row, index) => {
+    period, total: data.total,
+    items: items(data).map(record).map(row => {
+      const id = idOf(row), { coins, rank } = row;
+      if (!/^[a-f\d]{24}$/i.test(id) || typeof coins !== "number" || !Number.isSafeInteger(coins) || coins <= 0 ||
+        typeof rank !== "number" || !Number.isSafeInteger(rank) || rank < 1) throw invalid();
       const avatar = row.avatar && typeof row.avatar === "object" ? record(row.avatar) : {};
-      return { id: idOf(row), name: string(row.name) || "Creator", avatarUrl: string(avatar.url), coins: finite(row.coins) ?? 0, rank: finite(row.rank) ?? index + 1 };
-    }).filter(row => row.id),
+      return { id, name: string(row.name).trim() || "Creator", avatarUrl: string(avatar.url), coins, rank };
+    }),
   };
 }
 

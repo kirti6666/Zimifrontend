@@ -1,6 +1,6 @@
 /* Post feed: one column of posts under a Back header, like other photo apps.
    Colours come from the theme tokens; only the liked heart uses the app's red. */
-html:root .zu-dialog.zu-photo-dialog.zu-feed-dialog{width:100%;max-width:none;height:100dvh;max-height:100dvh;margin:0;padding:0;border:0;border-radius:0!important;background:var(--canvas);color:var(--ink);overflow:hidden}
+html:root .zu-dialog.zu-photo-dialog.zu-feed-dialog{width:100%;max-width:none;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;margin:0;padding:0;border:0;border-radius:0!important;background:var(--canvas);color:var(--ink);overflow:hidden}
 .zu-dialog.zu-feed-dialog[open]{display:flex;flex-direction:column}
 .zu-feed-dialog::backdrop{background:var(--canvas)}
 .zu-dialog>.zu-feed-header{flex:none;display:flex;align-items:center;justify-content:flex-start;gap:12px;margin:0;padding:calc(10px + var(--safe-top)) max(16px,var(--safe-right)) 10px max(16px,var(--safe-left));background:var(--canvas)}
@@ -17,7 +17,7 @@ html:root .zu-dialog.zu-photo-dialog.zu-feed-dialog{width:100%;max-width:none;he
 .zu-feed-who svg{width:14px;height:14px;flex:none}
 .zu-feed-options{display:grid;place-items:center;width:44px;height:44px;flex:none;padding:0;border:0;background:transparent;color:var(--ink)}
 /* The photo keeps its whole frame; a tall photo fills a 4:5 frame like most photo feeds. */
-.zu-feed-media{position:relative;width:100%;aspect-ratio:4/5;max-height:72dvh;overflow:hidden;background:var(--raised);touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.zu-feed-media{position:relative;width:100%;aspect-ratio:4/5;max-height:72vh;max-height:72dvh;overflow:hidden;background:var(--raised);touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 /* The feed runs edge to edge: its scroller, posts and photos keep square edges. */
 html:root :is(.zu-feed,.zu-feed-header,.zu-feed-post,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video){border-radius:0!important}
 .zu-feed-media>img,.zu-feed-media>video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain}
@@ -52,7 +52,7 @@ html:root :is(.zu-feed,.zu-feed-header,.zu-feed-post,.zu-feed-media,.zu-feed-med
 /* Comments: a sheet over the feed with the newest first and a composer at the bottom. */
 .zu-comments-backdrop{position:fixed;inset:0;z-index:5;background:#00000059}
 html:root .zu-comments-backdrop{border-radius:0!important}
-.zu-comments{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;flex-direction:column;max-height:78dvh;min-height:45dvh;margin:0 auto;max-width:620px;background:var(--surface);color:var(--ink)}
+.zu-comments{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;flex-direction:column;max-height:78vh;max-height:78dvh;min-height:45vh;min-height:45dvh;margin:0 auto;max-width:620px;background:var(--surface);color:var(--ink)}
 html:root .zu-comments{border-radius:10px 10px 0 0!important}
 .zu-comments>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 12px 6px 20px}
 .zu-comments h3{margin:0;font-size:16px;font-weight:600}

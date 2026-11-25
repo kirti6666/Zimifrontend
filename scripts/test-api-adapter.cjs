@@ -77,11 +77,11 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
 (async () => {
   const { api, phonePayload } = load('src/api/endpoints.ts');
   const kycId='507f1f77bcf86cd799439071',settingsId='507f1f77bcf86cd799439072';
-  const publicKyc={required:true,kyc:{status:'verified',id:kycId,ownerId:'host-id',ownerType:'host',revision:1,legalName:'Payout Tester',panMasked:'******234F',payoutType:'bank',payoutAddress:'Bank ending 0123 / SBIN0001234',bankLast4:'0123',ifsc:'SBIN0001234',reason:null}};
+  const publicKyc={required:true,kyc:{status:'verified',id:kycId,ownerId:'host-id',ownerType:'host',revision:1,legalName:'Payout Tester',panMasked:'******234F',payoutType:'bank',payoutAddress:'Bank ending 0123 / SBIN0001234',bankLast4:'0123',ifsc:'SBIN0001234',reason:null,createdAt:'2026-11-03T10:00:00.000Z',reviewedAt:'2026-11-04T10:00:00.000Z'}};
   expect('GET','/wallet/payout-kyc',publicKyc);
   const maskedKyc=await api.payoutKyc();
-  assert.equal(maskedKyc.kyc.panMasked,'******234F');assert.equal(maskedKyc.kyc.reason,undefined);assert.equal(maskedKyc.kyc.ownerType,undefined);
-  for(const invalid of [{panNumber:'ABCDE1234F'},{bankAccountNumber:'00000123'},{ownerType:'agency'},{panMasked:'ABCDE1234F'},{panMasked:'*ABCDE1234F'},{payoutAddress:'Bank 0000001234567890'},{reason:'Please check ABCDE1234F'}]){
+  assert.equal(maskedKyc.kyc.panMasked,'******234F');assert.equal(maskedKyc.kyc.reviewedAt,publicKyc.kyc.reviewedAt);assert.equal(maskedKyc.kyc.reason,undefined);assert.equal(maskedKyc.kyc.ownerType,undefined);
+  for(const invalid of [{panNumber:'ABCDE1234F'},{bankAccountNumber:'00000123'},{ownerType:'agency'},{panMasked:'ABCDE1234F'},{panMasked:'*ABCDE1234F'},{payoutAddress:'Bank 0000001234567890'},{reason:'Please check ABCDE1234F'},{createdAt:'not-a-date'},{reviewedAt:4}]){
     expect('GET','/wallet/payout-kyc',{...publicKyc,kyc:{...publicKyc.kyc,...invalid}});
     await assert.rejects(api.payoutKyc(),error=>!error.message.includes('ABCDE1234F')&&/verification details/.test(error.message));
   }
@@ -109,24 +109,32 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   for(const invalid of [{minRate:0},{minRate:101},{maxRate:9},{selectedRate:101},{rate:49},{minRate:'10'},{configurableRate:false}]){
     expect('GET','/calls/host-status',{...configurableStatus,...invalid});await assert.rejects(api.hostCallStatus(),/call price limits/);
   }
-  const previousRateRequests=requests.length;for(const invalid of [0,1.5,'50',1000001])await assert.rejects(api.saveHostCallRate(invalid),/valid member call price/);assert.equal(requests.length,previousRateRequests);
+  const previousRateRequests=requests.length;for(const invalid of [0,1.5,'50',1000001])await assert.rejects(api.saveHostCallRate(invalid),/valid user call price/);assert.equal(requests.length,previousRateRequests);
   const legacyStatus={...configurableStatus};for(const key of ['configurableRate','minRate','maxRate','selectedRate'])delete legacyStatus[key];expect('GET','/calls/host-status',legacyStatus);assert.equal((await api.hostCallStatus()).configurableRate,undefined);finished();
-  const officialIdentity = {id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:true};
-  const officialAt = '2026-11-02T10:00:00.000Z', officialId = '507f1f77bcf86cd799439041', officialTicket = '507f1f77bcf86cd799439042';
+  const acceptedCallId='507f1f77bcf86cd799439081',memberId='507f1f77bcf86cd799439082',hostId='507f1f77bcf86cd799439083';
+  expect('POST',`/calls/${acceptedCallId}/accept`,{_id:acceptedCallId,callerId:memberId,calleeId:hostId,status:'accepted',kind:'video',coinsPerMinute:50,earlyEnds:{today:1,limit:3,penaltyCoins:20}});
+  assert.deepEqual(plain(await api.acceptCall(acceptedCallId)),{peerId:memberId,voice:false,rate:50,earlyEnds:{today:1,limit:3,penaltyCoins:20}},'A host verifies the accepted call and receives early-end policy');
+  expect('POST',`/calls/${acceptedCallId}/accept`,{_id:acceptedCallId,callerId:hostId,calleeId:memberId,hostInitiated:true,status:'accepted',kind:'audio',coinsPerMinute:60});
+  assert.deepEqual(plain(await api.acceptCall(acceptedCallId)),{peerId:hostId,voice:true,rate:60},'A member can accept a host call whose response has no host-only early-end policy');
+  expect('POST',`/calls/${acceptedCallId}/accept`,{_id:acceptedCallId,callerId:memberId,calleeId:hostId,status:'ringing',kind:'video'});
+  await assert.rejects(api.acceptCall(acceptedCallId),/accepted call could not be verified/);finished();
+  const officialIdentity = {id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:false};
+  const officialWireIdentity = {id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:true,readOnly:true};
+  const officialAt = '2026-11-02T10:00:00.000Z', officialId = '507f1f77bcf86cd799439041';
   const officialNote = {id:'announcement:'+officialId,kind:'announcement',senderType:'official',body:'An official update',createdAt:officialAt,read:false};
-  const officialOwn = {id:'support:'+officialId,kind:'support',senderType:'user',body:'Please help',createdAt:officialAt,read:true,ticketId:officialTicket,sequence:1,clientMessageId:'official-adapter-01'};
   const officialSummary = {...officialIdentity,unread:1,lastMessage:officialNote};
-  const officialThread = {...officialIdentity,messages:[officialNote,officialOwn],total:2,unreadCount:1,hasMore:false,before:null};
-  expect('GET','/chats/official/thread?limit=50',officialThread);assert.deepEqual(plain(await api.officialChat()),officialThread,'Official history uses the private unified endpoint, never person-chat history');
-  expect('GET','/chats/official/thread?before=announcement%3A'+officialId+'&limit=50',{...officialThread,before:officialNote.id,hasMore:true});assert.equal((await api.officialChat(officialNote.id)).before,officialNote.id);
-  expect('POST','/chats/official/messages',{message:officialOwn,official:officialSummary},body=>assert.deepEqual(plain(body),{body:officialOwn.body,clientMessageId:officialOwn.clientMessageId}));assert.equal((await api.sendOfficialMessage(officialOwn.body,officialOwn.clientMessageId)).message.id,officialOwn.id);
-  for(const patch of [{ids:[officialNote.id,officialOwn.id]},{all:true}]){expect('POST','/chats/official/thread/read',{read:true,official:{...officialSummary,unread:0}},body=>assert.deepEqual(plain(body),patch));assert.equal((await api.readOfficialChat(patch)).official.unread,0);}
+  const officialThread = {...officialIdentity,messages:[officialNote],total:1,unreadCount:1,hasMore:false,before:null};
+  const officialWireThread = {...officialWireIdentity,messages:[officialNote],total:1,unreadCount:1,hasMore:false,before:null};
+  const officialWireSummary = {...officialWireIdentity,unread:1,lastMessage:officialNote};
+  expect('GET','/chats/official/thread?teamChat=1&limit=50',officialWireThread);assert.deepEqual(plain(await api.officialChat()),officialThread,'Team Chat negotiates its server-owned announcement endpoint, never person-chat history');
+  expect('GET','/chats/official/thread?teamChat=1&before=announcement%3A'+officialId+'&limit=50',{...officialWireThread,before:officialNote.id,hasMore:true});assert.equal((await api.officialChat(officialNote.id)).before,officialNote.id);
+  for(const patch of [{ids:[officialNote.id]},{all:true}]){expect('POST','/chats/official/thread/read?teamChat=1',{read:true,official:{...officialWireSummary,unread:0}},body=>assert.deepEqual(plain(body),patch));assert.equal((await api.readOfficialChat(patch)).official.unread,0);}
   const priorOfficialRequests=requests.length;
-  for(const patch of [{ids:[officialId]},{ids:[]},{ids:[officialOwn.id,officialOwn.id]},{all:true,ids:[officialOwn.id]}])await assert.rejects(api.readOfficialChat(patch),/mark messages read/);
-  await assert.rejects(api.officialChat('untrusted-cursor'),/Refresh the BinzoLive/);await assert.rejects(api.sendOfficialMessage(' ','official-adapter-01'),/Enter a message/);assert.equal(requests.length,priorOfficialRequests,'Invalid official payloads never reach HTTP');
-  for(const forged of [{verified:false},{name:'Bingo Live Official'},{canSend:false},{messages:[{...officialNote,senderType:'user'}]}]){expect('GET','/chats/official/thread?limit=50',{...officialThread,...forged});await assert.rejects(api.officialChat(),/could not be verified/);}
-  for(const forged of [{...officialOwn,clientMessageId:'another-client-key'},{...officialOwn,senderType:'official'}]){expect('POST','/chats/official/messages',{message:forged,official:officialSummary});await assert.rejects(api.sendOfficialMessage(officialOwn.body,officialOwn.clientMessageId),/could not be verified/);}
-  expect('GET','/chats/official/thread?limit=50',officialThread,undefined,{run:()=>version++});await assert.rejects(api.officialChat(),/sign-in changed/,'Official account content is retired if native session changes during HTTP');
+  for(const patch of [{ids:[officialId]},{ids:[]},{ids:['support:'+officialId]},{all:true,ids:[officialNote.id]}])await assert.rejects(api.readOfficialChat(patch),/mark messages read/);
+  await assert.rejects(api.officialChat('untrusted-cursor'),/Refresh Binzo Team Chat/);assert.equal(requests.length,priorOfficialRequests,'Invalid official payloads never reach HTTP');
+  for(const forged of [{verified:false},{name:'Bingo Live Official'},{canSend:false,supportEnabled:false,readOnly:undefined},{messages:[{...officialNote,senderType:'user'}]},{messages:[{...officialNote,id:'support:'+officialId,kind:'support'}]}]){expect('GET','/chats/official/thread?teamChat=1&limit=50',{...officialWireThread,...forged});await assert.rejects(api.officialChat(),/could not be verified/);}
+  expect('GET','/chats/official/thread?teamChat=1&limit=50',{...officialThread,canSend:true});assert.equal((await api.officialChat()).canSend,false,'deployed sendable identity is normalized to the read-only client contract');
+  expect('GET','/chats/official/thread?teamChat=1&limit=50',officialWireThread,undefined,{run:()=>version++});await assert.rejects(api.officialChat(),/sign-in changed/,'Official account content is retired if native session changes during HTTP');
   const licenseToken = JSON.stringify({ token: 'signed-facebetter-license' });
   expect('POST', '/facebetter/auth', { licenseToken }, body => assert.equal(body, undefined, 'Older callers omit the optional WebView user agent'));
   assert.deepEqual(plain(await api.beautyAuth()), { licenseToken }, 'Facebetter receives the complete license response text');
@@ -161,6 +169,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const ordered = adapters.messagesFrom({items:[{_id:'seq2',sequence:2,createdAt:'2026-10-30T10:00:00Z'},{_id:'legacy',createdAt:'2026-10-30T11:00:00Z'},{_id:'seq1',sequence:1,createdAt:'2026-10-30T12:00:00Z'}]},'self').messages;
   assert.deepEqual(plain(ordered.map(message=>message.id)),['legacy','seq1','seq2'],'Transport preserves server sequence ahead of clock skew, with legacy history first');
   const agencyStatus = { agency: { _id: 'agency-1', name: 'Dream Star', recruitmentCode: 'BINZO7K9Q2M', status: 'ACTIVE' }, joiningCode: 'BINZO7K9Q2M8X4R', codeType: 'host-invite', canJoin: true, hostStatus: 'none', isVerifiedHost: false, eligible: true, requirements: [], nextStep: 'application' };
+  const activatedAgencyStatus = { ...agencyStatus, hostStatus: 'approved', isVerifiedHost: true, nextStep: 'active' };
   expect('GET', '/hosts/agency', { ...agencyStatus, agency: null, nextStep: 'agency' });
   assert.equal((await api.hostAgency()).agency, null);
   expect('POST', '/hosts/verify-agency-code', agencyStatus, body => assert.deepEqual(plain(body), { agencyCode: 'BINZO7K9Q2M8X4R' }));
@@ -169,8 +178,10 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(invitePreview.agency.recruitmentCode, 'BINZO7K9Q2M');
   assert.equal(invitePreview.joiningCode, 'BINZO7K9Q2M8X4R');
   assert.equal(invitePreview.codeType, 'host-invite'); assert.equal(invitePreview.canJoin, true);
-  expect('POST', '/hosts/activate', agencyStatus, body => assert.deepEqual(plain(body), { agencyCode: 'BINZO7K9Q2M8X4R' }));
-  assert.equal((await api.joinAgency('BINZO7K9Q2M8X4R')).isVerifiedHost, false, 'Agency membership cannot become creator approval');
+  expect('POST', '/hosts/activate', activatedAgencyStatus, body => assert.deepEqual(plain(body), { agencyCode: 'BINZO7K9Q2M8X4R' }));
+  const activatedAgency = await api.joinAgency('BINZO7K9Q2M8X4R');
+  assert.equal(activatedAgency.isVerifiedHost, true, 'The personal Agency Owner code activates the Host profile');
+  assert.equal(activatedAgency.hostStatus, 'approved'); assert.equal(activatedAgency.nextStep, 'active');
   await assert.rejects(api.verifyAgencyCode('!bad'), /joining code/);
   await assert.rejects(api.joinAgency('BINZO7K9Q2M'), /public agency ID/, 'A common agency ID cannot activate host membership');
   expect('POST', '/hosts/verify-agency-code', { ...agencyStatus, joiningCode: null, codeType: 'agency', canJoin: false, eligible: false, requirements: ['Ask for your individual host joining code'] }, body => assert.deepEqual(plain(body), { agencyCode: 'BINZO7K9Q2M' }));
@@ -178,7 +189,8 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(commonPreview.canJoin, false); assert.equal(commonPreview.joiningCode, null);
   expect('GET', '/hosts/agency', { ...agencyStatus, agency: null, nextStep: 'agency' });
   await assert.rejects(api.submitVerification({ name: 'Riya', bio: 'I love music and meeting people.', langs: ['English'] }), /Join your agency/);
-  expect('GET', '/hosts/agency', agencyStatus);
+  const legacyAgencyStatus = { agency: agencyStatus.agency, hostStatus: 'none', isVerifiedHost: false, eligible: true, requirements: [], nextStep: 'application' };
+  expect('GET', '/hosts/agency', legacyAgencyStatus);
   expect('POST', '/hosts/application', { status: 'pending' }, body => assert.deepEqual(plain(body), { displayName: 'Riya', bio: 'I love music and meeting people.', languages: ['English'] }));
   assert.equal((await api.submitVerification({ name: 'Riya', bio: 'I love music and meeting people.', langs: ['English'] })).status, 'pending');
   expect('GET', '/hosts/agency', { ...agencyStatus, requirements: 'untrusted' });
@@ -408,7 +420,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const followers=await api.relationships('followers',2);
   assert.equal(followers.users[0].id,'follower-id');assert.equal(followers.users[0].following,true);assert.equal(followers.users[0].canViewProfile,true);assert.equal(followers.page,2);finished();
   expect('GET','/users/member-id/following?page=1&limit=20',{items:[{user:{_id:'unnamed-id',name:null}}],total:1,page:1,limit:20});
-  const following=await api.relationships('following');assert.equal(following.users[0].name,'BinzoLive member');assert.equal(following.users[0].canViewProfile,false);finished();
+  const following=await api.relationships('following');assert.equal(following.users[0].name,'BinzoLive user');assert.equal(following.users[0].canViewProfile,false);finished();
   for(const invalid of [{...connections,total:-1},{...connections,page:0},{...connections,limit:0},{...connections,items:[{user:{name:'Missing ID'}}]}])assert.throws(()=>adapters.relationshipsFrom(invalid,'followers'),/connections could not be loaded/);
   reset();
   const imageOwner={...user,role:'host',hostStatus:'approved',isVerifiedHost:true,onboardingStatus:'completed',coverKey:'covers/member-id/profile.png',coverUrl:'https://cdn.example.test/profile-cover.png'};
@@ -483,6 +495,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(uploads.length, 1); finished();
   reset();
   expect('POST','/chats/activity',{},body=>assert.deepEqual(plain(body),{with:'host-id',active:true}));await api.setChatActivity('host-id',true);
+  for(const typing of [true,false]){expect('POST','/chats/typing',{},body=>assert.deepEqual(plain(body),{with:'host-id',typing}));await api.setChatTyping('host-id',typing)}
   expect('POST','/chats/host-id',{_id:'ordered-text',text:'Hello',createdAt:'2026-10-30T10:00:00Z',sequence:12},body=>assert.deepEqual(plain(body),{text:'Hello',clientId:'text-client-1'}));
   const textReceipt=await api.sendMessage('host-id','Hello',undefined,undefined,'text-client-1');assert.equal(textReceipt.sequence,12);assert.equal(textReceipt.createdAt,'2026-10-30T10:00:00Z');
   expect('POST','/media/upload-url',{uploadUrl:'https://storage.example.test/retry-photo',key:'chats/member-id/retry.png'});
@@ -605,19 +618,19 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   expect('GET', '/hosts?limit=100', { items: [{ _id: 'host-id', name: 'Creator', avatar: { url: 'https://cdn.example.test/creator.jpg' }, coverUrl: 'https://cdn.example.test/cover.jpg' }] });
   const hosts = await api.hosts(); assert.equal(hosts.hosts[0].id, 'host-id'); assert.equal(hosts.hosts[0].ratePerMin, undefined);
   assert.equal(hosts.hosts[0].avatarUrl, 'https://cdn.example.test/creator.jpg'); assert.equal(hosts.hosts[0].coverUrl, 'https://cdn.example.test/cover.jpg');
-  expect('GET', '/chats', { items: [{ participants: [{ _id: 'member-id', name: 'Asha' }, { _id: 'host-id', name: 'Creator' }], lastMessage: { text: 'Hello' }, unread: 2 }] });
+  expect('GET', '/chats?teamChat=1', { items: [{ participants: [{ _id: 'member-id', name: 'Asha' }, { _id: 'host-id', name: 'Creator' }], lastMessage: { text: 'Hello' }, unread: 2 }] });
   assert.equal((await api.chats()).chats[0].user.id, 'host-id');
-  for (const official of [officialSummary, {...officialSummary,canSend:false,supportEnabled:true}]) {
-    expect('GET','/chats',{items:[],official,unreadCount:0,unreadConversations:0});
-    const inbox=await api.chats();assert.equal(inbox.official.canSend,true,'Both new and rolling-compatible summaries enable only the verified support channel');
+  for (const official of [officialWireSummary, {...officialSummary,canSend:false,supportEnabled:true}]) {
+    expect('GET','/chats?teamChat=1',{items:[],official,unreadCount:0,unreadConversations:0});
+    const inbox=await api.chats();assert.equal(inbox.official.canSend,false,'Both modern and rolling-compatible summaries normalize to read-only Team Chat');
     assert.equal(inbox.official.name,'BinzoLive');assert.equal(inbox.official.unread,officialSummary.unread);assert.equal(inbox.chats.length,0,'The official summary does not create a person-chat peer');
   }
   for (const official of [{...officialSummary,canSend:false},{...officialSummary,canSend:false,supportEnabled:'true'},{...officialSummary,canSend:false,supportEnabled:true,verified:false},{...officialSummary,canSend:false,supportEnabled:true,id:'another-official'}]) {
-    expect('GET','/chats',{items:[],official});await assert.rejects(api.chats(),/could not be verified/,'Legacy send=false requires the exact verified identity and explicit supportEnabled:true');
+    expect('GET','/chats?teamChat=1',{items:[],official});await assert.rejects(api.chats(),/could not be verified/,'Legacy send=false requires the exact verified identity and explicit supportEnabled:true');
   }
-  expect('GET','/chats/official/thread?limit=50',{...officialThread,canSend:false,supportEnabled:true});await assert.rejects(api.officialChat(),/could not be verified/,'The legacy capability flag cannot relax unified thread authorization');
+  expect('GET','/chats/official/thread?teamChat=1&limit=50',{...officialWireThread,canSend:false,readOnly:undefined,supportEnabled:true});assert.equal((await api.officialChat()).canSend,false,'The exact legacy verified identity stays read-only in negotiated Team Chat');
   const chatAt = '2026-10-13T09:00:00.000Z';
-  expect('GET', '/chats?page=2', { items: [{ _id: 'conversation-id', participants: [{ _id: 'member-id' }, { _id: 'host-id', name: 'Creator', role: 'host', hostStatus: 'approved', isVerifiedHost: true, isOnline: true, availableForCall: true }],
+  expect('GET', '/chats?teamChat=1&page=2', { items: [{ _id: 'conversation-id', participants: [{ _id: 'member-id' }, { _id: 'host-id', name: 'Creator', role: 'host', hostStatus: 'approved', isVerifiedHost: true, isOnline: true, availableForCall: true }],
     lastMessage: { text: 'A real reply', senderId: 'member-id', createdAt: chatAt, kind: 'text', mine: true, status: 'read' }, lastMessageAt: chatAt, unread: 2, hasCalls: true }], total: 31, page: 2, limit: 20, unreadCount: 12, unreadConversations: 4 });
   const chatPage = await api.chats(2), chat = chatPage.chats[0];
   assert.equal(chatPage.unreadCount, 12, 'Total unread comes from all server conversations, not only this page');
@@ -725,11 +738,12 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     assert.throws(()=>adapters.walletFrom({...diamondWallet,hostReward:{...rewardFixture,...change}}),/weekly reward progress/);
   for(const change of [{settingsVersionId:'bad',settingsVersion:1},{settingsVersionId:versionMetadata.settingsVersionId},{settingsVersion:1},{...versionMetadata,settingsVersion:0}])
     assert.throws(()=>adapters.walletFrom({...diamondWallet,hostEarningsPolicy:{...hostPolicy,...change}}),/rule version/);
-  const paidTotals={alreadyPaidPaise:123456,alreadyPaidDiamondUnits:8000000000};
+  const paidTotals={alreadyPaidPaise:123456,alreadyPaidDiamondUnits:8000000000,lastPaidAt:'2026-11-20T12:00:00.000Z'};
   const normalizedTotals=adapters.walletFrom({...diamondWallet,...paidTotals});
   for(const key of Object.keys(paidTotals))assert.equal(normalizedTotals[key],paidTotals[key],'Server paid totals are never inferred from history');
   assert.equal(adapters.walletFrom(diamondWallet).alreadyPaidPaise,undefined,'A legacy wallet does not invent a paid total');
-  for(const key of Object.keys(paidTotals))for(const value of [-1,0.5,'0',null])assert.throws(()=>adapters.walletFrom({...diamondWallet,[key]:value}),/paid withdrawal totals/);
+  for(const key of ['alreadyPaidPaise','alreadyPaidDiamondUnits'])for(const value of [-1,0.5,'0',null])assert.throws(()=>adapters.walletFrom({...diamondWallet,[key]:value}),/paid withdrawal totals/);
+  for(const value of [-1,'not-a-date',null])assert.throws(()=>adapters.walletFrom({...diamondWallet,lastPaidAt:value}),/last paid withdrawal date/);
   const historicalRate={diamondsPerCoinUnits:280000,paisePerDiamondUnits:20000000,wholeDiamonds:true};
   const rateReceipt=adapters.transactionsFrom({items:[{type:'gift',coins:0,diamondUnits:1,earningRate:{...historicalRate,...versionMetadata}}]}).items[0];
   assert.equal(rateReceipt.earningRate,undefined,'Internal earning-rule snapshots remain server-side');
@@ -820,11 +834,51 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(adapters.publicProfileFrom({ ...publicHost, isVerifiedHost: false }).verified, false, 'Explicit server approval overrides legacy verification');
   assert.equal(adapters.publicProfileFrom({ ...publicHost, role: 'user', isVerifiedHost: true }).verified, false, 'A member never gains creator authority');
   for (const invalid of [{ ...publicHost, followers: undefined }, { ...publicHost, following: -1 }, { ...publicHost, isFollowing: undefined }]) assert.throws(() => adapters.publicProfileFrom(invalid), /could not be loaded/, 'Missing counts never become invented zeroes');
+
+  const rankedHost = { _id: '507f1f77bcf86cd799439011', name: 'Aster', avatar: publicHost.avatar, coins: 7250, rank: 1 };
+  for (const period of ['daily', 'weekly', 'monthly']) {
+    expect('GET', `/leaderboard/creators?period=${period}&limit=50`, { period, items: [rankedHost], total: 1 });
+    assert.deepEqual(plain(await api.leaderboard(period)), { period, total: 1,
+      items: [{ id: rankedHost._id, name: rankedHost.name, avatarUrl: rankedHost.avatar.url, coins: 7250, rank: 1 }] });
+  }
+  for (const row of [{ ...rankedHost, coins: undefined }, { ...rankedHost, coins: 0 }, { ...rankedHost, rank: undefined }, { ...rankedHost, _id: 'synthetic' }])
+    assert.throws(() => adapters.leaderboardFrom({ period: 'daily', items: [row], total: 1 }, 'daily'), /leaderboard could not be loaded/);
+  assert.throws(() => adapters.leaderboardFrom({ period: 'weekly', items: [], total: 0 }, 'daily'), /leaderboard could not be loaded/);
   expect('GET', '/users/different-id', publicHost); await assert.rejects(api.publicProfile('different-id'), /could not be loaded/, 'A mismatched target profile is refused');
   expect('GET', '/users/host-id/posts?page=2&limit=12', { items: [{ _id: 'post-id', kind: 'photo', mediaUrl: 'https://cdn.example.test/post.jpg', caption: 'A song for today' }], total: 13, page: 2, limit: 12 });
   const publicPosts = await api.publicPosts('host-id', 2);
   assert.equal(publicPosts.posts[0].caption, 'A song for today'); assert.equal(publicPosts.total, 13); assert.equal(publicPosts.page, 2);
   assert.throws(() => adapters.publicPostsFrom({ items: [], total: undefined, page: 1, limit: 12 }), /could not be loaded/);
+  const mvpTarget = '507f1f77bcf86cd799439021', supporterA = '507f1f77bcf86cd799439022', supporterB = '507f1f77bcf86cd799439023';
+  const mvpResponse = { id: mvpTarget, period: 'week', supporters: [
+    { id: supporterA, name: 'Riya', avatarUrl: 'https://cdn.example.test/riya.jpg', coins: 12500, serverRole: 'user', isVerifiedHost: false },
+    { id: supporterB, name: 'Kabir', avatarUrl: null, coins: 5300, serverRole: 'host', isVerifiedHost: true },
+  ] };
+  expect('GET', `/users/${mvpTarget}/mvps?period=week`, mvpResponse);
+  const profileMvps = await api.profileMvps(mvpTarget, 'week');
+  assert.deepEqual(plain(profileMvps), { id: mvpTarget, period: 'week', supporters: [
+    { id: supporterA, name: 'Riya', avatarUrl: 'https://cdn.example.test/riya.jpg', coins: 12500, serverRole: 'user', verified: false },
+    { id: supporterB, name: 'Kabir', avatarUrl: null, coins: 5300, serverRole: 'host', verified: true },
+  ] }, 'Top supporters retain real coin totals and safe profile-routing authority');
+  assert.deepEqual(plain(adapters.profileMvpsFrom({ id: mvpTarget, period: 'all', supporters: [{ id: supporterA, name: '', avatarUrl: null, coins: 1 }] }).supporters[0]),
+    { id: supporterA, name: '', avatarUrl: null, coins: 1 }, 'Role and verification remain optional for an older server response');
+  for (const invalid of [
+    { ...mvpResponse, period: 'daily' },
+    { ...mvpResponse, supporters: 'not-a-list' },
+    { ...mvpResponse, supporters: [{ ...mvpResponse.supporters[0], coins: 0 }] },
+    { ...mvpResponse, supporters: [{ ...mvpResponse.supporters[0], avatarUrl: 'javascript:alert(1)' }] },
+    { ...mvpResponse, supporters: [{ ...mvpResponse.supporters[0], serverRole: 'admin' }] },
+    { ...mvpResponse, supporters: [{ ...mvpResponse.supporters[0], isVerifiedHost: 'true' }] },
+    { ...mvpResponse, supporters: [mvpResponse.supporters[0], mvpResponse.supporters[0]] },
+    { ...mvpResponse, supporters: [...mvpResponse.supporters].reverse() },
+  ]) assert.throws(() => adapters.profileMvpsFrom(invalid), /Top supporters could not be loaded/);
+  expect('GET', `/users/${mvpTarget}/mvps?period=all`, { ...mvpResponse, id: supporterA, period: 'all' });
+  await assert.rejects(api.profileMvps(mvpTarget, 'all'), /Top supporters could not be loaded/, 'A response for another profile is refused');
+  expect('GET', `/users/${mvpTarget}/mvps?period=week`, null, undefined, { error: new ApiError('Route not found', 404) });
+  assert.deepEqual(plain(await api.profileMvps(mvpTarget, 'week')), { id: mvpTarget, period: 'week', supporters: [] }, 'An older backend without the MVP route degrades to the truthful empty state');
+  expect('GET', `/users/${mvpTarget}/mvps?period=week`, null, undefined, { error: new ApiError('User not found', 404) });
+  await assert.rejects(api.profileMvps(mvpTarget, 'week'), /User not found/, 'A real inaccessible profile is never disguised as an empty ranking');
+  await assert.rejects(api.profileMvps(mvpTarget, 'daily'), /valid top supporters period/);
   const pushPeer = '507f1f77bcf86cd799439012', pushCallId = '507f1f77bcf86cd799439013', pushPostId = '507f1f77bcf86cd799439014';
   const confirmedCall = { _id: pushCallId, callerId: 'member-id', calleeId: pushPeer, status: 'accepted', coinsPerMinute: 35, coinsCharged: 70 };
   for (const status of ['ringing','accepted','ended','declined','missed']) {
@@ -948,8 +1002,21 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     total: 21, unreadCount: 25, totalCount: 40, page: 2, limit: 20,
   });
   const filteredNotes = await api.notifications({ page: 2, q: 'event & music', status: 'unread', audience: 'personal', since: noteSince, sort: 'oldest' });
-  assert.deepEqual(plain(filteredNotes), { items: [{ id: 'personal-note', title: 'Event', body: 'A personal update', read: false, createdAt: noteSince, audience: 'personal' }], total: 21, unreadCount: 25, totalCount: 40, page: 2, limit: 20 });
+  assert.deepEqual(plain(filteredNotes), { items: [{ id: 'personal-note', title: 'Event', body: 'A personal update', read: false, createdAt: noteSince, audience: 'personal', recipientId: 'member-id' }], total: 21, unreadCount: 25, totalCount: 40, page: 2, limit: 20 });
   assert.equal(adapters.notificationsFrom({ items: [{ _id: 'global-note', userId: null }] }).items[0].audience, 'announcements');
+  const guardedNotes = adapters.notificationsFrom({ items: [
+    { _id: 'own-like', userId: 'member-id', recipientId: 'member-id', category: 'likes', title: 'Liked', read: false },
+    { _id: 'own-follow', userId: 'member-id', category: 'follows', title: 'Followed', read: false },
+    { _id: 'own-gift', userId: 'member-id', category: 'gifts', title: 'Gift with 5K Coins', read: true },
+    { _id: 'chat-message', userId: 'member-id', category: 'messages', event: 'message.new', title: 'Private message', read: false },
+    { _id: 'foreign-like', userId: 'another-account', category: 'likes', title: 'Not mine', read: false },
+    { _id: 'conflicting-owner', userId: 'member-id', recipientId: 'another-account', category: 'calls', title: 'Conflicting', read: false },
+    { _id: 'ownerless-comment', userId: null, category: 'comments', title: 'Ownerless activity', read: false },
+  ], total: 7, totalCount: 7, unreadCount: 6 }, 'member-id');
+  assert.deepEqual(plain(guardedNotes.items.map(note => [note.id, note.category, note.recipientId])), [
+    ['own-like', 'likes', 'member-id'], ['own-follow', 'follows', 'member-id'], ['own-gift', 'gifts', 'member-id'],
+  ], 'Only this account activity reaches the notification UI');
+  assert.deepEqual({ total: guardedNotes.total, totalCount: guardedNotes.totalCount, unreadCount: guardedNotes.unreadCount }, { total: 3, totalCount: 3, unreadCount: 2 }, 'Hidden chat and foreign rows do not affect client totals');
   const noteBefore = '2026-10-02T00:00:00.000Z';
   expect('GET', `/notifications?limit=20&since=${encodeURIComponent(noteSince)}&before=${encodeURIComponent(noteBefore)}`, { items: [], total: 0, totalCount: 40, unreadCount: 25, page: 1, limit: 20 });
   assert.equal((await api.notifications({ since: noteSince, before: noteBefore })).items.length, 0, 'A bounded date tab sends its inclusive start and exclusive end to the API');
@@ -1146,11 +1213,53 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   socket.emitServer('chat:message', { senderId: 'member-id', recipientId: 'host-id', text: 'Own echo' });
   socket.emitServer('chat:message', { _id: 'message-id', senderId: 'host-id', recipientId: 'member-id', text: 'Hello', createdAt: chatAt, automated: true });
   socket.emitServer('chat:message', { senderId: 'stranger', recipientId: 'other-user', text: 'Private unrelated message' });
+  const readMessageIds = ['read-message-1', 'read-message-2'];
+  const beforeRead = events.length;
+  socket.emitServer('chat:read', { userId: 'host-id', conversationIds: ['conversation-id'], messageIds: readMessageIds, readAt: chatAt });
+  assert.deepEqual(plain(events.slice(beforeRead)), [
+    { type: 'chat.read', data: { with: 'host-id', conversationIds: ['conversation-id'], messageIds: readMessageIds, readAt: chatAt } },
+    { type: 'chats.updated', data: {} },
+  ], 'A committed receipt updates the open peer and still invalidates conversation summaries');
+  const beforeReadAllReceipt = events.length;
   socket.emitServer('chat:read', { userId: 'host-id', conversationIds: ['conversation-id'], readAt: chatAt });
-  socket.emitServer('chat:read', { userId: 'host-id', conversationIds: 'malformed', readAt: chatAt });
+  assert.deepEqual(plain(events.slice(beforeReadAllReceipt)), [
+    { type: 'chat.read', data: { with: 'host-id', conversationIds: ['conversation-id'], readAt: chatAt } },
+    { type: 'chats.updated', data: {} },
+  ], 'Read-all receipts may omit exact message IDs');
+  const maximumReadIds = Array.from({ length: 200 }, (_, index) => `read-message-${index + 100}`), beforeMaximumRead = events.length;
+  socket.emitServer('chat:read', { userId: 'host-id', conversationIds: ['conversation-id'], messageIds: maximumReadIds, readAt: chatAt });
+  assert.deepEqual(plain(events.slice(beforeMaximumRead)), [
+    { type: 'chat.read', data: { with: 'host-id', conversationIds: ['conversation-id'], messageIds: maximumReadIds, readAt: chatAt } },
+    { type: 'chats.updated', data: {} },
+  ], 'A receipt accepts at most 200 exact message IDs');
+  const afterValidReads = events.length;
+  for (const receipt of [
+    { userId: 'host-id', conversationIds: 'malformed', readAt: chatAt },
+    { userId: 'host-id', conversationIds: ['conversation-id'], messageIds: [], readAt: chatAt },
+    { userId: 'host-id', conversationIds: ['conversation-id'], messageIds: [''], readAt: chatAt },
+    { userId: 'host-id', conversationIds: ['conversation-id'], messageIds: [readMessageIds[0], readMessageIds[0]], readAt: chatAt },
+    { userId: 'host-id', conversationIds: ['conversation-id'], messageIds: [...maximumReadIds, 'one-too-many'], readAt: chatAt },
+    { userId: 'host-id', conversationIds: ['conversation-id'], readAt: 'not-a-date' },
+  ]) socket.emitServer('chat:read', receipt);
+  assert.equal(events.length, afterValidReads, 'Malformed or ambiguous read receipts are dropped completely');
+  const typingExpiresAt = new Date(Date.now() + 10000).toISOString();
+  socket.emitServer('chat:typing', { userId: 'host-id', typing: true, expiresAt: typingExpiresAt });
+  assert.deepEqual(plain(events.at(-1)), { type: 'chat.typing', data: { from: 'host-id', typing: true, expiresAt: typingExpiresAt } });
+  socket.emitServer('chat:typing', { userId: 'host-id', typing: false });
+  assert.deepEqual(plain(events.at(-1)), { type: 'chat.typing', data: { from: 'host-id', typing: false } }, 'A stop signal does not require an expiry');
+  const afterValidTyping = events.length;
+  for (const typing of [
+    { userId: 'host-id', typing: true },
+    { userId: 'host-id', typing: true, expiresAt: 'not-a-date' },
+    { userId: 'host-id', typing: true, expiresAt: new Date(Date.now() - 1000).toISOString() },
+    { userId: 'host-id', typing: 'true', expiresAt: typingExpiresAt },
+    { userId: 'member-id', typing: true, expiresAt: typingExpiresAt },
+    { typing: true, expiresAt: typingExpiresAt },
+  ]) socket.emitServer('chat:typing', typing);
+  assert.equal(events.length, afterValidTyping, 'Malformed, stale and self-authored typing events are ignored');
   socket.emitServer('call:updated', { _id: 'incoming', callerId: 'host-id', calleeId: 'member-id', status: 'ringing' });
   socket.emitServer('host:reviewed', { status: 'approved' });
-  assert.deepEqual(events.map(event => event.type), ['chats.updated','chat.message','chats.updated','chats.updated','call.incoming','verification.status']);
+  assert.deepEqual(events.map(event => event.type), ['chats.updated','chat.message','chats.updated','chat.read','chats.updated','chat.read','chats.updated','chat.read','chats.updated','chat.typing','chat.typing','call.incoming','verification.status']);
   assert.equal(events[1].data.id, 'message-id'); assert.equal(events[1].data.createdAt, chatAt);
   assert.equal(events[1].data.automated, true, 'Realtime delivery retains the automated label');
   const heldUntil = new Date(Date.now() + 300000).toISOString();
@@ -1228,11 +1337,21 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   socket.emitServer('gift:received',{...receivedGift,recipientId:'other-user'});assert.equal(events.filter(event=>event.type==='gift.received').length,giftCount,'Unrelated gift events do not reach the room');
   socket.emitServer('account:updated', {}); assert.equal(events.at(-1).type, 'account.updated');
   socket.emitServer('profile:updated', { name: 'Untrusted socket name' }); assert.deepEqual(plain(events.at(-1)), { type: 'profile.updated', data: {} }, 'Profile sockets invalidate identity without accepting private account fields');
-  for (const event of ['notification:new', 'notifications:read']) {
-    const beforeNotification = events.length;
-    socket.emitServer(event, { userId: 'member-id', title: 'Socket data does not populate the inbox', unreadCount: 900 });
-    assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, { type: 'official.changed', data: {} }, { type: 'chats.updated', data: {} }, ...(event === 'notification:new' ? [{ type: 'home.updated', data: {} }] : [])], 'Notification socket signals refresh the inbox, official conversation and chat list without trusting payload counts or text');
-  }
+  let beforeNotification = events.length;
+  socket.emitServer('notification:new', { userId: 'member-id', title: 'Private account update', unreadCount: 900, targetType: 'inbox' });
+  assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, { type: 'chats.updated', data: {} }, { type: 'home.updated', data: {} }], 'Private account notifications refresh the inbox without invalidating Team Chat');
+  beforeNotification = events.length;
+  socket.emitServer('notification:new', { userId: 'member-id', title: 'Private chat message', category: 'messages', event: 'message.new', targetType: 'thread' });
+  assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'chats.updated', data: {} }], 'Chat-message notices refresh conversations without changing the notification inbox or bell badge');
+  beforeNotification = events.length;
+  socket.emitServer('notification:new', { userId: 'member-id', title: 'Untrusted announcement copy', unreadCount: 901, targetType: 'official' });
+  assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, { type: 'official.changed', data: {} }, { type: 'chats.updated', data: {} }, { type: 'home.updated', data: {} }], 'Only the official marker invalidates Team Chat, whose content is fetched over the authenticated API');
+  beforeNotification = events.length;
+  socket.emitServer('notification:new', { userId: 'member-id', title: 'A new Android release', targetType: 'appUpdate', officialChat: true });
+  assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, { type: 'official.changed', data: {} }, { type: 'chats.updated', data: {} }, { type: 'home.updated', data: {} }], 'An app-update target carrying the explicit Team Chat marker invalidates the announcement channel');
+  beforeNotification = events.length;
+  socket.emitServer('notifications:read', { userId: 'member-id', targetType: 'official' });
+  assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, { type: 'chats.updated', data: {} }], 'Generic read invalidation never refreshes Team Chat from an unscoped payload');
   socket.emitServer('call:updated', { _id: 'paid-call', callerId: 'member-id', calleeId: 'host-id', status: 'accepted', kind: 'video', coinsPerMinute: 60 });
   assert.deepEqual(plain(events.at(-1)), { type: 'call.connected', data: { callId: 'paid-call', initiator: true, peerId: 'host-id', voice: false, rate: 60 } }, 'A paid call carries its price');
   socket.emitServer('call:updated', { _id: 'paid-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 60, coinsCharged: 150, endReason: 'out_of_coins' });
@@ -1372,7 +1491,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(directory.users[0].availableForCall, true, 'Invitation availability is distinct from online presence');
   for (const privateKey of ['phone', 'email', 'safety', 'coins', 'passwordHash']) assert.equal(directory.users[0][privateKey], undefined, `Directory strips ${privateKey}`);
   assert.equal(requests.at(-1)[2], undefined, 'Directory reads cannot submit a write or choose another viewer');
-  assert.equal(adapters.memberUsersFrom({ ...directoryRaw, items: [{ ...directoryRawUser, name: '' }] }).users[0].name, 'BinzoLive member', 'An unnamed real member gets a neutral identity fallback');
+  assert.equal(adapters.memberUsersFrom({ ...directoryRaw, items: [{ ...directoryRawUser, name: '' }] }).users[0].name, 'BinzoLive user', 'An unnamed real user gets a neutral identity fallback');
   for (const patch of [{ items: undefined }, { items: 'untrusted' }, { total: -1 }, { total: Number.MAX_SAFE_INTEGER + 1 }, { total: '24' }, { page: 0 }, { page: 10001 }, { limit: 0 }, { limit: 101 },
     { items: [{ ...directoryRawUser, _id: 'untrusted-id' }] }, { items: [{ ...directoryRawUser, role: 'host', hostStatus: 'approved', isVerifiedHost: true }] },
     { items: [{ ...directoryRawUser, name: 42 }] }, { items: [{ ...directoryRawUser, isVerifiedHost: true }] }, { items: [directoryRawUser, directoryRawUser] }]) {
@@ -1384,6 +1503,52 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(requests.length, beforeInvalidDirectory, 'Malformed directory queries stop before HTTP');
   expect('GET', '/users/search?audience=members&q=&page=1&limit=20', { items: [], total: 0, page: 1, limit: 20 });
   assert.deepEqual(plain((await api.memberUsers()).users), [], 'An empty query loads the first real member page without enumerating it in memory');
+  finished();
+  const profileUserId = '507f1f77bcf86cd799439083', profileHostId = '507f1f77bcf86cd799439084';
+  const profileRawUser = { _id: profileUserId, name: 'Riya user', role: 'user', hostStatus: 'none', isVerifiedHost: false,
+    avatar: { url: 'https://cdn.example.test/riya.png' }, country: 'India', isOnline: false, availableForCall: true,
+    phone: 'private-phone', email: 'private@example.test', safety: { discoverable: true }, coins: 999, passwordHash: 'not-public' };
+  const profileRawHost = { _id: profileHostId, name: 'Asha host', role: 'host', hostStatus: 'approved', isVerifiedHost: true,
+    avatar: { url: 'https://cdn.example.test/asha.png' }, country: 'India', isOnline: true, availableForCall: false,
+    phone: 'private-phone', email: 'private@example.test', safety: { discoverable: true }, earningsPaise: 999, accessToken: 'not-public' };
+  const profileRaw = { items: [profileRawUser, profileRawHost], total: 24, page: 2, limit: 20, filter: 'all' };
+  const profileQuery = 'Riya&Asha/audience=admin';
+  expect('GET', `/users/search?audience=all&q=${encodeURIComponent(profileQuery)}&page=2&limit=20&filter=all`, profileRaw);
+  const profiles = await api.profileDirectory('  ' + profileQuery + '  ', 2, 'all');
+  assert.equal(profiles.total, 24); assert.equal(profiles.page, 2); assert.equal(profiles.limit, 20); assert.equal(profiles.filter, 'all');
+  assert.deepEqual(profiles.profiles.map(profile => [profile.id, profile.role, profile.serverRole, profile.verified, profile.online]), [
+    [profileUserId, 'sender', 'user', false, false], [profileHostId, 'host', 'host', true, true],
+  ], 'One directory page preserves both User and approved Host identities');
+  for (const profile of profiles.profiles) for (const privateKey of ['phone', 'email', 'safety', 'coins', 'earningsPaise', 'passwordHash', 'accessToken'])
+    assert.equal(profile[privateKey], undefined, `Profile directory strips ${privateKey}`);
+  assert.equal(requests.at(-1)[2], undefined, 'Profile search cannot submit write or viewer authority fields');
+  const unnamedProfiles = adapters.profileDirectoryFrom({ ...profileRaw, items: [{ ...profileRawUser, name: '' }, { ...profileRawHost, name: null }], total: 2 }).profiles;
+  assert.deepEqual(unnamedProfiles.map(profile => profile.name), ['BinzoLive user', 'BinzoLive host']);
+  expect('GET', `/users/search?audience=all&q=${'x'.repeat(100)}&page=10000&limit=20&filter=online`,
+    { items: [profileRawHost], total: 1, page: 10000, limit: 20, filter: 'online' });
+  const onlineProfiles = await api.profileDirectory('x'.repeat(100), 10000, 'online');
+  assert.equal(onlineProfiles.filter, 'online'); assert.equal(onlineProfiles.page, 10000);
+  assert.deepEqual(onlineProfiles.profiles.map(profile => [profile.id, profile.online]), [[profileHostId, true]], 'The Online filter returns connected profiles only');
+  for (const patch of [{ items: undefined }, { items: 'untrusted' }, { total: -1 }, { total: 1 }, { total: Number.MAX_SAFE_INTEGER + 1 }, { total: '24' },
+    { page: 0 }, { page: 1.5 }, { page: 10001 }, { page: '2' }, { limit: 0 }, { limit: 101 }, { limit: 1.5 },
+    { filter: undefined }, { filter: 'active' }, { filter: 'Online' }, { filter: null },
+    { items: [{ ...profileRawUser, _id: 'untrusted-id' }] }, { items: [{ ...profileRawUser, _id: undefined }] },
+    { items: [{ ...profileRawUser, role: 'sender' }] }, { items: [{ ...profileRawUser, role: 'admin' }] },
+    { items: [{ ...profileRawUser, isVerifiedHost: true }] },
+    { items: [{ ...profileRawHost, hostStatus: 'pending' }] }, { items: [{ ...profileRawHost, hostStatus: 'suspended' }] },
+    { items: [{ ...profileRawHost, isVerifiedHost: false }] }, { items: [{ ...profileRawHost, isVerifiedHost: 'true' }] },
+    { items: [{ ...profileRawUser, isOnline: undefined }] }, { items: [{ ...profileRawUser, isOnline: 'false' }] },
+    { items: [{ ...profileRawHost, name: 42 }] }, { items: [{ ...profileRawHost, name: 'x'.repeat(121) }] },
+    { items: [profileRawUser, profileRawUser] }, { limit: 1, items: [profileRawUser, profileRawHost] }]) {
+    assert.throws(() => adapters.profileDirectoryFrom({ ...profileRaw, ...patch }), error => error instanceof ApiError && error.status === 502, JSON.stringify(patch));
+  }
+  const beforeInvalidProfiles = requests.length;
+  for (const [q, page, filter] of [[null, 1, 'all'], [1, 1, 'all'], ['x'.repeat(101), 1, 'all'], ['', 0, 'all'], ['', -1, 'all'],
+    ['', 1.5, 'all'], ['', 10001, 'all'], ['', '2', 'all'], ['', null, 'all'], ['', 1, null], ['', 1, 'active'], ['', 1, 'Online'], ['', 1, true]])
+    await assert.rejects(api.profileDirectory(q, page, filter), error => error instanceof ApiError && error.status === 400);
+  assert.equal(requests.length, beforeInvalidProfiles, 'Malformed profile queries stop before HTTP');
+  expect('GET', '/users/search?audience=all&q=&page=1&limit=20&filter=all', { items: [], total: 0, page: 1, limit: 20, filter: 'all' });
+  assert.deepEqual(plain(await api.profileDirectory()), { profiles: [], total: 0, page: 1, limit: 20, filter: 'all' });
   finished();
   const activeHostId = '507f1f77bcf86cd799439082';
   const activeHostRawUser = { _id: activeHostId, name: 'Active directory host', role: 'host', hostStatus: 'approved', isVerifiedHost: true,

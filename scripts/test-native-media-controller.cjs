@@ -286,6 +286,55 @@ test('early ICE waits for the matching remote description; foreign callers canno
   h.controller.close(); await flush();
 });
 
+test('verification calls retain early staff signaling and answer through the native callee path', async () => {
+  const h = fixture();
+  await h.rpc('prepare', { video: true });
+  h.controller.event({ type: 'verify.incoming', data: { callId: 'verify-one' } });
+  const candidate = { candidate: 'candidate:staff', sdpMid: '0', sdpMLineIndex: 0 };
+  h.controller.event({ type: 'rtc.signal', data: { callId: 'verify-one', from: 'zimi-team', candidate } });
+  h.controller.event({ type: 'rtc.signal', data: { callId: 'verify-one', from: 'zimi-team', description: { type: 'offer', sdp: 'staff-offer' } } });
+  h.controller.event({ type: 'verify.connected', data: { callId: 'verify-one', peerId: 'zimi-team', initiator: false, voice: false } });
+  await flush();
+  const pc = h.peers.at(-1);
+  assert.equal(pc.remoteDescription.sdp, 'staff-offer');
+  assert.deepEqual(plain(pc.addedCandidates), [candidate]);
+  assert.deepEqual(plain(h.events.find(event => event.type === 'rtc.signal' && event.data.description?.type === 'answer').data), {
+    callId: 'verify-one', description: { type: 'answer', sdp: 'native-answer' },
+  });
+  assert.deepEqual(h.calls.find(call => call[0] === 'startCallService').slice(0, 3), ['startCallService', 'verify-one', true]);
+  h.controller.event({ type: 'verify.ended', data: { callId: 'verify-one', status: 'ended' } }); await flush();
+  assert.equal(pc.connectionState, 'closed');
+  assert.equal(h.state().local, null);
+  h.controller.close(); await flush();
+});
+
+test('late verification acceptance reacquires native media after a retry error stopped preview', async () => {
+  const h = fixture();
+  await h.rpc('prepare', { video: true });
+  h.controller.event({ type: 'verify.incoming', data: { callId: 'verify-late' } });
+  const first = h.state().local, firstTracks = first.getTracks();
+  // verification-call.js releases the user-approved preview when verify.error
+  // returns the overlay to its retryable ringing state.
+  await h.rpc('stop');
+  assert.equal(h.state().local, null);
+
+  // App.tsx gives the native controller this event before posting it to web.
+  h.controller.event({ type: 'verify.connected', data: { callId: 'verify-late', peerId: 'zimi-team', initiator: false, voice: false } });
+  await flush();
+  const replacement = h.state().local;
+  assert.ok(firstTracks.every(track => track.readyState === 'ended'));
+  assert.notEqual(replacement, first);
+  assert.equal(h.captures.length, 2, 'The authoritative accept reacquires instead of relying on the stopped web preview');
+  assert.ok(replacement.getAudioTracks().some(track => track.readyState === 'live'));
+  assert.ok(replacement.getVideoTracks().some(track => track.readyState === 'live'));
+  assert.equal(h.events.some(event => event.type === 'call.end' && event.data.callId === 'verify-late'), false);
+
+  h.controller.event({ type: 'rtc.signal', data: { callId: 'verify-late', from: 'zimi-team', description: { type: 'offer', sdp: 'late-staff-offer' } } });
+  await flush();
+  assert.ok(h.events.some(event => event.type === 'rtc.signal' && event.data.callId === 'verify-late' && event.data.description?.type === 'answer'));
+  h.controller.close(); await flush();
+});
+
 test('native beauty authorization failure preserves raw call tracks; a stale license never configures a retired camera', async () => {
   for (const authFailure of [true, false]) {
     const license = deferred(), h = fixture({ authFailure, license });

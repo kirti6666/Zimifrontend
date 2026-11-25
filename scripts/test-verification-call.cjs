@@ -44,14 +44,43 @@ const applicant = { user: { id: id('01'), name: 'Riya Applicant', role: 'host', 
     assert.equal(await dialog().count(), 0);
     console.log('PASS verification call: incoming overlay, focus and decline');
 
+    await receive('verify.incoming', { callId: 'call-retry' });
+    await page.getByRole('button', { name: 'Accept verification video call' }).click();
+    await page.waitForFunction(() => window.__sent.filter(message => message.type === 'verify.accept').length === 1);
+    await receive('verify.error', { callId: 'call-retry', message: 'The answer response was interrupted. Try again.' });
+    await page.getByText('The answer response was interrupted. Try again.').waitFor();
+    const retry = page.getByRole('button', { name: 'Accept verification video call' });
+    assert.equal(await retry.isEnabled(), true, 'A transient answer failure can be retried');
+    assert.equal(await retry.evaluate(el => el === document.activeElement), true, 'Retry is focused after the error');
+    await retry.click();
+    await page.waitForFunction(() => window.__sent.filter(message => message.type === 'verify.accept').length === 2);
+    assert.deepEqual(await sent('verify.accept'), [{ callId: 'call-retry' }, { callId: 'call-retry' }]);
+    await receive('verify.ended', { callId: 'call-retry', status: 'unavailable' });
+    await page.getByText('This verification call is no longer available.').waitFor();
+    console.log('PASS verification call: transient answer failure stays visible and retryable');
+
+    await receive('verify.incoming', { callId: 'call-late-accept' });
+    await page.getByRole('button', { name: 'Accept verification video call' }).click();
+    await page.waitForFunction(() => window.__sent.filter(message => message.type === 'verify.accept').length === 3);
+    await receive('verify.error', { callId: 'call-late-accept', message: 'The answer response was interrupted. Try again.' });
+    await receive('verify.connected', { callId: 'call-late-accept', peerId: 'zimi-team', initiator: false, voice: false });
+    await page.waitForFunction(() => {
+      const stream = document.querySelector('.zv-local')?.srcObject;
+      return stream?.getAudioTracks().some(track => track.readyState === 'live') && stream?.getVideoTracks().some(track => track.readyState === 'live');
+    });
+    assert.equal((await sent('call.end')).some(message => message.callId === 'call-late-accept'), false, 'A late accepted event reacquires media instead of failing the call');
+    await receive('verify.ended', { callId: 'call-late-accept', status: 'ended' });
+    console.log('PASS verification call: late authoritative acceptance safely reacquires media');
+
     await receive('verify.incoming', { callId: 'call-live' });
     await page.getByRole('button', { name: 'Accept verification video call' }).click();
-    await page.waitForFunction(() => window.__sent.some(message => message.type === 'verify.accept'));
-    assert.deepEqual(await sent('verify.accept'), [{ callId: 'call-live' }], 'Camera and microphone start before answering');
+    await page.waitForFunction(() => window.__sent.some(message => message.type === 'verify.accept' && message.data.callId === 'call-live'));
+    assert.deepEqual((await sent('verify.accept')).at(-1), { callId: 'call-live' }, 'Camera and microphone start before answering');
     await page.getByText('Connecting…').waitFor();
     // The staff browser, played by a second peer in this page.
     await page.evaluate(() => {
       const pc = new RTCPeerConnection();
+      const pendingCandidates = [];
       const canvas = Object.assign(document.createElement('canvas'), { width: 160, height: 120 });
       const paint = canvas.getContext('2d'); let frame = 0;
       // A canvas stream only sends frames when the canvas changes.
@@ -60,8 +89,14 @@ const applicant = { user: { id: id('01'), name: 'Riya Applicant', role: 'host', 
       pc.onicecandidate = event => { if (event.candidate) Native.receive({ type: 'rtc.signal', data: { callId: 'call-live', from: 'zimi-team', candidate: event.candidate.toJSON() } }); };
       window.__staff = { pc, deliver: async data => {
         if (data.callId !== 'call-live') return;
-        if (data.description) await pc.setRemoteDescription(data.description);
-        if (data.candidate) await pc.addIceCandidate(data.candidate);
+        if (data.description) {
+          await pc.setRemoteDescription(data.description);
+          while (pendingCandidates.length) await pc.addIceCandidate(pendingCandidates.shift());
+        }
+        if (data.candidate) {
+          if (pc.remoteDescription) await pc.addIceCandidate(data.candidate);
+          else pendingCandidates.push(data.candidate);
+        }
       } };
     });
     await receive('verify.connected', { callId: 'call-live', peerId: 'zimi-team', initiator: false, voice: false });

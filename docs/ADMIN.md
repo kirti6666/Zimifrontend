@@ -3,8 +3,11 @@
 Agency creation, recruitment codes, linked hosts, commissions and settlements
 are managed in the production `admin-dashboard` project at
 https://admin.binzolive.com/. The legacy demo console links there. Agencies are
-created by administrators; hosts use the assigned code in the app's
-**Become a Host** page before applying and completing verification.
+created by administrators; an Agency Owner gives each approved user a personal,
+one-time Host joining code. Claiming it on the app's **Become a Host** page
+activates that Host immediately. The shared agency ID identifies the agency and
+cannot activate a Host. Staff verification remains a backup for legacy/manual
+applications, while moderation can still suspend or restore Host access.
 
 ## How it fits with the React Native app
 

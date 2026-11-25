@@ -22,16 +22,18 @@ async function settle(page,data){const request=await latest(page);await receive(
   await page.route(/^https?:\/\//,route=>route.abort());await page.addInitScript(()=>{window.__sent=[];window.ReactNativeWebView={postMessage:raw=>__sent.push(JSON.parse(raw))}});
   await page.goto(pathToFileURL(path.join(root,'assets/aurora.html')).href+'?role=sender');await receive(page,'session',host);await page.evaluate(()=>go('settings'));
   await page.getByRole('button',{name:'Account',exact:true}).click();
-  await page.getByRole('dialog',{name:'Account',exact:true}).getByRole('button',{name:'Statistics',exact:true}).click();
+  const accountPage=page.locator('.zp-settings-detail-page');await accountPage.getByRole('heading',{name:'Account',exact:true}).waitFor();
+  assert.equal(await page.locator('#zp-dialog').count(),0,'Account is a page, not a settings dialog');
+  await accountPage.getByRole('button',{name:'Statistics',exact:true}).click();
   await page.getByRole('status',{name:'Loading diamond statistics',exact:true}).waitFor();assert.equal((await latest(page)).period,'daily');
   assert.equal(await page.locator('.zhs-total').count(),0,'Loading never invents an earned balance');await settle(page,fixture());
   assert.equal(await page.getByRole('tab').count(),3);assert.equal(await page.locator('.zhs-bar').count(),24);assert.match(await page.locator('.zhs-total').innerText(),/300/);
   await page.getByRole('button',{name:'05:00, 6 diamonds earned',exact:true}).click();assert.match(await page.locator('.zhs-selection').innerText(),/05:00[\s\S]*6 diamonds/);
   await page.keyboard.press('ArrowRight');assert.match(await page.locator('.zhs-selection').innerText(),/06:00[\s\S]*7 diamonds/);
   assert.equal(await page.locator('#nav').isVisible(),false,'A detail page has no bottom navigation');
-  await receive(page,'app.back',{});await page.getByRole('dialog',{name:'Account',exact:true}).waitFor();
-  assert.equal(await page.evaluate(()=>S.v),'settings','Android Back returns to the Account menu');
-  await page.getByRole('dialog',{name:'Account',exact:true}).getByRole('button',{name:'Statistics',exact:true}).click();await settle(page,fixture());
+  await receive(page,'app.back',{});await accountPage.getByRole('heading',{name:'Account',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>S.v),'settings-detail','Android Back returns to the Account page');
+  await accountPage.getByRole('button',{name:'Statistics',exact:true}).click();await settle(page,fixture());
   const daily=await latest(page);await page.getByRole('tab',{name:'Weekly',exact:true}).click();const weekly=await latest(page);assert.notEqual(weekly.requestId,daily.requestId);
   await page.getByRole('tab',{name:'Monthly',exact:true}).click();const monthly=await latest(page);await receive(page,'diamonds.statistics.loaded',{...fixture('weekly'),requestId:weekly.requestId});
   assert.equal(await page.getByRole('status',{name:'Loading diamond statistics',exact:true}).count(),1,'An older tab response cannot replace the new request');
@@ -49,8 +51,8 @@ async function settle(page,data){const request=await latest(page);await receive(
   await page.evaluate(()=>go('host-statistics'));await page.getByRole('status',{name:'Loading diamond statistics',exact:true}).waitFor();await settle(page,fixture('daily',1));assert.match(await page.locator('.zhs-total').innerText(),/0\.0003/,'Historical fractional diamonds retain their fixed precision');
   await receive(page,'host.access',{approved:false,checking:false,role:'host',hostStatus:'suspended',verified:false});assert.equal(await page.locator('.zhs-chart').count(),0,'Host revocation removes private statistics');
   await receive(page,'session',{...otherHost,user:{...otherHost.user,role:'sender',serverRole:'user',hostStatus:'none',isVerifiedHost:false},verification:'none'});await page.evaluate(()=>go('settings'));
-  await page.getByRole('button',{name:'Account',exact:true}).click();assert.equal(await page.getByRole('dialog',{name:'Account',exact:true}).getByRole('button',{name:'Statistics',exact:true}).count(),0,'Statistics is a host-only account option');
-  await page.getByRole('button',{name:'Close settings',exact:true}).click();await page.getByRole('button',{name:'Payments',exact:true}).click();assert.equal(await page.getByRole('dialog',{name:'Payments',exact:true}).getByRole('button',{name:'Withdraw',exact:true}).count(),0,'Members do not receive a host withdrawal action');
+  await page.getByRole('button',{name:'Account',exact:true}).click();assert.equal(await accountPage.getByRole('button',{name:'Statistics',exact:true}).count(),0,'Statistics is a host-only account option');
+  await page.getByRole('button',{name:'Back to settings',exact:true}).click();await page.getByRole('button',{name:'Payments',exact:true}).click();assert.equal(await page.locator('.zp-settings-detail-page').getByRole('button',{name:'Withdraw',exact:true}).count(),0,'Members do not receive a host withdrawal action');
   await receive(page,'session.none',{});assert.equal(await page.evaluate(()=>HostStatistics.data),null);assert.deepEqual(errors,[]);
   console.log('PASS host statistics: three real-data bar charts, exact diamond precision, navigation, request/owner isolation, error/empty states, historical timing note, keyboard access and 320/390px light/dark layouts');
  }finally{await browser.close()}

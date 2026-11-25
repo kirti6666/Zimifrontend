@@ -858,7 +858,16 @@
     pendingCall = null;
     active = session;
     try {
-      if (!local) throw new Error('Camera or microphone access is needed. End the call and allow access when starting again.');
+      const hasAudio = local?.getAudioTracks().some(track => track.readyState === 'live');
+      const hasVideo = local?.getVideoTracks().some(track => track.readyState === 'live');
+      // A verification accept receipt can fail just before the authoritative
+      // socket acceptance arrives. Its retry UI releases capture for privacy;
+      // reacquire only once the server confirms that this call connected.
+      if (!hasAudio || !session.voice && !hasVideo) {
+        if (session.peerId !== 'zimi-team') throw new Error('Camera or microphone access is needed. End the call and allow access when starting again.');
+        await prepare(!session.voice);
+      }
+      if (active !== session) return;
       if (!await initialize(session)) return;
       if (session.initiator) {
         if (!session.peerId) throw new Error('The call participant could not be identified. Please try again.');

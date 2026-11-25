@@ -62,7 +62,7 @@
 .zc-inbox-skeleton>div{display:flex;flex-direction:column;gap:calc(7 * var(--zc-u))}
 .zc-skeleton-row{pointer-events:none}.zc-skeleton-row .zc-row-body{gap:calc(12 * var(--zc-u))}
 .zc-overlay{position:fixed;inset:0;z-index:90;background:#0c050cbd;backdrop-filter:blur(5px);display:flex;align-items:flex-end;justify-content:center}
-.zc-dialog{background:#301a29;width:100%;max-width:520px;max-height:85dvh;overflow:auto;border-radius:24px 24px 0 0;padding:24px 22px;color:#f8e2ef;box-shadow:0 -12px 40px #0005}
+.zc-dialog{background:#301a29;width:100%;max-width:520px;max-height:85vh;max-height:85dvh;overflow:auto;border-radius:24px 24px 0 0;padding:24px 22px;color:#f8e2ef;box-shadow:0 -12px 40px #0005}
 .zc-dialog-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px}
 .zc-dialog-heading h2{font-size:22px;letter-spacing:-.7px;font-weight:700}
 .zc-dialog-heading>button{display:grid;place-items:center;height:34px;width:34px;border-radius:50%;background:#492c3e;font-size:26px}
@@ -72,7 +72,7 @@
 .zc-dialog-reset{display:block;margin:20px auto;color:#ffafd3;font-size:13px;text-decoration:underline}
 .zc-compose-search{display:flex;align-items:center;gap:9px;background:#442939;border-radius:22px;padding:12px;color:#d2a9c0;margin-bottom:14px}
 .zc-compose-search input{flex:1;min-width:0;font-size:13px}.zc-compose-search input::placeholder{color:#b78ba4}
-#zc-contacts{max-height:47dvh;overflow:auto;margin-bottom:16px}
+#zc-contacts{max-height:47vh;max-height:47dvh;overflow:auto;margin-bottom:16px}
 .zc-contact{width:100%;display:flex;gap:12px;align-items:center;padding:12px 0;text-align:left;border-bottom:1px solid #65425344}
 .zc-contact>.zc-avatar{height:45px;width:45px}.zc-contact>span:nth-child(2){flex:1;min-width:0}
 .zc-contact b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.zc-contact small{display:block;font-size:11px;color:#d1a6bf;margin-top:4px}
@@ -96,7 +96,8 @@
 .zc-thread-title b{display:flex;align-items:center;gap:5px;min-width:0;font-size:17px;font-weight:650;letter-spacing:-.3px;line-height:1.2}
 .zc-thread-title b>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .zc-thread-title .zh-verified{color:var(--accent-ink)}
-.zc-thread-title small{font-size:12.5px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.zc-thread-title small{font-size:12.5px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;transition:color 160ms ease}
+.zc-thread-title small.is-typing{color:var(--accent-ink);font-weight:600}
 .zc-thread-actions{flex:none;display:flex;align-items:center;gap:2px}
 .zc-thread-actions>.zc-thread-video{color:var(--accent-ink)}
 .zc-thread-more{position:relative}
@@ -143,8 +144,8 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-thread-scroll :is(.zc-meta,.zc-edited,.zc-thread-note){color:var(--zc-wallpaper-muted)}
 
 .zc-thread-scroll>.zh-error{margin:0}
-.zc-thread-day{align-self:center;margin-top:4px}
-.zc-thread-day>span{display:block;padding:6px 14px;border-radius:99px;background:var(--surface);color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.9px;text-transform:uppercase}
+.zc-thread-time{align-self:center;width:100%;margin:5px 0 3px;text-align:center;color:var(--zc-wallpaper-muted,var(--muted));font-size:11.5px;font-weight:600;line-height:1.4}
+.zc-thread-time>time,.zc-thread-time>span{display:inline-block;padding:2px 8px}
 .zc-thread-note{margin-top:-4px;padding:0 8px;text-align:center;font-size:12px;line-height:1.5;color:var(--muted);text-wrap:balance}
 .zc-thread-note>svg{display:inline-block;vertical-align:-2px;margin-right:2px}
 .zc-thread-empty{display:flex;flex-direction:column;align-items:center;gap:8px;margin:auto;padding:24px;text-align:center;color:var(--muted);font-size:13px}
@@ -152,19 +153,28 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-thread-empty h2{font-size:17px;color:var(--ink)}
 
 .zc-msg{display:flex;align-items:flex-start;gap:10px}
+.zc-msg:is(.zc-group-middle,.zc-group-end){margin-top:-11px}
+.zc-msg.zc-receipt-boundary+.zc-msg:is(.zc-group-middle,.zc-group-end){margin-top:0}
 .zc-msg.mine{justify-content:flex-end}
+.zc-msg-avatar,.zc-msg-avatar-spacer{display:block;flex:none;align-self:flex-end;width:34px;height:34px}
 .zc-msg-avatar .zc-avatar{width:34px;height:34px}
+.zc-msg-avatar-spacer{visibility:hidden}
 .zc-msg-stack{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;max-width:min(78%,520px)}
 .zc-msg.mine .zc-msg-stack{align-items:flex-end}
 .zc-msg-gift .zc-msg-stack,.zc-msg-voice .zc-msg-stack{width:100%;max-width:min(86%,380px)}
 .zc-msg .bub{max-width:100%;padding:12px 16px;border:0;border-radius:20px;font-size:14.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
-.zc-msg.theirs .bub{background:var(--surface);color:var(--ink);border-top-left-radius:6px}
-.zc-msg.mine .bub{background:var(--accent);color:var(--cta-ink);border-bottom-right-radius:6px;box-shadow:0 10px 24px -14px color-mix(in srgb,var(--accent) 80%,transparent)}
+.zc-msg.theirs .bub{background:var(--surface);color:var(--ink)}
+.zc-msg.mine .bub{background:var(--accent);color:var(--cta-ink);box-shadow:0 10px 24px -14px color-mix(in srgb,var(--accent) 80%,transparent)}
+.zc-msg.theirs:is(.zc-group-middle,.zc-group-end) .bub{border-top-left-radius:6px}
+.zc-msg.theirs:is(.zc-group-start,.zc-group-middle) .bub{border-bottom-left-radius:6px}
+.zc-msg.mine:is(.zc-group-middle,.zc-group-end) .bub{border-top-right-radius:6px}
+.zc-msg.mine:is(.zc-group-start,.zc-group-middle) .bub{border-bottom-right-radius:6px}
 .zc-meta{display:flex;align-items:center;gap:5px;padding:0 4px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .zc-meta>time{text-transform:uppercase}
 .zc-meta>b{font-weight:600;color:var(--theme-danger,#ff8a9a)}
 .zc-tick{display:inline-flex}
 .zc-tick.read{color:var(--accent-ink)}
+.zc-seen{display:inline-flex;min-height:14px;padding-inline:4px;color:var(--zc-wallpaper-muted);font-size:11.5px;line-height:1.25}
 /* A call in the conversation: its kind, then how long it lasted or how it ended. */
 .zc-call-bubble{display:flex;align-items:center;gap:10px;min-width:156px;padding-block:10px;white-space:normal}
 .zc-call-icon{display:grid;flex:none;place-items:center;width:36px;height:36px;background:color-mix(in srgb,currentColor 14%,transparent)}
@@ -210,7 +220,7 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-composer[hidden]{display:none}
 .zc-composer-field{flex:1;min-width:0;display:flex;align-items:flex-end;gap:2px;min-height:54px;padding:4px;border:1px solid var(--line);border-radius:10px;background:var(--surface);transition:border-color 160ms ease,background-color 160ms ease}
 .zc-composer-field:focus-within{border-color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 3%,var(--surface))}
-.zc-composer-field>textarea{display:block;flex:1;min-width:0;width:0;height:44px;min-height:44px;max-height:min(132px,max(66px,25dvh));padding:11px 6px;border:0;resize:none;outline:none;background:transparent;color:var(--ink);caret-color:var(--accent-ink);font:inherit;font-size:16px;line-height:22px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.zc-composer-field>textarea{display:block;flex:1;min-width:0;width:0;height:44px;min-height:44px;max-height:min(132px,max(66px,25vh));max-height:min(132px,max(66px,25dvh));padding:11px 6px;border:0;resize:none;outline:none;background:transparent;color:var(--ink);caret-color:var(--accent-ink);font:inherit;font-size:16px;line-height:22px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .zc-composer-field>textarea::placeholder{color:var(--muted);opacity:1}
 .zc-composer-field>.zc-composer-icon{flex:none;display:grid;place-items:center;width:44px;height:44px;color:var(--muted);transition:color 160ms ease,background-color 160ms ease}
 .zc-composer-field>.zc-composer-add[aria-expanded="true"]{color:var(--accent-ink);background:var(--accent-wash)}
@@ -230,7 +240,7 @@ html:root[data-theme="dark"] .zc-thread{
    The compact Gift button still opens the whole catalog. */
 .zh-keyboard-open .zc-thread :is(.zc-thread-live,.zc-gift-strip){display:none}
 @media(max-height:600px){.zc-thread .zc-gift-strip{display:none}.zc-thread:has(.zc-composer-field:focus-within,#zc-emoji:not([hidden]),#zc-attach:not([hidden])) .zc-thread-live{display:none}}
-@media(prefers-reduced-motion:reduce){.zc-thread-live h2>i,.zc-voice.playing .zc-wave>i{animation:none}.zc-composer *{transition:none}.zc-composer-send:not(:disabled):active,.zc-thread-video:active{transform:none}}
+@media(prefers-reduced-motion:reduce){.zc-thread-live h2>i,.zc-voice.playing .zc-wave>i{animation:none}.zc-composer *,.zc-thread-title small{transition:none}.zc-composer-send:not(:disabled):active,.zc-thread-video:active{transform:none}}
 
 /* Phone numbers and abusive words the server hid from chat: a blur, never readable or copyable. */
 .chat-hidden{display:inline-block;filter:blur(4px);opacity:.7;user-select:none;-webkit-user-select:none;letter-spacing:-.05em;vertical-align:-.1em}

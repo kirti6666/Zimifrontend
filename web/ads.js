@@ -195,7 +195,7 @@ function zaAbout(id){
   dialog.innerHTML=`<div class="zn-dialog-heading"><span>Sponsored</span><button type="button" aria-label="Close" onclick="zaCloseAbout()">${hi('close',21)}</button></div>
     <div class="za-about-body"><span class="za-about-icon">${hi('info',26)}</span><h2 id="za-about-title">About this ad</h2>
     <p>This promotion is from <b>${esc(ad.advertiser)}</b>${ad.domain?` and opens <b>${esc(ad.domain)}</b>`:''}.</p>
-    <p>Ads appear for members on the free plan. BinzoLive counts when an ad is shown and tapped to measure each campaign.</p>
+    <p>Ads appear for users on the free plan. BinzoLive counts when an ad is shown and tapped to measure each campaign.</p>
     <button type="button" class="za-about-premium" onclick="zaGoPremium()">${hi('crown',18)} Go ad-free with Premium</button>
     <button type="button" class="za-about-close" onclick="zaCloseAbout()">Not now</button></div>`;
   dialog.addEventListener('close',()=>dialog.remove());

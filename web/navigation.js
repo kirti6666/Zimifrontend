@@ -48,6 +48,7 @@ window.ZimiNavigation=(()=>{
       else homeCloseGifts();
       return;
     }
+    if(document.querySelector('.hs-sheet-gift-target')){hsCloseSheet();return}
     const beautyClose=document.querySelector('[data-zimi-beauty-close]');
     if(beautyClose){beautyClose.click();return}
     if(Room.sheet){zrClose();return}

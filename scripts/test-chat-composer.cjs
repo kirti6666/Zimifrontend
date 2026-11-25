@@ -287,26 +287,19 @@ async function shot(page, name) {
     close(retainedAnchor, anchor.offset, 'A live message preserves the intentionally scrolled history anchor');
     checks.push('live incoming message preserves draft, caret selection, focus and scrolled history anchor');
 
-    // Official support shares the field's base CSS but owns its128px resizer;
-    // a private-composer default must not make its long draft inaccessible.
+    // Binzo Team Chat is intentionally read-only and cannot inherit the
+    // private conversation composer on any viewport.
     await page.setViewportSize({ width: 390, height: 844 }); await receive(page, 'keyboard', { open: false });
     await page.evaluate(() => ZimiOfficialChat.open('chats'));
     const officialLoad = (await sent(page, 'official.load')).at(-1);
-    await receive(page, 'data.official', { id: 'bingo-live-official', name: 'BinzoLive', official: true, verified: true, canSend: true, messages: [{ id: 'support:000000000000000000000001', kind: 'support', senderType: 'official', body: 'How can we help?', createdAt: new Date().toISOString(), read: true }], total: 1, hasMore: false, before: null, unreadCount: 0, requestId: officialLoad.requestId });
-    const support = page.getByRole('textbox', { name: 'Message BinzoLive', exact: true });
+    await receive(page, 'data.official', { id: 'bingo-live-official', name: 'BinzoLive', official: true, verified: true, canSend: false, messages: [{ id: 'announcement:000000000000000000000001', kind: 'announcement', senderType: 'official', body: 'Official rules and updates appear here.', createdAt: new Date().toISOString(), read: true }], total: 1, hasMore: false, before: null, unreadCount: 0, requestId: officialLoad.requestId });
     for (const [width, height, dark] of [[390, 844, false], [320, 350, true]]) {
       await page.setViewportSize({ width, height }); await page.evaluate(value => ZimiThemes.setDark(value), dark);
-      await support.fill(longText); await support.focus(); await settle(page);
-      const field = await support.evaluate(element => { const css = getComputedStyle(element), rect = element.getBoundingClientRect(); element.scrollTop = element.scrollHeight; return { height: rect.height, maxLength: element.maxLength, overflowY: css.overflowY, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, scrollTop: element.scrollTop, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }; });
-      close(field.height, 128, 'Official support keeps its own long-draft128px cap'); assert.equal(field.maxLength, 4000);
-      assert.ok(['auto', 'scroll'].includes(field.overflowY) && field.scrollHeight > field.clientHeight && field.scrollTop > 0, 'Official support long text remains internally scrollable');
-      assert.ok(field.left >= 0 && field.right <= width && field.top >= 0 && field.bottom <= height, 'Official support field stays inside the viewport');
-      const submit = page.getByRole('button', { name: 'Send message', exact: true }), rect = await submit.boundingBox();
-      assert.ok(rect && rect.x >= 0 && rect.x + rect.width <= width && rect.y >= 0 && rect.y + rect.height <= height, 'Official support Send remains reachable');
-      assert.equal(await submit.isDisabled(), false); assert.equal(await support.inputValue(), longText);
+      await settle(page);assert.equal(await page.locator('.zo-composer,#zo-input').count(),0);assert.equal((await sent(page,'official.send')).length,0);
+      assert.match(await page.locator('.zo-message').innerText(),/Official rules and updates/);
       await shot(page, `official-${dark ? 'dark' : 'light'}-${width}x${height}`);
     }
-    checks.push('shared field CSS preserves official support long-draft128px cap, scrolling and reachable Send');
+    checks.push('Binzo Team Chat stays read-only across compact and standard viewports');
     assert.equal(await page.evaluate(() => __mediaRequests), 0, 'Typing/action switching never opens the microphone');
     assert.deepEqual(errors, [], 'The production composer has no uncaught browser exceptions');
     if (capture) fs.writeFileSync(path.join(artifacts, 'results.json'), JSON.stringify({ checks, metrics, screenshots }, null, 2));

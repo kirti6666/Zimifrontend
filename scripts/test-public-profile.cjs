@@ -10,18 +10,33 @@ const artifacts = path.join(require('node:os').tmpdir(), 'binzo-public-profile-p
 const id = suffix => `507f1f77bcf86cd7994390${suffix}`;
 const account = { user: { id: id('01'), name: 'Profile tester', role: 'sender', serverRole: 'user', hostStatus: 'none', isVerifiedHost: false, isPhoneVerified: true }, verification: 'none', balance: 1250, requiresOnboarding: false };
 const creatorAccount = { ...account, user: { ...account.user, id: id('02'), name: 'Approved creator', role: 'host', serverRole: 'host', hostStatus: 'approved', isVerifiedHost: true }, verification: 'verified' };
-const creator = { id: id('11'), name: 'Mira North', role: 'host', serverRole: 'host', category: 'Music', city: 'Pune', languages: ['English', 'Hindi'], about: 'Acoustic evenings and thoughtful conversations.', online: true, onlineForCalls: true, verified: true, availableForCall: true, followers: 127, following: false, ratePerMin: 15, entryFee: 0 };
+const avatar = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1sAAAAASUVORK5CYII=';
+const creator = { id: id('11'), name: 'Mira North', avatarUrl: avatar, role: 'host', serverRole: 'host', category: 'Music', city: 'Pune', languages: ['English', 'Hindi'], about: 'Acoustic evenings and thoughtful conversations.', online: true, onlineForCalls: true, verified: true, availableForCall: true, followers: 127, following: false, ratePerMin: 15, entryFee: 0 };
 const other = { ...creator, id: id('12'), name: 'Asha Sen', city: 'Jaipur', online: true, onlineForCalls: false, availableForCall: false };
 const member = { id: id('13'), name: 'Rohan Patel', role: 'sender', serverRole: 'user', city: 'Kochi', online: false, verified: false, availableForCall: false, followers: 3 };
 const feed = { hosts: [creator], stage: [], featured: creator, total: 1, page: 1, limit: 20, categories: ['Music'], broadcasterCount: 0, availableCount: 1, unreadCount: 0 };
 const profile = (person = creator, extra = {}) => ({ ...person, followingCount: 9, following: false, joined: '2026-02-03T12:00:00.000Z', interests: ['Music', 'Travel'], level: 4, crown: false, ...extra });
 const photo = { id: id('41'), mediaUrl: 'https://media.example.test/profile-post.jpg', kind: 'photo', caption: 'An acoustic evening.' };
+const supporters = [
+  { id: id('71'), name: 'Riya Kapoor', avatarUrl: avatar, coins: 12500, serverRole: 'user', verified: false },
+  { id: id('72'), name: 'Kabir Host', avatarUrl: null, coins: 5300, serverRole: 'host', verified: true },
+];
 const receive = (page, type, data = {}) => page.evaluate(message => Native.receive(message), { type, data });
 const lastSent = (page, type) => page.evaluate(value => __sent.filter(message => message.type === value).at(-1)?.data, type);
 const sentCount = (page, type) => page.evaluate(value => __sent.filter(message => message.type === value).length, type);
 const button = (page, name) => page.getByRole('button', { name, exact: true });
 const tab = (page, name) => page.getByRole('tab', { name: new RegExp(`^${name}(?:\\s|\\(|$)`) });
 const skeletons = page => page.locator('.zu-page [role="status"][aria-busy="true"]');
+const hold = async (page, locator, duration = 650) => {
+  const box = await locator.boundingBox(); assert.ok(box, 'The profile photo is visible for a hold gesture');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down(); await page.waitForTimeout(duration); await page.mouse.up();
+};
+const cancelHold = async (page, locator) => {
+  const box = await locator.boundingBox(); assert.ok(box, 'The profile photo is visible for a cancelled hold');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down(); await page.waitForTimeout(100); await page.mouse.up(); await page.waitForTimeout(650);
+};
 
 async function run() {
   fs.mkdirSync(artifacts, { recursive: true });
@@ -62,6 +77,13 @@ async function run() {
     await receive(page, 'data.publicPosts', { id: person.id, posts, total, page: pageNumber, limit, requestId: request.requestId });
     return request;
   };
+  const acceptMvps = async (page, person = creator, rows = supporters, period) => {
+    const request = await lastSent(page, 'profile.mvps.load');
+    assert.equal(request.id, person.id, 'The MVP request targets the displayed Host');
+    if (period) assert.equal(request.period, period, 'The MVP request uses the selected period');
+    await receive(page, 'data.profileMvps', { ...request, supporters: rows });
+    return request;
+  };
   const layout = async (page, label) => {
     const actual = await page.locator('.zu-page').evaluate(element => {
       const box = element.getBoundingClientRect();
@@ -76,6 +98,36 @@ async function run() {
     assert.equal(actual.clippedActions, false, `${label}: buttons remain within the profile`);
     assert.equal(actual.animations, 0, `${label}: reduced motion suppresses decorative animations`);
     assert.equal(await button(page, 'Message').isVisible(), true);
+  };
+  const compactLayout = async (page, label) => {
+    const metrics = await page.locator('.zu-page').evaluate(pageRoot => {
+      const cover=pageRoot.querySelector('.zu-cover'),avatar=pageRoot.querySelector('.zu-avatar'),stats=pageRoot.querySelector('.zu-stats'),tabs=pageRoot.querySelector('.zu-tabs'),toolbarTitle=pageRoot.querySelector('.zu-toolbar>span'),content=pageRoot.querySelector('.zu-content'),actionbar=pageRoot.querySelector('.zu-actionbar'),back=pageRoot.querySelector('.zu-toolbar .zb-back'),toolbarAction=pageRoot.querySelector('.zu-toolbar-more');
+      const rect=element=>element?.getBoundingClientRect();
+      const columns=element=>getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length;
+      return {
+        coverHeight:rect(cover)?.height||0,
+        avatarSize:rect(avatar)?.width||0,
+        statColumns:columns(stats),
+        statsBackground:getComputedStyle(stats).backgroundColor,
+        tabDisplay:getComputedStyle(tabs).display,
+        tabColumns:columns(tabs),
+        toolbarTitleVisible:toolbarTitle?getComputedStyle(toolbarTitle).display!=='none':false,
+        contentTop:parseFloat(getComputedStyle(content).marginTop)||0,
+        actionPosition:getComputedStyle(actionbar).position,
+        backTop:(rect(back)?.top||0)-(rect(cover)?.top||0),
+        actionTop:(rect(toolbarAction)?.top||0)-(rect(cover)?.top||0)
+      };
+    });
+    assert.ok(metrics.coverHeight>=180&&metrics.coverHeight<=190,`${label}: compact cover stays near the measured 186px reference (${metrics.coverHeight}px)`);
+    assert.ok(metrics.avatarSize>=72&&metrics.avatarSize<=80,`${label}: compact avatar stays near the measured 76px reference (${metrics.avatarSize}px)`);
+    assert.equal(metrics.statColumns,3,`${label}: public statistics remain a three-column card`);
+    assert.notEqual(metrics.statsBackground,'rgba(0, 0, 0, 0)',`${label}: public statistics use the raised surface`);
+    assert.deepEqual([metrics.tabDisplay,metrics.tabColumns],['grid',2],`${label}: public Posts and MVP use the segmented control`);
+    assert.equal(metrics.toolbarTitleVisible,false,`${label}: compact cover omits the redundant Profile label`);
+    assert.ok(metrics.contentTop<=12,`${label}: content follows the compact identity without a large gap`);
+    assert.equal(metrics.actionPosition,'fixed',`${label}: public actions remain fixed and reachable`);
+    assert.ok(metrics.backTop>=10&&metrics.backTop<=24,`${label}: Back stays at the top of the cover (${metrics.backTop}px)`);
+    assert.ok(metrics.actionTop>=10&&metrics.actionTop<=24,`${label}: More stays at the top of the cover (${metrics.actionTop}px)`);
   };
   try {
     const preview = await open(true);
@@ -98,12 +150,52 @@ async function run() {
     await preview.screenshot({ path: path.join(artifacts, 'public-profile-mobile-light.png') });
     console.log('PASS public profile: premium preview, responsive dark/light layouts, reduced motion, screenshots');
 
+    // Exercise the reference's public User state in an isolated page so this
+    // visual check cannot affect the relationship/cache scenarios below.
+    const memberPage=await open();
+    await navigate(memberPage,member);await acceptProfile(memberPage,member);await acceptPosts(memberPage,member);
+    assert.deepEqual(await memberPage.locator('.zu-stats span').allInnerTexts(),['Posts','Followers','Following'],'A public User exposes only real public statistics in the reference order');
+    assert.equal(await memberPage.locator('.zu-stats').getByText(/Coins|Diamonds/).count(),0,'Another User never receives a fabricated wallet balance');
+    assert.equal(await button(memberPage,'Message').count(),1,'Another User keeps the single Message action');
+    assert.equal(await memberPage.locator('#zu-follow,.zu-gift,#zu-call,#zu-voice-call,#zu-video-call').count(),0,'A member viewer gets no unauthorized User actions');
+    const memberAvatar=memberPage.locator('.zu-avatar').first();
+    await memberAvatar.click();
+    assert.equal(await memberPage.evaluate(()=>S.v),'user','A short public-profile photo tap keeps the current User profile');
+    assert.equal(await memberPage.locator('.zu-avatar-preview').count(),0,'A short tap does not open the hold-only viewer');
+    await cancelHold(memberPage,memberAvatar);
+    assert.equal(await memberPage.locator('.zu-avatar-preview').count(),0,'Releasing before the hold threshold cancels the viewer');
+    await hold(memberPage,memberAvatar);
+    const memberPreview=memberPage.locator('.zu-avatar-preview[role="dialog"]');
+    await memberPreview.waitFor();
+    const previewGeometry=await memberPreview.evaluate(dialog=>{
+      const outer=dialog.getBoundingClientRect(),media=dialog.querySelector('.zu-avatar-preview-media').getBoundingClientRect();
+      return {outerWidth:outer.width,outerHeight:outer.height,viewportWidth:innerWidth,viewportHeight:innerHeight,mediaWidth:media.width,mediaHeight:media.height};
+    });
+    assert.ok(Math.abs(previewGeometry.outerWidth-previewGeometry.viewportWidth)<1&&Math.abs(previewGeometry.outerHeight-previewGeometry.viewportHeight)<1,'The profile photo viewer fills the phone viewport');
+    assert.ok(previewGeometry.mediaWidth>=250&&Math.abs(previewGeometry.mediaWidth-previewGeometry.mediaHeight)<1,'The profile photo opens in a large circular viewport');
+    await memberPage.screenshot({path:path.join(artifacts,'public-user-avatar-preview.png')});
+    assert.match(await memberPreview.innerText(),new RegExp(member.name),'The User preview identifies the profile being viewed');
+    assert.equal(await memberPreview.locator('img').count(),0,'A User without a safe photo gets the large fallback rather than a broken image');
+    await button(memberPage,'Close profile photo').click();
+    await memberAvatar.focus();await memberPage.keyboard.press('Enter');
+    await memberPreview.waitFor();
+    await memberPage.keyboard.press('Escape');
+    await memberPreview.waitFor({state:'detached'});
+    assert.equal(await memberPreview.count(),0,'Escape closes the keyboard-opened profile photo viewer');
+    for(const width of [320,390]) {
+      await memberPage.setViewportSize({width,height:844});
+      await layout(memberPage,`Public User ${width}px`);
+      await compactLayout(memberPage,`Public User ${width}px`);
+    }
+    await memberPage.screenshot({ path: path.join(artifacts, 'public-user-compact.png') });
+    await memberPage.close();
+
     const page = await open();
     const first = await navigate(page);
     assert.ok(first.requestId != null, 'Profile loads have a correlation identifier');
     assert.ok(await skeletons(page).count() > 0, 'Profile loading uses a labelled layout skeleton');
     assert.equal(await button(page, 'Start video call').isDisabled(), true, 'Cached host identity cannot start a call before the profile read settles');
-    assert.doesNotMatch(await page.locator('.zu-page').innerText(), /Lv\s+\d|66\d{6}|MVP/, 'No synthetic standing or account identifiers appear while loading');
+    assert.doesNotMatch(await page.locator('.zu-page').innerText(), /Lv\s+\d|66\d{6}/, 'No synthetic standing or account identifiers appear while loading');
     await receive(page, 'data.loading', { resource: 'publicProfile', id: creator.id, requestId: first.requestId, loading: false, error: 'This profile is temporarily unavailable.' });
     await page.getByRole('alert').filter({ hasText: 'This profile is temporarily unavailable.' }).waitFor();
     await page.getByRole('alert').filter({ hasText: 'This profile is temporarily unavailable.' }).getByRole('button', { name: 'Try again', exact: true }).click();
@@ -115,11 +207,96 @@ async function run() {
     assert.equal(await skeletons(page).count(), 0, 'Completed profile and post reads clear their skeletons');
     assert.match(await page.locator('.zu-page').innerText(), /127/, 'Followers come from the public profile');
     assert.equal(await page.locator('.zu-page .post,.zu-page .zu-post').count(), 0, 'An empty server gallery does not show preview posts');
-    await tab(page, 'About').click();
-    assert.equal(await tab(page, 'About').getAttribute('aria-selected'), 'true');
-    assert.match(await page.locator('.zu-page').innerText(), /Acoustic evenings and thoughtful conversations/);
-    await tab(page, 'Posts').click();
-    console.log('PASS public profile: real loading, retry, empty gallery, biography and authoritative counts');
+    assert.equal(await page.locator('.zu-bio').innerText(), creator.about, 'The biography remains visible in the profile identity');
+    assert.deepEqual(await page.locator('.zu-stats span').allInnerTexts(),['Diamonds','Followers','Following'],'A public Host shows the reference statistics in order');
+    assert.equal(await page.locator('.zu-stats strong').first().innerText(),'—','A public Host without a Diamond total never displays the viewer’s balance or a fabricated zero');
+    assert.equal(await tab(page, 'Posts').getAttribute('aria-selected'), 'true', 'The Posts gallery stays available below the Host statistics');
+    assert.equal(await tab(page, 'MVP').count(), 1, 'The MVP tab stays available below the Host statistics');
+    assert.match(await page.locator('.zu-meta').innerText(),/English/,'The compact public profile uses language metadata like the reference');
+    assert.doesNotMatch(await page.locator('.zu-meta').innerText(),/Pune/,'The compact public profile does not duplicate city when language is available');
+    assert.match(await page.locator('.zu-call-info>span').innerText(),/Video call rate/i,'The Host action bar uses the compact reference rate label');
+    const hostAvatar=page.locator('.zu-avatar').first();
+    await cancelHold(page,hostAvatar);
+    assert.equal(await page.locator('.zu-avatar-preview').count(),0,'A cancelled Host hold never flashes the viewer');
+    await hold(page,hostAvatar);
+    const hostPreview=page.locator('.zu-avatar-preview[role="dialog"]');
+    await hostPreview.waitFor();
+    assert.equal(await hostPreview.locator('img').getAttribute('src'),avatar,'The full-screen Host preview uses only the current profile photo');
+    assert.doesNotMatch(await hostPreview.innerText(),/Coins|Diamonds|Followers|Following/,'The photo viewer exposes no wallet or profile statistics');
+    await page.evaluate(()=>zuBack());
+    assert.deepEqual([await page.evaluate(()=>S.v),await hostPreview.count()],['host',0],'Back closes the photo viewer before leaving the Host profile');
+    for(const width of [320,390]) {
+      await page.setViewportSize({width,height:844});
+      await layout(page,`Public Host ${width}px`);
+      await compactLayout(page,`Public Host ${width}px`);
+    }
+    await page.setViewportSize({width:390,height:844});
+    await page.screenshot({ path: path.join(artifacts, 'public-host-compact.png') });
+    const mvpReadsBefore = await sentCount(page, 'profile.mvps.load');
+    await tab(page, 'MVP').click();
+    assert.equal(await tab(page, 'MVP').getAttribute('aria-selected'), 'true');
+    const mvpPanel = page.locator('#zu-panel');
+    assert.equal(await mvpPanel.getByRole('heading', { name: 'Top supporters', exact: true }).count(), 1);
+    const weekRequest = await lastSent(page, 'profile.mvps.load');
+    assert.deepEqual({ id: weekRequest.id, period: weekRequest.period }, { id: creator.id, period: 'week' }, 'Opening MVP loads this Host\'s weekly supporters');
+    assert.equal(await sentCount(page, 'profile.mvps.load'), mvpReadsBefore + 1, 'Opening MVP issues one read');
+    await page.getByRole('status', { name: 'Loading top supporters', exact: true }).waitFor();
+    const thisWeek = mvpPanel.getByRole('button', { name: 'This week', exact: true });
+    const allTime = mvpPanel.getByRole('button', { name: 'All time', exact: true });
+    assert.deepEqual([await thisWeek.getAttribute('aria-pressed'), await allTime.getAttribute('aria-pressed')], ['true', 'false']);
+    await allTime.click();
+    const allRequest = await lastSent(page, 'profile.mvps.load');
+    assert.deepEqual({ id: allRequest.id, period: allRequest.period }, { id: creator.id, period: 'all' }, 'Changing period loads all-time supporters');
+    assert.ok(allRequest.requestId > weekRequest.requestId, 'Each period owns a new correlation identifier');
+    await receive(page, 'data.profileMvps', { ...weekRequest, supporters: [{ ...supporters[0], name: 'Stale weekly supporter' }] });
+    assert.equal(await mvpPanel.getByText('Stale weekly supporter', { exact: true }).count(), 0, 'A previous period cannot replace the active board');
+    await receive(page, 'data.loading', { resource: 'profileMvps', ...allRequest, loading: false, error: 'Supporters could not be loaded.' });
+    await mvpPanel.getByRole('alert').filter({ hasText: 'Supporters could not be loaded.' }).waitFor();
+    await mvpPanel.getByRole('button', { name: 'Try again', exact: true }).click();
+    const allRetry = await lastSent(page, 'profile.mvps.load');
+    assert.ok(allRetry.requestId > allRequest.requestId, 'Retry owns a fresh MVP request');
+    await receive(page, 'data.profileMvps', { ...allRequest, supporters });
+    assert.equal(await mvpPanel.locator('.zu-mvp-row').count(), 0, 'A retired response cannot finish the retry');
+    await acceptMvps(page, creator, supporters, 'all');
+    assert.deepEqual(await mvpPanel.locator('.zu-mvp-name>strong').allInnerTexts(), ['Riya Kapoor', 'Kabir Host'], 'The server order becomes the visible ranking');
+    assert.deepEqual(await mvpPanel.locator('.zu-mvp-coins>strong').allInnerTexts(), ['12,500', '5,300'], 'Every ranked row uses its real coin total');
+    assert.equal(await mvpPanel.locator('.zu-mvp-row').count(), supporters.length, 'No dummy supporter rows are added');
+    assert.equal(await mvpPanel.locator('.zu-mvp-coins [data-icon="coin"]').count(), supporters.length, 'MVP totals use Coins rather than Diamonds');
+    await acceptMvps(page, creator, [
+      ...supporters,
+      { ...supporters[0], id: id('73'), name: 'Sara', coins: 2000 },
+      { ...supporters[0], id: id('74'), name: 'W'.repeat(32), coins: 1500 },
+      { ...supporters[0], id: id('75'), name: 'Dev', coins: 1000 },
+    ], 'all');
+    const listedCards = mvpPanel.locator('.zu-mvp-list .zu-mvp-row');
+    assert.equal(await listedCards.count(), 2, 'Ranks four and five appear below the podium');
+    for (const width of [320, 360, 390, 768]) {
+      await page.setViewportSize({ width, height: 844 });
+      const bounds = await listedCards.evaluateAll(cards => {
+        const board = cards[0].closest('.zu-mvp-board').getBoundingClientRect();
+        return cards.map(card => {
+          const { left, right } = card.getBoundingClientRect();
+          return [left - board.left, right - board.right, card.scrollWidth - card.clientWidth];
+        });
+      });
+      assert.deepEqual(bounds, [[0, 0, 0], [0, 0, 0]], `${width}px: listed MVP cards fill the board without clipping their contents`);
+    }
+    await page.setViewportSize({ width: 360, height: 844 });
+    const longName = listedCards.first().locator('.zu-mvp-name > strong');
+    assert.ok(await longName.evaluate(el => el.scrollWidth > el.clientWidth && getComputedStyle(el).textOverflow === 'ellipsis'), 'A long supporter name truncates within the card');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await receive(page, 'gift.sent', { to: creator.id, coins: 99 });
+    const refreshedMvp = await lastSent(page, 'profile.mvps.load');
+    assert.ok(refreshedMvp.requestId > allRetry.requestId, 'A confirmed gift refreshes the open Host MVP board');
+    assert.equal(refreshedMvp.period, 'all', 'Gift refresh preserves the selected MVP period');
+    await receive(page, 'data.profileMvps', { ...refreshedMvp, supporters });
+    await mvpPanel.getByRole('button', { name: /View Kabir Host's profile/ }).click();
+    assert.deepEqual(await page.evaluate(() => [S.v, S.h]), ['host', supporters[1].id], 'A verified Host supporter opens the Host profile route');
+    await navigate(page); await acceptProfile(page); await acceptPosts(page);
+    await tab(page, 'MVP').click(); await acceptMvps(page, creator, supporters, 'week');
+    await mvpPanel.getByRole('button', { name: /View Riya Kapoor's profile/ }).click();
+    assert.deepEqual(await page.evaluate(() => [S.v, S.u]), ['user', supporters[0].id], 'A User supporter opens the User profile route');
+    console.log('PASS public profile: real MVP loading, period switching, retry/stale isolation, ranked coin totals and supporter navigation');
 
     await navigate(page);
     await acceptProfile(page);
@@ -135,7 +312,7 @@ async function run() {
     await acceptPosts(page, creator, [photo], 2, 1, 1);
     const gallery = page.locator('.zu-gallery');
     assert.equal(await gallery.locator('img').first().getAttribute('src'), photo.mediaUrl, 'Public posts use the production media URL');
-    assert.equal(await page.locator('.zu-page .lk,.zu-page .mvp').count(), 0, 'The real gallery does not invent likes or supporter rankings');
+    assert.equal(await page.locator('.zu-page .lk').count(), 0, 'The real gallery does not invent like metadata');
     await button(page, 'Load more posts').click();
     const more = await lastSent(page, 'profile.posts.load');
     assert.equal(more.page, 2);
@@ -158,7 +335,10 @@ async function run() {
     assert.equal(await page.getByRole('dialog').count(), 0);
     await tab(page, 'Posts').focus();
     await page.keyboard.press('ArrowRight');
-    assert.equal(await tab(page, 'About').getAttribute('aria-selected'), 'true', 'Profile tabs support keyboard navigation');
+    assert.equal(await tab(page, 'MVP').getAttribute('aria-selected'), 'true', 'Profile tabs support keyboard navigation');
+    await page.getByRole('status', { name: 'Loading top supporters', exact: true }).waitFor();
+    await acceptMvps(page, creator, [], 'week');
+    assert.equal(await page.locator('#zu-panel .zu-mvp-empty').innerText(), 'No MVP');
     await page.keyboard.press('Home');
     assert.equal(await tab(page, 'Posts').getAttribute('aria-selected'), 'true');
     console.log('PASS public profile: real photo loading/retry, pagination, stale response isolation, post feed and keyboard tabs');
@@ -168,7 +348,7 @@ async function run() {
     await receive(page, 'data.home', { ...feed, hosts: [unavailable], featured: unavailable });
     assert.equal(await button(page, 'Start video call').isEnabled(), true, 'A host availability toggle never prevents a member from opening a manual call');
     assert.match(await page.locator('.zu-call-info').innerText(), /20\s+coins \/ min/, 'The server call rate remains visible when the host is not taking instant calls');
-    assert.equal(await page.locator('.zu-stats strong').first().innerText(), '127', 'Discovery updates do not overwrite detailed public profile counts');
+    assert.equal(await page.locator('.zu-stats>div').filter({hasText:'Followers'}).locator('strong').innerText(), '127', 'Discovery updates do not overwrite detailed public profile counts');
     assert.equal(await button(page, 'Follow').isEnabled(), true, 'Discovery updates do not replace the profile relationship');
     assert.equal(await page.getByRole('button', { name: /^Open photo/ }).count(), 2, 'Presence changes preserve the loaded gallery');
     assert.equal(await sentCount(page, 'profile.load'), readsBeforePresence, 'A live presence update does not restart profile loading');
@@ -223,7 +403,9 @@ async function run() {
     console.log('PASS public profile: pending follow survives navigation without duplicate writes or a stranded action');
 
     await page.evaluate(() => window.dispatchEvent(new Event('offline')));
-    await tab(page, 'About').click();
+    await tab(page, 'MVP').click();
+    await acceptMvps(page, creator, [], 'week');
+    assert.equal(await page.locator('#zu-panel .zu-mvp-empty').innerText(), 'No MVP', 'Offline redraws preserve the MVP empty state');
     assert.equal(await page.locator('#zu-follow').isDisabled(), true);
     assert.equal(await button(page, 'Message').isDisabled(), true);
     assert.equal(await button(page, 'Start video call').isDisabled(), true);
@@ -242,6 +424,7 @@ async function run() {
     assert.equal(await page.evaluate(() => __copied.at(-1)), creator.id, 'Copy uses the real account identifier');
     await page.keyboard.press('Escape');
     await button(page, 'Message').click();
+    await page.waitForFunction(id=>__sent.some(message=>message.type==='chat.open'&&message.data?.with===id),creator.id);
     assert.equal((await lastSent(page, 'chat.open')).with, creator.id);
     await navigate(page);
     await acceptProfile(page); await acceptPosts(page);
@@ -325,7 +508,7 @@ async function run() {
     assert.equal(await button(page, 'Message').isEnabled(), true, 'Hosts can message other hosts');
     assert.equal(await button(page, 'Follow').count(), 0, 'Host-to-host Follow is unavailable');
     await navigate(page, member);
-    await acceptProfile(page, member);
+    await acceptProfile(page, member);await acceptPosts(page,member);
     assert.equal(await button(page, 'Message').isEnabled(), true, 'An approved host can reply to an existing member');
     assert.equal(await button(page, 'Follow').count(), 1, 'A host can follow a member');
     assert.equal(await button(page, 'Start video call').count(), 0, 'Member profiles do not advertise the member call action');
@@ -334,6 +517,7 @@ async function run() {
     assert.equal(await page.locator('.zu-page [aria-label="Verified creator"],.zu-page [aria-label="Verified user"]').count(), 0, 'An unverified member receives no verified badge');
     assert.doesNotMatch(await page.locator('.zu-page').innerText(), /127|Acoustic evenings/, 'A member profile never leaks the previously viewed creator content');
     await button(page, 'Message').click();
+    await page.waitForFunction(id=>__sent.some(message=>message.type==='chat.open'&&message.data?.with===id),member.id);
     assert.equal((await lastSent(page, 'chat.open')).with, member.id, 'Member Message uses S.u rather than a stale host target');
     console.log('PASS public profile: creator/member permissions, host Follow and calls, privacy and chat-target isolation');
 
@@ -345,8 +529,11 @@ async function run() {
     await acceptProfile(page, hostile, { interests: [attack] });
     await acceptPosts(page, hostile);
     await page.getByRole('heading', { name: attack, exact: true }).waitFor();
-    await tab(page, 'About').click();
-    assert.match(await page.locator('.zu-page').innerText(), /O'Neil & friends/);
+    assert.equal(await page.locator('.zu-bio').innerText(), attack, 'Hostile biography content remains visible as identity text');
+    await tab(page, 'MVP').click();
+    await acceptMvps(page, hostile, [], 'week');
+    assert.equal(await page.locator('#zu-panel .zu-mvp-empty').innerText(), 'No MVP');
+    assert.match(await page.locator('.zu-identity').innerText(), /O'Neil & friends/);
     assert.equal(await page.locator('.zu-page [onerror],.zu-page script,.zu-page iframe').count(), 0, 'Untrusted public content stays text');
     assert.equal(await page.evaluate(() => window.__profileXss), undefined);
     const unsafeSource = await page.locator('.zu-page img').evaluateAll(images => images.some(image => /javascript:|onerror=/.test(image.getAttribute('src') || '')));
@@ -370,7 +557,7 @@ async function run() {
     assert.equal(await page.locator('#nav [aria-current="page"]').innerText(), 'Profile', 'The shared layout retains the selected primary tab');
     assert.equal(await page.locator('#zu-follow, #zu-message, #zu-call, .zu-gift').count(), 0, 'Nothing to follow, message, call or gift on your own profile');
     assert.equal(await button(page, 'More profile options').count(), 0, 'You cannot report or block yourself');
-    assert.equal(await button(page, 'Open settings').count(), 1, 'The owner has account settings in the toolbar');
+    assert.equal(await button(page, 'Share profile').count(), 1, 'The owner toolbar exposes the reference Share action');
     assert.equal(await button(page, 'Change profile photo').count(), 1, 'The owner can change their avatar');
     assert.equal(await button(page, 'Change cover photo').count(), 1, 'The owner can change their cover');
     assert.equal(await page.locator('.zu-gallery .zu-photo').count(), 1, 'Your posts show as they do for others');

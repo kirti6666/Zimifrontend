@@ -207,6 +207,18 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
     assert.deepEqual(await icons('[data-zimi-beauty-tab]'), [['Skin', true], ['Color', true]], 'Tabs carry icons');
     assert.deepEqual(await icons('[data-zimi-beauty-feature]'), [['Smooth', true], ['Blemish', true], ['Whiten', true], ['Rosy', true], ['Clarity', true]], 'Skin offers one icon per adjustment');
     const skinOnly = basic.getByRole('switch', { name: 'Apply to skin only', exact: true });
+    for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }]) {
+      await basic.setViewportSize(viewport);
+      const layout = await basic.evaluate(() => {
+        const box = selector => document.querySelector(selector)?.getBoundingClientRect().toJSON();
+        const content = document.querySelector('.zb-reference-panel .zb-content');
+        return { content: box('.zb-reference-panel .zb-content'), features: box('.zb-reference-panel .zb-features'), skinOnly: box('.zb-reference-panel .zb-toggle'), scrollable: content.scrollHeight > content.clientHeight };
+      });
+      assert.ok(layout.features.top >= layout.content.top && layout.features.bottom <= layout.content.bottom + 1, `${viewport.width}x${viewport.height}: All five Beauty controls stay fully visible`);
+      assert.ok(layout.skinOnly.top >= layout.content.bottom - 1, `${viewport.width}x${viewport.height}: The next setting does not peek through the bottom edge: ${JSON.stringify(layout)}`);
+      assert.equal(layout.scrollable, true, `${viewport.width}x${viewport.height}: Additional skin settings remain available by scrolling`);
+    }
+    await basic.setViewportSize({ width: 390, height: 844 });
     await skinOnly.click();
     assert.deepEqual({ on: await basic.evaluate(() => ZimiBeauty.getParams().skinOnly), checked: await skinOnly.getAttribute('aria-checked') }, { on: true, checked: 'true' }, 'The skin-only switch reaches the controller');
     await skinOnly.click();

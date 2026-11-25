@@ -174,13 +174,12 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
 function go(v,id){
- if(['support','support-new','support-chat'].includes(v)&&window.ZimiOfficialChat)return window.ZimiOfficialChat.open(S.v==='settings'?'settings':'chats');
  if(v==='thread'&&id==='bingo-live-official'&&window.ZimiOfficialChat)return window.ZimiOfficialChat.open('chats');
  /* A minimized call stays the only call until it ends (web/ongoing-call.js). */
  if(S.bgCall&&["dial","dialback","call","voice","hcall"].includes(v)){appNotice("Finish your current call first.");return}
  if(v==='kyc'&&window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
  if(v==='explore')v='home';
- if(window.ZimiHostAccess?.financialHost()&&['precall','dial'].includes(v)){if(!isApprovedHost())window.ZimiHostAccess.guard();else appNotice('Use your host calling tools to contact members.');return}
+ if(window.ZimiHostAccess?.financialHost()&&['precall','dial'].includes(v)){if(!isApprovedHost())window.ZimiHostAccess.guard();else appNotice('Use your host calling tools to contact users.');return}
  if(window.ZimiHostAccess?.financialHost()&&['coins','refer'].includes(v)){appNotice('Your host account earns diamonds. Open your wallet to view them.');v='wallet'}
  if(v==='payout-history'&&window.ZimiHostAccess&&!window.ZimiHostAccess.financialHost()){appNotice('Withdrawals are available to host accounts.');return}
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(v)){appNotice('Live streaming is temporarily unavailable. Connect with a creator in a 1:1 call.');return}
@@ -212,7 +211,7 @@ function go(v,id){
  if(v==='search')S.sq='';
  if(S.v==='editprofile'&&v!=='editprofile'){mediaSequence++;obResetProfileDraft()}
  if(S.v!==v&&S.mediaPreparing){mediaSequence++;S.mediaPreparing=false}
- if(v==='editprofile'){S.editBack=S.v==='settings'?'settings':'profile';obResetProfileDraft()}
+ if(v==='editprofile'){S.editBack=['settings','settings-detail'].includes(S.v)?'settings':'profile';obResetProfileDraft()}
  window.ZimiThemes?.beforeNavigate(v);
  window.ZimiAds?.beforeNavigate(v);
  const navigationChange=window.ZimiNavigation?.before(v);
@@ -234,7 +233,12 @@ function go(v,id){
   if(DEMO){S.callRate=S.callRate||MY_RATE;S.callFee=MY_FEE;S.feeHold=FEE_HOLD;S.earlyLimit=EARLY_LIMIT;S.penaltyCoins=MY_FEE}
   S.rmsgs=[["sys","",`Connected with ${S.caller.n}`]].concat(DEMO?[["host",first(S.caller.n),"hi! finally got through"]]:[]);
   S.t=setInterval(hostTick,1000)}
- if(v==="thread"){S.msgs=DEMO?zcDemoThread(g(S.h)):[];Native.send("chat.open",{with:S.h})}
+  if(v==="thread"){
+   S.msgs=DEMO?zcDemoThread(g(S.h)):[];
+   const peer=String(S.h||"");
+   if(DEMO)Native.send("chat.open",{with:peer});
+   else contentAfterLoadingPaint(()=>{if(S.v==="thread"&&String(S.h)===peer)Native.send("chat.open",{with:peer})});
+  }
  if(v==="voice"&&DEMO)Native.send("call.start",{to:S.h,voice:true});
  if(v!=="precall")S.pcerr="";
  r();document.getElementById("screen").scrollTop=0;document.dispatchEvent(new CustomEvent("aurora:navigate"));window.ZimiNavigation?.after(navigationChange)}
@@ -900,19 +904,23 @@ function saveProfile(){
  if(S.mediaDirty?.avatar)profile.avatar=S.avatarData;
  if(S.mediaDirty?.cover)profile.cover=S.coverData||null;
  S.profileSaving=true;S.mediaError="";S.profileProgress="Saving…";S.profileRequestId=++mediaSequence;Native.send("profile.save",{...profile,requestId:S.profileRequestId});r()}
-function vEditProfile(){const busy=S.profileSaving||S.mediaPreparing||S.postPublishing,disabled=busy?"disabled":"";return `<div class="editwrap">
- <div class="editmedia"><div class="editcover">${S.coverData?`<img src="${imageSrc(S.coverData)}" alt="Cover preview">`:artC(me.seed+17)}
-  <label class="mediaedit coveredit">${I('flip',14)} Change cover<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'cover')" ${disabled}></label></div>
+function vEditProfile(){const busy=S.profileSaving||S.mediaPreparing||S.postPublishing,disabled=busy?"disabled":"",aboutLength=String(S.editAbout||"").length;return `<main class="editwrap edit-profile-page">
+ <section class="editmedia" aria-label="Profile photos"><div class="editcover">${S.coverData?`<img src="${imageSrc(S.coverData)}" alt="Cover preview">`:`<span class="editcover-placeholder" aria-hidden="true">${I('flip',22)}</span>`}
+  <label class="mediaedit coveredit" aria-label="Change cover photo"><span>${I('flip',14)} Change cover</span><input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'cover')" ${disabled}></label></div>
   <div class="editavatar"><span class="pic">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="Profile preview" data-face="${faceKind({gender:S.editGender||me.gender})}">`:face({gender:S.editGender||me.gender})}</span>
-   <label class="mediaedit" aria-label="Change profile photo">${I('flip',12)}<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'avatar')" ${disabled}></label></div></div>
- ${S.mediaPreparing?'<p role="status">Preparing your photo…</p>':""}${S.mediaError?`<div class="ob-error" role="alert">${esc(S.mediaError)}</div>`:""}
- <div class="editgroup"><label class="editlabel" for="editname">Display name</label><input class="editinput" id="editname" maxlength="32" value="${esc(S.editName)}" oninput="S.editName=this.value" ${disabled}></div>
- <div class="editgroup"><span class="editlabel" id="editgender">I am</span><div class="editchoices" role="group" aria-labelledby="editgender">${GENDERS.map(([value,label])=>`<button type="button" class="${(S.editGender||me.gender)===value?"on":""}" aria-pressed="${(S.editGender||me.gender)===value}" onclick="S.editGender='${value}';r()" ${disabled}>${label}</button>`).join("")}</div></div>
- <div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
- <div class="editgroup"><label class="editlabel" for="editcountry">Country</label><input class="editinput" id="editcountry" maxlength="100" autocomplete="country-name" value="${esc(S.editCountry)}" oninput="S.editCountry=this.value" ${disabled}></div>
- <div class="editgroup"><label class="editlabel" for="editabout">About</label><textarea class="editinput" id="editabout" maxlength="180" placeholder="Tell people about yourself" oninput="S.editAbout=this.value" ${disabled}>${esc(S.editAbout)}</textarea></div>
- <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
- <button type="button" class="zpost-editor-link" onclick="ZimiPostCreate.open()" ${disabled}>${I('plus',18)} Create a post ${I('chev',16)}</button></div>`}
+   <label class="mediaedit" aria-label="Change profile photo"><span>${I('flip',13)}</span><input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'avatar')" ${disabled}></label></div></section>
+ ${S.mediaPreparing?'<p class="editstatus" role="status">Preparing your photo…</p>':""}${S.mediaError?`<div class="ob-error editerror" role="alert">${esc(S.mediaError)}</div>`:""}
+ <section class="editsection" aria-labelledby="editdetails-title"><header class="editsection-head"><div><h2 id="editdetails-title">Profile details</h2><p>Shown on your public profile</p></div></header>
+  <div class="editdetails-card">
+   <div class="editgroup"><label class="editlabel" for="editname">Display name</label><input class="editinput" id="editname" maxlength="32" autocomplete="nickname" placeholder="Your display name" value="${esc(S.editName)}" oninput="S.editName=this.value" ${disabled}></div>
+   <div class="editgroup editgender"><span class="editlabel" id="editgender">Gender</span><div class="editchoices" role="group" aria-labelledby="editgender">${GENDERS.map(([value,label])=>`<button type="button" class="${(S.editGender||me.gender)===value?"on":""}" aria-pressed="${(S.editGender||me.gender)===value}" onclick="S.editGender='${value}';r()" ${disabled}>${label}</button>`).join("")}</div></div>
+   <div class="editlocation-grid"><div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" autocomplete="address-level2" placeholder="City" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
+    <div class="editgroup"><label class="editlabel" for="editcountry">Country</label><input class="editinput" id="editcountry" maxlength="100" autocomplete="country-name" placeholder="Country" value="${esc(S.editCountry)}" oninput="S.editCountry=this.value" ${disabled}></div></div>
+   <div class="editgroup editabout"><div class="editlabel-row"><label class="editlabel" for="editabout">About</label><span class="editcount" id="editabout-count">${aboutLength}/180</span></div><textarea class="editinput" id="editabout" maxlength="180" aria-describedby="editabout-count" placeholder="Tell people about yourself" oninput="S.editAbout=this.value;document.getElementById('editabout-count').textContent=this.value.length+'/180'" ${disabled}>${esc(S.editAbout)}</textarea></div>
+  </div>
+ </section>
+ <button type="button" class="zpost-editor-link editpost-link" aria-label="Create a post" onclick="ZimiPostCreate.open()" ${disabled}><span class="editpost-icon">${I('plus',18)}</span><span class="editpost-copy"><strong>Create a post</strong><small>Share a photo on your profile</small></span>${I('chev',16)}</button>
+ <div class="edit-save-bar"><button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button></div></main>`}
 
 function vProfile(){
  const host=isHost();
@@ -922,12 +930,12 @@ function vProfile(){
  return profilePage(p,me,true)}
 
 function kycLabel(){
- if(isHost())return "Admin approved";
+ if(isHost())return "Host verified";
  const status=S.hostAccess?.hostStatus||S.user?.hostStatus;
- if(status==="pending"||A().kyc==="pending")return "Under admin review";
+ if(status==="pending"||A().kyc==="pending")return "Legacy application under review";
  if(status==="suspended")return "Host access suspended";
- if(status==="rejected")return "Update your application";
- return "Apply for admin approval"}
+ if(status==="rejected")return "Contact support about your application";
+ return "Activate with an Agency Owner code"}
 
 function vSettings(){
  const rows=[
@@ -965,8 +973,8 @@ function vSettings(){
   </div></div>
 
   <div class="psec"><h3>Creator account</h3><div class="plist">
-   <button class="pitem" onclick="go('kyc')"><span class="pico">${I('shield',17)}</span>
-    <span class="tx"><span class="t1" style="display:block">${isHost()?"Host approval":"Creator application"}</span><span class="t2" style="display:block">${kycLabel()}</span></span><span class="ch">&rsaquo;</span></button>
+   <button class="pitem" onclick="${isHost()?"go('kyc')":"ZimiAgency.open('settings')"}"><span class="pico">${I('shield',17)}</span>
+    <span class="tx"><span class="t1" style="display:block">${isHost()?"Host verification":"Become a Host"}</span><span class="t2" style="display:block">${kycLabel()}</span></span><span class="ch">&rsaquo;</span></button>
    ${isHost()?`<button class="pitem" onclick="go('awards')"><span class="pico">${I('star',17)}</span>
     <span class="tx"><span class="t1" style="display:block">Awards</span><span class="t2" style="display:block">${S.tasks.filter(t=>t.p>=t.goal&&!t.claimed).length||"No"} reward(s) ready to receive</span></span><span class="ch">&rsaquo;</span></button>`:""}
   </div></div>
@@ -1132,8 +1140,8 @@ function vRing(){const c=S.caller;
   <span class="ringeye"><i></i>Incoming ${c.voice?'voice':'video'} call</span>
   <div class="ringorb pulse">${hcIdentityAvatar(c,112)}</div>
   <h2>${esc(c.n)}</h2>${about?`<p>${about}</p>`:''}
-  <span class="ringearn">${rate?`Member pays ${n(rate)} coins/min`:'Free call &middot; gifts are optional'}</span>
-  ${fee?`<span class="ringfee">Member entry fee: ${n(fee)} coins. Your eligible host share is credited as diamonds after ${hcHold(hold)}.</span>`:''}
+  <span class="ringearn">${rate?`User pays ${n(rate)} coins/min`:'Free call &middot; gifts are optional'}</span>
+  ${fee?`<span class="ringfee">User entry fee: ${n(fee)} coins. Your eligible host share is credited as diamonds after ${hcHold(hold)}.</span>`:''}
   <div class="ringact two">
    <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineRing()">${I("ph",25)}</button><span>Decline</span></span>
    <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall?'disabled':''} onclick="acceptRing()">${I(c.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
@@ -1642,7 +1650,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();window.ZimiBeauty?.afterRender?.();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiSupport?.after(supportFocus);window.ZimiOfficialChat?.after(officialFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();window.ZimiBeauty?.afterRender?.();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiSupport?.after(supportFocus);window.ZimiOfficialChat?.after(officialFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();window.hcAfterRender?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in

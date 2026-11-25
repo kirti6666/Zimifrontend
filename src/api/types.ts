@@ -144,6 +144,16 @@ export interface MemberUsers {
   limit: number;
 }
 
+export type ProfileDirectoryFilter = "all" | "online";
+/** Discoverable User and Host profiles returned in one stable page. */
+export interface ProfileDirectory {
+  profiles: Host[];
+  total: number;
+  page: number;
+  limit: number;
+  filter: ProfileDirectoryFilter;
+}
+
 /** Connected, publicly active approved hosts for the host Home tab. */
 export interface ActiveHosts {
   hosts: Host[];
@@ -168,6 +178,21 @@ export interface PublicPosts {
   total: number;
   page: number;
   limit: number;
+}
+
+export type ProfileMvpPeriod = "week" | "all";
+export interface ProfileMvpSupporter {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  coins: number;
+  serverRole?: "user" | "host";
+  verified?: boolean;
+}
+export interface ProfileMvps {
+  id: string;
+  period: ProfileMvpPeriod;
+  supporters: ProfileMvpSupporter[];
 }
 
 export type RelationshipKind = "followers" | "following";
@@ -225,22 +250,19 @@ export const OFFICIAL_CHAT_ID = "bingo-live-official";
 export const OFFICIAL_CHAT_NAME = "BinzoLive";
 export interface OfficialMessage {
   id: string;
-  kind: "announcement" | "support";
-  senderType: "user" | "official";
+  kind: "announcement";
+  senderType: "official";
   body: string;
   title?: string;
   createdAt: string;
   read: boolean;
-  clientMessageId?: string;
-  ticketId?: string;
-  sequence?: number;
 }
 export interface OfficialChatData {
   id: typeof OFFICIAL_CHAT_ID;
   name: typeof OFFICIAL_CHAT_NAME;
   official: true;
   verified: true;
-  canSend: true;
+  canSend: false;
   messages: OfficialMessage[];
   total: number;
   unreadCount: number;
@@ -253,11 +275,10 @@ export interface OfficialChatSummary {
   name: typeof OFFICIAL_CHAT_NAME;
   official: true;
   verified: true;
-  canSend: true;
+  canSend: false;
   lastMessage: Pick<OfficialMessage, "id" | "body" | "createdAt" | "kind" | "senderType"> & { title?: string } | null;
   unread: number;
 }
-export interface OfficialReceipt { message: OfficialMessage; official: OfficialChatSummary; }
 export interface OfficialReadResult { read: true; official: OfficialChatSummary; }
 export interface StreamChat { id: string; streamId: string; userId: string; name: string; text: string; createdAt: string; }
 export interface StreamCallRequest { id: string; streamId: string; userId: string; name: string; avatarUrl?: string; gender?: Gender | null; status: "pending" | "accepting" | "accepted" | "cancelled" | "declined"; createdAt: string; }
@@ -423,7 +444,7 @@ export interface ReferralSummary {
   appliedCode: string | null;
   canApplyCode: boolean;
 }
-export type LeaderboardPeriod = "daily" | "weekly" | "all";
+export type LeaderboardPeriod = "daily" | "weekly" | "monthly";
 /** Creators ranked by the gift coins they received in the period. */
 export interface LeaderboardEntry { id: string; name: string; avatarUrl: string; coins: number; rank: number; }
 export interface Leaderboard { period: LeaderboardPeriod; items: LeaderboardEntry[]; total: number; }
@@ -464,6 +485,7 @@ export interface Wallet {
   /** Server aggregates, never totals inferred from one page of history. */
   alreadyPaidPaise?: number;
   alreadyPaidDiamondUnits?: number;
+  lastPaidAt?: string;
 }
 export type DiamondStatisticsPeriod = "daily" | "weekly" | "monthly";
 export interface DiamondStatistics {
@@ -557,7 +579,7 @@ export interface PayoutKycInput {
 }
 export interface PayoutKyc {
   required: boolean;
-  kyc: { status: "missing" | "pending" | "verified" | "rejected"; id?: string; ownerId?: string; revision?: number; legalName?: string; panMasked?: string; payoutType?: "upi" | "bank"; payoutAddress?: string; bankLast4?: string; ifsc?: string; reason?: string; };
+  kyc: { status: "missing" | "pending" | "verified" | "rejected"; id?: string; ownerId?: string; revision?: number; legalName?: string; panMasked?: string; payoutType?: "upi" | "bank"; payoutAddress?: string; bankLast4?: string; ifsc?: string; reason?: string; createdAt?: string; reviewedAt?: string; };
 }
 export interface WithdrawalQuote {
   policyVersion: 1 | 2;

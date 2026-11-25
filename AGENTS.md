@@ -81,9 +81,10 @@ keeps it identical to the original Next.js version.
   queues, and route creator availability through the 1:1 call setup.
 - The Home header follows the user's reference: Following, Explore, For You
   and New tabs in place of the app name (the selected one larger and bold),
-  then Search and a gold trophy that opens the creator leaderboard (`board`,
-  `web/leaderboard.js`, real `GET /leaderboard/creators` data). No wallet or
-  notification bell on Home. The feeds map to the server's `mode`: Following
+  then Search, a gold trophy that opens the creator leaderboard (`board`,
+  `web/leaderboard.js`, real `GET /leaderboard/creators` data), and the
+  notification inbox bell with its unread dot. There is no wallet on Home. The
+  feeds map to the server's `mode`: Following
   = `following`, Explore = `popular` (default), For You = `foryou` (hosts not
   followed yet), New = `new` (latest hosts first). Under the header, country
   chips: Popular and India only for now (`country=India`), hidden on
@@ -186,15 +187,19 @@ keeps it identical to the original Next.js version.
   is true (at least briefly, at most 15s) and then shrinks away. Error states
   keep a text Retry/Try again button.
 - Automated welcome messages show in chats without an automation label.
-- Chat includes a default, verified **BinzoLive** system conversation for every
-  member and host, including hosts awaiting approval. It combines app updates
-  with that account's private support messages. Keep it pinned in All, show it
-  in Unread only when needed, and open it from Settings > Help & support. Do not
-  add a separate Help & support row to the Chat list. Its legacy identity is
-  `bingo-live-official`; it is not a callable user, creator, gift recipient or
-  sign-in account. Official verification comes from the server identity, never
-  from a matching name. Staff reply through the existing Support inbox; private
-  support must never become a broadcast or cross-account conversation.
+- Chat includes a default, verified, read-only **Binzo Team Chat** for every
+  sender and host, including hosts awaiting approval. It contains only official
+  updates, rules, regulations and announcements published by the Binzo owner.
+  The server targets each post to everyone, hosts or senders; never retain rows
+  across an authenticated account-role change or merge a fresh audience snapshot
+  with older rows. Keep Team Chat pinned in All and show it in Unread only when
+  needed. Settings > Help & support remains the separate private support center;
+  support messages never appear in Team Chat or as a separate Chat-list row.
+  New clients negotiate Team Chat with `teamChat=1` on its inbox/thread/read
+  requests so unmarked installed clients retain their legacy support flow. Its
+  legacy identity is `bingo-live-official`; it is not a callable user, creator,
+  gift recipient or sign-in account. Verification comes from the server identity,
+  never from a matching display name.
 - Chats has no "Online now" strip. Its tabs: All and Unread list conversations;
   Calls lists call history (`data.calls`: voice/video, direction, status) and
   Missed calls lists missed calls with Call back. Call rows use the full-width
@@ -322,9 +327,12 @@ keeps it identical to the original Next.js version.
   only one processed preview, retain call controls and native Back dismissal,
   and preserve the host's camera-swap preference when enlarging the local video.
   Its circular filter swatches are included in the shared ROUND contract.
-- Creator capabilities require current admin-approved host access.
-  Use `ZimiHostAccess` in the web UI and enforce approval in the native bridge
-  and backend; local role or verification presentation state grants no access.
+- Creator capabilities require current server-approved host access. A personal,
+  one-time Host joining code issued by an Agency Owner activates a new Host when
+  it is claimed; the public agency ID never does. Use `ZimiHostAccess` in the web
+  UI and enforce approval in the native bridge and backend; local role or
+  verification presentation state grants no access. Platform moderation can
+  still suspend or restore Host access.
 - Currency follows the authenticated account's server role separately from host
   approval: approved, pending, rejected and suspended hosts use Diamonds;
   members use Coins. Use `ZimiHostAccess.financialHost()` for financial display,

@@ -1,4 +1,4 @@
-export const NOTIFICATION_CATEGORIES = ["calls", "messages", "likes", "comments", "gifts", "appUpdates", "liveAlerts", "earningsAlerts"] as const;
+export const NOTIFICATION_CATEGORIES = ["calls", "messages", "likes", "comments", "follows", "gifts", "appUpdates", "liveAlerts", "earningsAlerts"] as const;
 export type NotificationCategory = typeof NOTIFICATION_CATEGORIES[number];
 export interface QuietHours { enabled: boolean; startHour: number; endHour: number; timeZone: string }
 export type NotificationPreferences = Record<NotificationCategory, boolean> & { quietHours: QuietHours };
@@ -22,6 +22,6 @@ export function validNotificationPreferencesPatch(value: unknown): value is Noti
 export function notificationPreferencesFrom(value: unknown): NotificationPreferences | null {
   if (value !== undefined && (!object(value) || !validNotificationPreferencesPatch(value))) return null;
   const input = value as NotificationPreferencesPatch | undefined;
-  return { calls: true, messages: true, likes: true, comments: true, gifts: true, appUpdates: true, liveAlerts: true, earningsAlerts: false,
+  return { calls: true, messages: true, likes: true, comments: true, follows: true, gifts: true, appUpdates: true, liveAlerts: true, earningsAlerts: false,
     ...input, quietHours: { enabled: false, startHour: 22, endHour: 8, timeZone: "Asia/Kolkata", ...input?.quietHours } };
 }

@@ -24,6 +24,16 @@ const navigate = (page,view,id) => page.evaluate(({view,id})=>go(view,id),{view,
 const lastSent = (page,type) => page.evaluate(type=>__sent.filter(message=>message.type===type).at(-1)?.data,type);
 const sentCount = (page,type) => page.evaluate(type=>__sent.filter(message=>message.type===type).length,type);
 const button = (page,name) => page.getByRole('button',{name,exact:true});
+const hold = async (page,locator,duration=650) => {
+  const box=await locator.boundingBox();assert.ok(box,'The owner profile photo is visible for a hold gesture');
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+  await page.mouse.down();await page.waitForTimeout(duration);await page.mouse.up();
+};
+const cancelHold = async (page,locator) => {
+  const box=await locator.boundingBox();assert.ok(box,'The owner profile photo is visible for a cancelled hold');
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+  await page.mouse.down();await page.waitForTimeout(100);await page.mouse.up();await page.waitForTimeout(650);
+};
 async function settleProfile(page,profile) {
   const request = await lastSent(page,'profile.load');
   assert.equal(request.id,profile.id,'Profile reads the intended account');
@@ -48,6 +58,59 @@ async function audit(page,label) {
   assert.equal(result.overflow,false,`${label}: no width overflow`);
   assert.equal(result.canvas,'rgb(255, 255, 255)',`${label}: white app canvas`);
   assert.deepEqual(result.wrong,[],`${label}: 10px corners except the round Back, call, avatar and switch controls, and no shadows`);
+}
+async function auditCompactProfile(page,label) {
+  const metrics=await page.locator('.zu-page').evaluate(pageRoot=>{
+    const cover=pageRoot.querySelector('.zu-cover'),avatar=pageRoot.querySelector('.zu-avatar'),stats=pageRoot.querySelector('.zu-stats'),tabs=pageRoot.querySelector('.zu-tabs'),toolbarTitle=pageRoot.querySelector('.zu-toolbar>span'),back=pageRoot.querySelector('.zu-toolbar .zb-back'),toolbarAction=pageRoot.querySelector('.zu-toolbar-more');
+    const rect=element=>element?.getBoundingClientRect();
+    const columns=element=>getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length;
+    return {
+      coverHeight:rect(cover)?.height||0,
+      avatarSize:rect(avatar)?.width||0,
+      statColumns:columns(stats),
+      statsBackground:getComputedStyle(stats).backgroundColor,
+      tabDisplay:getComputedStyle(tabs).display,
+      tabColumns:columns(tabs),
+      toolbarTitleVisible:toolbarTitle?getComputedStyle(toolbarTitle).display!=='none':false,
+      contentTop:parseFloat(getComputedStyle(pageRoot.querySelector('.zu-content')).marginTop)||0,
+      backTop:(rect(back)?.top||0)-(rect(cover)?.top||0),
+      actionTop:(rect(toolbarAction)?.top||0)-(rect(cover)?.top||0)
+    };
+  });
+  assert.ok(metrics.coverHeight>=180&&metrics.coverHeight<=190,`${label}: compact cover stays near the measured 186px reference (${metrics.coverHeight}px)`);
+  assert.ok(metrics.avatarSize>=72&&metrics.avatarSize<=80,`${label}: compact avatar stays near the measured 76px reference (${metrics.avatarSize}px)`);
+  assert.equal(metrics.statColumns,3,`${label}: statistics remain a three-column card`);
+  assert.notEqual(metrics.statsBackground,'rgba(0, 0, 0, 0)',`${label}: statistics use the raised card surface`);
+  assert.deepEqual([metrics.tabDisplay,metrics.tabColumns],['grid',2],`${label}: Posts and MVP use the two-segment control`);
+  assert.equal(metrics.toolbarTitleVisible,false,`${label}: compact cover omits the redundant Profile label`);
+  assert.ok(metrics.contentTop<=12,`${label}: content follows the compact identity without a large gap`);
+  assert.ok(metrics.backTop>=10&&metrics.backTop<=24,`${label}: Back stays at the top of the cover (${metrics.backTop}px)`);
+  assert.ok(metrics.actionTop>=10&&metrics.actionTop<=24,`${label}: Share stays at the top of the cover (${metrics.actionTop}px)`);
+}
+async function auditEditProfile(page,label) {
+  const metrics=await page.locator('.edit-profile-page').evaluate(root=>{
+    const rect=element=>element?.getBoundingClientRect(),cover=rect(root.querySelector('.editcover')),avatar=rect(root.querySelector('.editavatar')),coverAction=rect(root.querySelector('.coveredit')),avatarAction=rect(root.querySelector('.editavatar .mediaedit')),save=rect(root.querySelector('.editsave')),card=root.querySelector('.editdetails-card');
+    return {
+      overflow:document.documentElement.scrollWidth>innerWidth+1,
+      coverHeight:cover?.height||0,avatarSize:avatar?.width||0,
+      coverAction:[coverAction?.width||0,coverAction?.height||0],avatarAction:[avatarAction?.width||0,avatarAction?.height||0],
+      cardBackground:getComputedStyle(card).backgroundColor,cardRadius:getComputedStyle(card).borderRadius,
+      inputBorders:[...root.querySelectorAll('.editinput')].map(input=>getComputedStyle(input).borderTopWidth),
+      savePosition:getComputedStyle(root.querySelector('.edit-save-bar')).position,
+      saveVisible:!!save&&save.top>=0&&save.bottom<=innerHeight+1,saveHeight:save?.height||0,
+      bottomPadding:parseFloat(getComputedStyle(root).paddingBottom)||0
+    };
+  });
+  assert.equal(metrics.overflow,false,`${label}: no horizontal overflow`);
+  assert.ok(metrics.coverHeight>=154&&metrics.coverHeight<=162,`${label}: compact media cover (${metrics.coverHeight}px)`);
+  assert.ok(metrics.avatarSize>=72&&metrics.avatarSize<=80,`${label}: profile photo matches the compact profile avatar (${metrics.avatarSize}px)`);
+  assert.ok(metrics.coverAction.every(size=>size>=44),`${label}: Change cover keeps a 44px touch target`);
+  assert.ok(metrics.avatarAction.every(size=>size>=44),`${label}: Change profile photo keeps a 44px touch target`);
+  assert.notEqual(metrics.cardBackground,'rgba(0, 0, 0, 0)',`${label}: profile fields share one raised card`);
+  assert.equal(metrics.cardRadius,'10px',`${label}: details card follows shared corner geometry`);
+  assert.ok(metrics.inputBorders.every(width=>width==='0px'),`${label}: grouped fields have no individual outlines`);
+  assert.deepEqual([metrics.savePosition,metrics.saveVisible],['fixed',true],`${label}: Save profile stays visible at the bottom`);
+  assert.ok(metrics.saveHeight>=44&&metrics.bottomPadding>=90,`${label}: fixed Save action cannot cover the final row`);
 }
 (async()=>{
   const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH}:{})});
@@ -79,22 +142,66 @@ async function audit(page,label) {
     await settleProfile(page,publicProfile());
     await settlePosts(page);
     await page.getByRole('heading',{name:member.user.name,exact:true}).waitFor();
-    assert.deepEqual(await page.locator('.zu-tabs [role="tab"]').allInnerTexts(),['Posts\n0','About']);
+    assert.deepEqual(await page.locator('.zu-tabs [role="tab"]').allInnerTexts(),['Posts\n0','MVP']);
     assert.deepEqual(await page.locator('.zu-stats span').allInnerTexts(),['Coins','Followers','Following']);
     assert.equal(await page.locator('.zu-stats strong').first().innerText(),'1,250','Profile coins use the authenticated wallet balance');
+    assert.equal(await page.locator('.zu-stats').getByText('Diamonds',{exact:true}).count(),0,'A member profile never relabels Coins as Diamonds');
+    const mvpTab=page.getByRole('tab',{name:'MVP',exact:true});
+    const memberMvpReads=await sentCount(page,'profile.mvps.load');
+    await mvpTab.click();
+    assert.equal(await mvpTab.getAttribute('aria-selected'),'true','MVP replaces the About tab on a member profile');
+    const mvpPanel=page.locator('#zu-panel');
+    assert.equal(await mvpPanel.getByRole('heading',{name:'Top supporters',exact:true}).count(),1);
+    const thisWeek=mvpPanel.getByRole('button',{name:'This week',exact:true}),allTime=mvpPanel.getByRole('button',{name:'All time',exact:true});
+    assert.deepEqual([await thisWeek.getAttribute('aria-pressed'),await allTime.getAttribute('aria-pressed')],['true','false'],'MVP periods expose their selected state');
+    assert.equal(await mvpPanel.locator('.zu-mvp-empty').innerText(),'No MVP','Members use the exact empty MVP state');
+    assert.equal(await mvpPanel.locator('.zu-mvp-row,[data-supporter-id],[role="listitem"]').count(),0,'An empty MVP panel never fabricates supporter rows');
+    await allTime.focus();await page.keyboard.press('Enter');
+    assert.deepEqual([await thisWeek.getAttribute('aria-pressed'),await allTime.getAttribute('aria-pressed')],['false','true'],'MVP periods are keyboard-operable');
+    assert.equal((await mvpPanel.innerText()).replace(/\s+/g,' ').trim(),'Top supporters This week All time No MVP','Changing periods keeps the exact empty MVP content');
+    assert.equal(await sentCount(page,'profile.mvps.load'),memberMvpReads,'A User never requests a Host-only leaderboard');
+    for(const width of [320,390]) {
+      await page.setViewportSize({width,height:844});
+      await auditCompactProfile(page,`Own MVP profile ${width}px`);
+      assert.equal(await mvpPanel.locator('.zu-mvp-row,[data-supporter-id],[role="listitem"]').count(),0,`${width}px MVP never invents supporters`);
+    }
+    await page.setViewportSize({width:390,height:844});
+    await page.getByRole('tab',{name:/^Posts/}).click();
     assert.equal(await button(page,'Edit profile').count(),1,'One compact edit icon');
+    assert.match(await page.locator('#zu-edit-self').innerText(),/Edit profile/,'The owner edit control keeps its visible reference label');
     assert.equal(await page.locator('.zu-tabs').evaluate(el=>getComputedStyle(el).borderBottomWidth),'0px','No divider line under the profile tabs');
     for(const selector of ['.zu-cover','.zu-overview','.zu-identity','.zu-stats','.zu-tabs','.zu-panel'])assert.equal(await page.locator(selector).count(),1,`${selector} reuses the public profile structure`);
     for(const selector of ['#zu-follow','#zu-message','#zu-call','.zu-gift'])assert.equal(await page.locator(selector).count(),0,'Own profiles never offer social actions on yourself');
-    assert.equal(await button(page,'Open settings').count(),1);
+    assert.equal(await button(page,'Share profile').count(),1,'The owner toolbar follows the reference with a truthful Share action');
+    await button(page,'Share profile').click();
+    assert.deepEqual(await lastSent(page,'profile.share'),{id:ownerId,name:member.user.name},'Share targets the authenticated public profile without inventing a URL');
+    assert.equal(await page.evaluate(()=>S.v),'profile','Opening the native share sheet keeps the Profile route');
     assert.equal(await button(page,'Change profile photo').count(),1);
     assert.equal(await button(page,'Change cover photo').count(),1);
     assert.equal(await page.locator('#zu-edit-self').count(),1);
     assert.equal(await page.locator('#zu-upload-self').count(),1);
+    const ownAvatar=page.locator('.zu-owner-avatar');
+    await cancelHold(page,ownAvatar);
+    assert.equal(await page.evaluate(()=>S.v),'editprofile','Releasing the owner photo before the threshold preserves its short-tap Edit Profile action');
+    assert.equal(await page.locator('.zu-avatar-preview').count(),0,'Releasing the owner photo before the threshold does not open a viewer');
+    await navigate(page,'profile');
+    await settleProfile(page,publicProfile());
+    await settlePosts(page);
+    await page.getByRole('heading',{name:member.user.name,exact:true}).waitFor();
+    const previewAvatar=page.locator('.zu-owner-avatar');
+    await hold(page,previewAvatar);
+    const ownPreview=page.locator('.zu-avatar-preview[role="dialog"]');
+    await ownPreview.waitFor();
+    assert.equal(await ownPreview.locator('img').getAttribute('src'),member.user.avatarUrl,'The owner preview uses the authenticated profile photo');
+    assert.equal(await page.evaluate(()=>S.v),'profile','Holding the owner photo does not enter Edit Profile');
+    await button(page,'Close profile photo').click();
+    await ownPreview.waitFor({state:'detached'});
+    assert.equal(await ownPreview.count(),0,'The profile photo Close action restores the owner profile');
     const shots=path.join(root,'artifacts','own-profile');fs.mkdirSync(shots,{recursive:true});
     for(const width of [320,390,768]) {
       await page.setViewportSize({width,height:844});
       await audit(page,`Own profile ${width}px`);
+      if(width<=390)await auditCompactProfile(page,`Own Posts profile ${width}px`);
       assert.equal(await page.locator('#nav [aria-current="page"]').innerText(),'Profile');
       await page.screenshot({path:path.join(shots,`profile-${width}.png`)});
     }
@@ -104,6 +211,17 @@ async function audit(page,label) {
     assert.equal(await page.evaluate(()=>S.v),'editprofile');
     assert.equal(await page.getByLabel('Display name',{exact:true}).inputValue(),member.user.name);
     assert.equal(await page.locator('input[onchange*="posts"]').count(),0,'Profile editing no longer contains post creation');
+    assert.deepEqual(await page.locator('.editdetails-card .editlabel').allInnerTexts(),['Display name','Gender','Location','Country','About'],'The upgraded editor keeps only persisted profile fields');
+    assert.equal(await page.locator('#editname').getAttribute('maxlength'),'32');
+    assert.equal(await page.locator('#editcity').getAttribute('maxlength'),'40');
+    assert.equal(await page.locator('#editcountry').getAttribute('maxlength'),'100');
+    assert.equal(await page.locator('#editabout').getAttribute('maxlength'),'180');
+    for(const width of [320,390]) {
+      await page.setViewportSize({width,height:844});
+      await auditEditProfile(page,`Edit profile ${width}px`);
+      if(width===390)await page.screenshot({path:path.join(shots,'edit-profile-390.png')});
+    }
+    await page.setViewportSize({width:390,height:844});
     const photo=Buffer.from(await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=1400;canvas.height=1200;const context=canvas.getContext('2d');context.fillStyle='#e5007e';context.fillRect(0,0,canvas.width,canvas.height);return canvas.toDataURL('image/png').split(',')[1]}),'base64');
     await page.getByLabel('Display name',{exact:true}).fill('Asha Updated');
     await page.locator('input[onchange*="avatar"]').setInputFiles({name:'avatar.png',mimeType:'image/png',buffer:photo});
@@ -134,7 +252,7 @@ async function audit(page,label) {
       assert.equal(await page.evaluate(()=>S.v),'editprofile',`${name} opens the real media editor`);
       await navigate(page,'profile');await settleProfile(page,publicProfile(updated));
     }
-    await button(page,'Open settings').click();
+    await page.locator('#nav').getByRole('button',{name:'Settings',exact:true}).click();
     assert.equal(await page.evaluate(()=>S.v),'settings');
     await button(page,'Open your profile').click();
     assert.equal(await page.evaluate(()=>S.v),'profile');
@@ -198,30 +316,45 @@ async function audit(page,label) {
     await receive(page,'data.loading',{resource:'wallet',loading:false,error:'Balance unavailable'});
     assert.equal(await page.locator('.zu-stats strong').first().innerText(),'—','A failed host balance never falls back to Coins or zero');
     await receive(page,'wallet.balance',{diamondScale:1000000,diamondUnits:1234500000,reservedDiamondUnits:0,profileDiamondUnits:1200000000});
+    await page.getByRole('tab',{name:'MVP',exact:true}).click();
+    const ownMvpRequest=await lastSent(page,'profile.mvps.load');
+    assert.deepEqual({id:ownMvpRequest.id,period:ownMvpRequest.period},{id:creator.user.id,period:'week'},'An approved Host can load MVP supporters on their own profile');
+    await page.getByRole('status',{name:'Loading top supporters',exact:true}).waitFor();
+    const ownSupporters=[{id:'507f1f77bcf86cd799439071',name:'Riya Supporter',avatarUrl:media('supporter'),coins:100000,serverRole:'user',verified:false}];
+    await receive(page,'data.profileMvps',{...ownMvpRequest,supporters:ownSupporters});
+    assert.equal(await page.locator('.zu-mvp-row').count(),1,'The own Host leaderboard renders only returned supporters');
+    assert.match(await page.locator('.zu-mvp-row').innerText(),/Riya Supporter[\s\S]*1,00,000[\s\S]*coins/,'The own Host leaderboard shows the real ranked Coin total');
+    assert.equal(await page.locator('.zu-mvp-coins [data-icon="coin"]').count(),1,'Own Host MVP totals use the Coin icon');
+    await page.getByRole('tab',{name:/^Posts/}).click();
     await audit(page,'Creator own profile');
-    await button(page,'Open settings').click();await button(page,'Account').click();
+    await auditCompactProfile(page,'Creator own profile at 390px');
+    assert.match(await page.locator('#zu-edit-self').innerText(),/Edit profile/,'Approved Hosts keep the same visible Edit profile control');
+    await page.locator('#nav').getByRole('button',{name:'Settings',exact:true}).click();await button(page,'Account').click();
     await button(page,'Deactivate account').click();
+    const deactivationPage=page.locator('.zp-settings-detail-page');
+    await deactivationPage.getByRole('heading',{name:'Deactivate account?',exact:true}).waitFor();
+    assert.equal(await page.locator('#zp-dialog').count(),0,'Deactivation confirmation is a page, not a dialog');
     assert.equal(await sentCount(page,'account.deactivate'),0,'Opening deactivation does not change the account');
     await button(page,'Keep my account').click();
     assert.equal(await page.evaluate(()=>S.loggedIn),1,'Cancelling keeps the session');
-    await button(page,'Account').click();await button(page,'Deactivate account').click();await button(page,'Deactivate account').click();
+    await deactivationPage.getByRole('heading',{name:'Account',exact:true}).waitFor();
+    await button(page,'Deactivate account').click();await button(page,'Deactivate account').click();
     const deactivate=await lastSent(page,'account.deactivate');
     assert.equal(deactivate.confirmed,true);
     assert.equal(await page.evaluate(()=>S.loggedIn),1,'The app waits for backend confirmation');
-    const deactivationDialog=page.getByRole('dialog',{name:'Deactivate account?'});
     await page.getByRole('status',{name:'Deactivating account',exact:true}).waitFor();
-    assert.equal(await deactivationDialog.getAttribute('aria-busy'),'true');
+    assert.equal(await deactivationPage.getAttribute('aria-busy'),'true');
     assert.equal(await button(page,'Keep my account').isDisabled(),true,'A pending request cannot be cancelled after submission');
-    assert.equal(await button(page,'Close settings').isDisabled(),true);
+    assert.equal(await button(page,'Back to Account').isDisabled(),true);
     await page.keyboard.press('Escape');
     await page.evaluate(()=>zpClose());
-    assert.equal(await deactivationDialog.isVisible(),true,'Escape and close preserve the pending confirmation');
+    assert.equal(await deactivationPage.isVisible(),true,'Escape and close preserve the pending confirmation');
     await page.screenshot({path:path.join(shots,'deactivate-pending.png')});
     assert.equal(await sentCount(page,'account.deactivate'),1,'Closing cannot create another request');
     await receive(page,'account.deactivate.error',{requestId:deactivate.requestId,message:'Could not deactivate. Retry.'});
     await page.getByRole('alert').filter({hasText:'Could not deactivate'}).waitFor();
     assert.equal(await button(page,'Keep my account').isEnabled(),true,'A failed request restores cancellation and retry');
-    assert.equal(await deactivationDialog.getAttribute('aria-busy'),'false');
+    assert.equal(await deactivationPage.getAttribute('aria-busy'),'false');
     await button(page,'Deactivate account').click();
     const deactivateRetry=await lastSent(page,'account.deactivate');
     await receive(page,'account.deactivated',{requestId:deactivate.requestId});

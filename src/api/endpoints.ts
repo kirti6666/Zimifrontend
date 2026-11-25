@@ -1,7 +1,7 @@
 import { ApiError, request } from "./client";
 import { getAppUpdateAuth } from "../app-update-events";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, hostCallStatusFrom, catalogFrom, chatGiftFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom, commentFrom, commentsFrom } from "./adapters";
+import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, hostCallStatusFrom, catalogFrom, chatGiftFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, profileMvpsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom, commentFrom, commentsFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, AdPlacement, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
@@ -13,17 +13,17 @@ import { payoutKycFrom, withdrawalQuoteFrom } from "./payout-verification";
 import { getInstallationId } from "../installation";
 import { validPayoutKycInput, validPayoutQuoteProof } from "../payout-verification";
 import type { PayoutKycInput, PayoutQuoteProof } from "./types";
-import { memberUsersFrom } from "./adapters";
+import { memberUsersFrom, profileDirectoryFrom } from "./adapters";
 import { activeHostsFrom } from "./adapters";
 import type { RelationshipKind, Relationships } from "./types";
-import type { LeaderboardPeriod, OfficialReadPatch } from "./types";
+import type { LeaderboardPeriod, OfficialReadPatch, ProfileDirectoryFilter, ProfileMvpPeriod } from "./types";
 import type { HostAgencyStatus } from "./types";
 import { automaticInvitationFrom, topupHoldFrom } from "./call-invitations";
 import { callTargetsFrom, string } from "./adapters";
 import type { CallTargetsInput } from "./types";
 import type { SupportCategory, SupportStatus } from "./types";
 import { supportConversationFrom, supportReceiptFrom, supportTicketFrom, supportTicketsFrom } from "./support";
-import { officialCursor, officialMessageId, officialReceiptFrom, officialReadFrom } from "./official";
+import { officialCursor, officialMessageId, officialReadFrom } from "./official";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
@@ -287,6 +287,21 @@ export const api = {
     return profile;
   },
   async publicPosts(id: string, page = 1) { return publicPostsFrom(await request("GET", `/users/${encodeURIComponent(id)}/posts?page=${page}&limit=12`)); },
+  async profileMvps(id: string, period: ProfileMvpPeriod) {
+    if (period !== "week" && period !== "all") throw new ApiError("Choose a valid top supporters period.", 400);
+    try {
+      const result = profileMvpsFrom(await request("GET", `/users/${encodeURIComponent(id)}/mvps?period=${period}`));
+      if (result.id !== id || result.period !== period) throw new ApiError("Top supporters could not be loaded. Try again.", 502);
+      return result;
+    } catch (error) {
+      // Keep mixed-version development installs usable while the new backend
+      // route rolls out. A real profile 404 uses "User not found" and is not
+      // hidden; only the old router's exact missing-route response is empty.
+      if (error instanceof ApiError && error.status === 404 && error.message === "Route not found")
+        return { id, period, supporters: [] };
+      throw error;
+    }
+  },
   async notificationPost(id: string) {
     const version = getSessionVersion();
     const raw = record(await request("GET", `/posts/${encodeURIComponent(id)}`));ensureSession(version);
@@ -306,6 +321,11 @@ export const api = {
       throw new ApiError("Enter a name or user ID and try again.", 400);
     return memberUsersFrom(await request("GET", `/users/search?audience=members&q=${encodeURIComponent(q.trim())}&page=${page}&limit=20`));
   },
+  async profileDirectory(q = "", page = 1, filter: ProfileDirectoryFilter = "all") {
+    if (typeof q !== "string" || q.length > 100 || !Number.isSafeInteger(page) || page < 1 || page > 10000 ||
+      (filter !== "all" && filter !== "online")) throw new ApiError("Enter a name or user ID and try again.", 400);
+    return profileDirectoryFrom(await request("GET", `/users/search?audience=all&q=${encodeURIComponent(q.trim())}&page=${page}&limit=20&filter=${filter}`));
+  },
   async activeHosts(q = "", page = 1) {
     if (typeof q !== "string" || q.length > 80 || !Number.isSafeInteger(page) || page < 1 || page > 1000)
       throw new ApiError("Enter a host name and try again.", 400);
@@ -314,22 +334,20 @@ export const api = {
     return result;
   },
   async matchHost(category?: string) { const result = record(await request("GET", `/home/match${category ? `?category=${encodeURIComponent(category)}` : ""}`)); return { host: hostFrom(result.host) }; },
-  async notifications(query?: NotificationsQuery) { return notificationsFrom(await request("GET", query ? `/notifications?${queryString({ limit: 20, ...query })}` : "/notifications?limit=100")); },
+  async notifications(query?: NotificationsQuery) {
+    const ownerId = await selfId();
+    return notificationsFrom(await request("GET", query ? `/notifications?${queryString({ limit: 20, ...query })}` : "/notifications?limit=100"), ownerId);
+  },
   async readNotifications(ids: string[]) { await request("POST", "/notifications/read", { ids }); return api.notifications(); },
   async updateNotificationRead(input: NotificationReadPatch) { return notificationReadFrom(await request("POST", "/notifications/read", input)); },
   async officialChat(before?: string) {
-    if (before !== undefined && !officialCursor(before)) throw new ApiError("Refresh the BinzoLive conversation and try again.", 400);
-    const version = getSessionVersion(), data = await request("GET", `/chats/official/thread?${queryString({ before, limit: 50 })}`);
+    if (before !== undefined && !officialCursor(before)) throw new ApiError("Refresh Binzo Team Chat and try again.", 400);
+    const version = getSessionVersion(), data = await request("GET", `/chats/official/thread?${queryString({ teamChat: 1, before, limit: 50 })}`);
     ensureSession(version);return officialChatFrom(data);
   },
-  async sendOfficialMessage(body: string, clientMessageId: string) {
-    if (typeof body !== "string" || !body.trim() || body.length > 4000 || !/^[A-Za-z0-9_-]{8,100}$/.test(clientMessageId)) throw new ApiError("Enter a message and try again.", 400);
-    const version = getSessionVersion(), data = await request("POST", "/chats/official/messages", { body, clientMessageId });
-    ensureSession(version);return officialReceiptFrom(data, clientMessageId);
-  },
   async readOfficialChat(input: OfficialReadPatch) {
-    if (!(input.all === true && input.ids === undefined) && !(input.all === undefined && Array.isArray(input.ids) && input.ids.length > 0 && input.ids.length <= 100 && input.ids.every(officialMessageId) && new Set(input.ids).size === input.ids.length)) throw new ApiError("Open the BinzoLive conversation to mark messages read.", 400);
-    const version = getSessionVersion(), data = await request("POST", "/chats/official/thread/read", input.all === true ? { all: true } : { ids: input.ids });
+    if (!(input.all === true && input.ids === undefined) && !(input.all === undefined && Array.isArray(input.ids) && input.ids.length > 0 && input.ids.length <= 100 && input.ids.every(officialMessageId) && new Set(input.ids).size === input.ids.length)) throw new ApiError("Open Binzo Team Chat to mark messages read.", 400);
+    const version = getSessionVersion(), data = await request("POST", "/chats/official/thread/read?teamChat=1", input.all === true ? { all: true } : { ids: input.ids });
     ensureSession(version);return officialReadFrom(data);
   },
   registerPushDevice: async (token: string, notificationProtocol?: "binzo.push.v1") => {
@@ -399,7 +417,7 @@ export const api = {
   acceptStreamRequest: (streamId: string, id: string) => request<StreamPrivateCall>("POST", `/streams/${encodeURIComponent(streamId)}/requests/${encodeURIComponent(id)}/accept`, {}),
   reactToStream: (streamId: string) => request<StreamReaction>("POST", `/streams/${encodeURIComponent(streamId)}/reactions`, {}),
   async hosts() { return { hosts: items(await request("GET", "/hosts?limit=100")).map(hostFrom) }; },
-  async chats(page = 1) { const id = await selfId(); return chatsFrom(await request("GET", page === 1 ? "/chats" : `/chats?page=${page}`), id); },
+  async chats(page = 1) { const id = await selfId(); return chatsFrom(await request("GET", `/chats?teamChat=1${page === 1 ? "" : `&page=${page}`}`), id); },
   async readAllChats() {
     const data = record(await request("POST", "/chats/read-all", {}));
     if (!Number.isSafeInteger(data.updated) || Number(data.updated) < 0 || typeof data.readAt !== "string") throw new ApiError("The read status could not be confirmed. Refresh your conversations.", 502);
@@ -473,14 +491,19 @@ export const api = {
   },
   async startCall(to: string, voice: boolean) { const call = await request("POST", "/calls", { calleeId: to, kind: voice ? "audio" : "video" }); const callId = idOf(call); if (!callId) throw new ApiError("The call could not be started.", 502); return { callId }; },
   async acceptCall(callId: string) {
-    const call = record(await request("POST", `/calls/${encodeURIComponent(callId)}/accept`)), early = record(call.earlyEnds);
+    const call = record(await request("POST", `/calls/${encodeURIComponent(callId)}/accept`));
+    const peerId = idOf(call.callerId);
+    if (idOf(call) !== callId || call.status !== "accepted" || !peerId)
+      throw new ApiError("The accepted call could not be verified. Please try again.", 502);
     const count = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0;
-    return { peerId: idOf(call.callerId), voice: call.kind === "audio", ...callPrice(call),
-      earlyEnds: { today: count(early.today), limit: count(early.limit), penaltyCoins: count(early.penaltyCoins) } };
+    const early = call.earlyEnds === undefined ? undefined : record(call.earlyEnds);
+    return { peerId, voice: call.kind === "audio", ...callPrice(call), ...(early ? {
+      earlyEnds: { today: count(early.today), limit: count(early.limit), penaltyCoins: count(early.penaltyCoins) },
+    } : {}) };
   },
   async hostCallStatus() { return hostCallStatusFrom(await request("GET", "/calls/host-status")); },
   async saveHostCallRate(rateCoinsPerMinute: number) {
-    if (!Number.isSafeInteger(rateCoinsPerMinute) || rateCoinsPerMinute < 1 || rateCoinsPerMinute > 1000000) throw new ApiError("Choose a valid member call price.", 400);
+    if (!Number.isSafeInteger(rateCoinsPerMinute) || rateCoinsPerMinute < 1 || rateCoinsPerMinute > 1000000) throw new ApiError("Choose a valid user call price.", 400);
     return hostCallStatusFrom(await request("PATCH", "/calls/host-status", { rateCoinsPerMinute }));
   },
   async setVisibleDuringCalls(on: boolean) { const data = record(await request("PATCH", "/safety", { visibleDuringCalls: on })); return { on: data.visibleDuringCalls !== false }; },
@@ -519,6 +542,8 @@ export const api = {
   },
   /** Uploads a chat photo into the sender's own folder, then sends it. */
   setChatActivity: (withId: string, active: boolean) => request("POST", "/chats/activity", { with: withId, active }),
+  /** Ephemeral composer presence. The server relays it to this peer without storing it. */
+  setChatTyping: (withId: string, typing: boolean) => request("POST", "/chats/typing", { with: withId, typing }),
   async sendPhotoMessage(to: string, photo: string, replyTo?: string, clientId?: string) {
     const version = getSessionVersion();
     decodePhoto(photo);

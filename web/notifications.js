@@ -51,14 +51,20 @@ function znSearch(value){
   ZNotices.timer=setTimeout(()=>znLoad(),250);
 }
 function znResetFilters(){Object.assign(ZNotices,{q:'',status:'all',audience:'all',period:'all',sort:'newest',message:''});znLoad()}
+function znVisible(item){
+  if(!item||item.category==='messages'||item.event==='message.new')return false;
+  const owner=ZNotices.accountId||S.user?.id||'';
+  return !item.recipientId||!!owner&&item.recipientId===owner;
+}
 function znReceive(data){
   if(!znAccepts(data))return;
   Home.notifyLoading=false;
-  const items=Array.isArray(data.items)?data.items:[],page=data.page||1;
+  const received=Array.isArray(data.items)?data.items:[],items=received.filter(znVisible),hidden=received.filter(item=>!znVisible(item)),page=data.page||1;
+  const hiddenUnread=hidden.filter(item=>item?.read!==true).length;
   const byId=new Map((page>1?Home.notifications:[]).map(item=>[item.id,item]));
   for(const item of items)if(item?.id)byId.set(item.id,item);
-  Home.notifications=[...byId.values()];Home.unreadCount=Math.max(0,Number(data.unreadCount)||0);
-  Object.assign(ZNotices,{page,total:Math.max(0,Number(data.total??items.length)||0),totalCount:Math.max(0,Number(data.totalCount??data.total??items.length)||0),loaded:true});
+  Home.notifications=[...byId.values()];Home.unreadCount=Math.max(0,(Number(data.unreadCount)||0)-hiddenUnread);
+  Object.assign(ZNotices,{page,total:Math.max(items.length,(Number(data.total??received.length)||0)-hidden.length),totalCount:Math.max(items.length,(Number(data.totalCount??data.total??received.length)||0)-hidden.length),loaded:true});
   Object.assign(ContentLoading.notifications,{loading:false,error:'',page});
   if(['notifications','home','explore','chats','profile','settings'].includes(S.v))r();
 }
@@ -190,10 +196,12 @@ function znRouteTarget(data={}){
   }
   if(znTargetBusy()){ZNotices.pendingTarget=data;ZNotices.changed=true;return}
   ZNotices.pendingTarget=null;
-  if(data.expiresAt&&Date.parse(data.expiresAt)<=Date.now()){ZimiOfficialChat.open('chats');return}
+  if(data.expiresAt&&Date.parse(data.expiresAt)<=Date.now()){znOpen();return}
   if(data.profile&&typeof zuRemember==='function')zuRemember(data.profile);
   const id=typeof data.targetId==='string'&&/^[a-f\d]{24}$/i.test(data.targetId)?data.targetId:'';
   if(data.targetType==='thread'&&id){zcOpen(id);return}
+  if(data.targetType==='support'){if(id)ZimiSupport.openTicket(id);else ZimiSupport.open('settings');return}
+  if(data.targetType==='official'){ZimiOfficialChat.open('chats');return}
   if(data.targetType==='creator'&&id){go('host',id);return}
   if(data.targetType==='host'&&isApprovedHost()){go('setup');return}
   if(data.targetType==='call'){go('calls');return}
@@ -201,7 +209,7 @@ function znRouteTarget(data={}){
     ZNotices.postTarget={id,ownerId:data.ownerId,post:data.post};go(data.ownerId===S.user?.id?'profile':'host',data.ownerId);queueMicrotask(znTryPostTarget);return;
   }
   if(data.targetType==='appUpdate'){appNotice('Checking for app updates…');return}
-  ZimiOfficialChat.open('chats');
+  znOpen();
 }
 function znTryPostTarget(){
   const target=ZNotices.postTarget;if(!target||typeof Zu==='undefined'||Zu.id!==target.ownerId||!zuActive()||Zu.loading||!Zu.profile||Zu.postsLoading)return;

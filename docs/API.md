@@ -135,14 +135,15 @@ image loads, using the original transparent artwork without added effects.
 
 ## Agency host onboarding
 
-All new host applicants join an admin-created agency with their own one-time
-host joining code before applying. The short agency ID (`BINZO` + six characters)
+All new Hosts join an admin-created agency with their own one-time Host joining
+code. The Agency Owner shares a code only after approving that user to become a
+Host. The short agency ID (`BINZO` + six characters)
 identifies an agency; the personal joining code (`BINZO` + ten characters) is
 issued by that agency for one host. Common agency IDs and referral codes cannot
 create membership. Settings
 and the owner's Profile open **Become a Host** (`agency`); approved hosts see
-**My agency**. Creator signup and every creator application entry point use the
-same gate. Existing approved host access continues to use `ZimiHostAccess`.
+**My agency**. Creator signup uses the same gate. Existing approved host access
+continues to use `ZimiHostAccess`.
 
 | Screen message | Endpoint | Result message |
 | --- | --- | --- |
@@ -160,19 +161,23 @@ confirmation only for an eligible `host-invite` with `canJoin: true` whose
 `joiningCode` matches the exact code that was verified. Result messages also carry
 `requestId`; stale responses are ignored. Failures use `agency.error`
 `{action,message,requestId}` and stay next to the form. Codes are normalized to
-uppercase. Verification previews identity without consuming an invitation. The
-explicit join atomically claims it for the authenticated backend identity;
+uppercase. Verification previews identity without consuming an invitation or
+changing account access. The explicit join atomically claims it for the
+authenticated backend identity, records the approved Host application for audit,
+and changes the account to `role: "host"`, `hostStatus: "approved"`;
 repeating that same claim for the same member is safe. A code already claimed
 by another member or revoked by the agency cannot be used. Editing a previewed
 code invalidates confirmation. The wire field remains `agencyCode` for both
 requests, and always carries the entered invitation, never a substituted public ID.
 
-Joining does not grant creator capability. The linked member completes
-`POST /hosts/application` using established membership and no code, then staff
-identity/video verification and approval. Existing joined and approved hosts do
-not need a fresh invitation to continue their application or use host capabilities.
+Claiming a valid personal code grants creator capability immediately after the
+app refreshes the authoritative account and publishes `host.access`. Existing
+joined and approved Hosts do not need a fresh invitation. Older agency-linked
+accounts without a personal invitation can remain on the legacy application path.
 The server validates age, account status, phone verification, agency activity,
-host capacity and one-agency membership. A referral reward code is separate.
+host capacity, one-agency membership and one-time-code ownership. Suspended or
+otherwise restricted accounts cannot use a code to bypass moderation. A referral
+reward code is separate.
 Agency commission is paid from the platform share without reducing host earnings.
 The app has no agency self-registration or agency login; administrators create,
 manage and settle agencies in the production admin dashboard.
@@ -291,7 +296,7 @@ for it (login, call failed).
 | Home header feeds | `GET /home?mode=following\|popular\|foryou\|new&page=1`, optional `country` (the India chip sends `country=India`) | Adapter returns `HomeData`. Following lists saved follows, Explore (`popular`) every host, For You the hosts not followed yet, New the latest hosts first; `country` matches the host's country (ignoring case) before pagination |
 | Other discovery filters | `GET /home?mode=online` or `mode=instant`, optional `category` and `page` | Adapter returns `HomeData` for the selected discovery filters |
 | Refer a Friend (Settings, Home pop-up, call card) | `GET /referrals/me`, `POST /referrals/apply` `{code}` | `referral.load` → `data.referral` `{code, shareUrl, rewardCoins, friendBonusCoins, applyDays, friendsJoined, friendsRewarded, coinsEarned, appliedCode, canApplyCode}`; `referral.apply {code, requestId}` → `referral.applied` (same summary + `requestId`, then a wallet refresh) or `referral.error {message, requestId, status}`; `referral.share` opens the native share sheet with the code and link |
-| Leaderboard (Home trophy) | `GET /leaderboard/creators?period=daily\|weekly\|all&limit=50` | `leaderboard.load` `{period}` → `data.leaderboard` `{period, items: {id, name, avatarUrl, coins, rank}[], total}`: approved creators ranked by gift coins received |
+| Leaderboard (Home trophy) | `GET /leaderboard/creators?period=daily\|weekly\|monthly&limit=50` | `leaderboard.load` `{period}` → `data.leaderboard` `{period, items: {id, name, avatarUrl, coins, rank}[], total}`: eligible approved creators ranked by confirmed gift Coins received during the UTC calendar period |
 | Chats | `GET /chats` | `{chats: ChatSummary[]}` |
 | Open a chat | `GET /chats/:id` | Adapter returns `{messages: Message[], canSend, sendDisabledReason?}` |
 | Missed calls tab | `GET /calls/missed` | `{calls: MissedCall[]}` |
@@ -360,7 +365,7 @@ bonus illustration; members receive no host earnings policy.
 
 New reward periods freeze `activityBasis: "paid_video"`: only paid video-call time
 counts toward targets. Existing periods retain their recorded activity basis.
-Initial week 1 begins on the Monday after admin approval; earlier pending call
+Initial week 1 begins on the Monday after Host approval; earlier pending call
 rewards carry into that first period. Explore excludes hosts whose explicit
 `onlineForCalls` setting is off. Their existing profile and chat call actions
 remain available, subject to the normal approval, privacy and availability checks.
@@ -503,11 +508,13 @@ in screenshots, recordings and the recent-apps view; iOS 13+ blocks screenshots
 and recordings. Other screens, including public live rooms, can still be captured.
 A camera pointed at the phone can still record the screen.
 
-## Staff verification calls (host applicants)
+## Staff verification calls (legacy/manual host applicants)
 
-Before approving a host application, staff video-call the applicant from the admin
-dashboard. The server refuses to approve a pending application until a call has
-connected for at least 10 seconds.
+This is retained as a backup for legacy or manually reviewed applications. The
+Agency Owner one-time-code flow does not create a pending application and does not
+require a staff video call. When staff use the legacy approval flow, the server
+refuses to approve a pending application until a call has connected for at least
+10 seconds.
 
 | Step | Server | App |
 | --- | --- | --- |
@@ -653,23 +660,23 @@ Firebase server setup and validation-only commands are documented in
 [backend/PUSH_SETUP.md](../../backend/PUSH_SETUP.md). A new Android build is needed
 for these native changes; production server credentials must also be configured.
 
-## Official BinzoLive chat and support
+## Binzo Team Chat and private support
 
-Chat includes a default verified **BinzoLive** conversation for every authenticated member and host, including hosts awaiting approval. It stays first in All, appears in Unread when needed, and is searchable. Settings > Help & support and legacy support/inbox links open this same conversation. The separate Help & support row and ticket-creation flow are removed from the Chat screen.
+Chat includes a default verified **Binzo Team Chat** for every authenticated sender and host, including hosts awaiting approval. It stays first in All, appears in Unread when needed, is searchable, and has no composer. Settings > Help & support opens the separate private support center; support is not added as another Chat-list row.
 
-The account is a server-owned system identity (`bingo-live-official`), not a loginable User, creator, callable peer or gift recipient. Its verified identity is validated separately from person chats. Support is free and does not grant person-chat permissions to unapproved hosts. In particular, an unapproved host can receive an empty ordinary-chat list plus the official summary while ordinary chat/call approval checks remain enforced.
+Team Chat uses a server-owned system identity (`bingo-live-official`), not a loginable User, creator, callable peer or gift recipient. Its verified identity is validated separately from person chats. Private support remains free and does not grant person-chat permissions to unapproved hosts. In particular, an unapproved host can receive an empty ordinary-chat list plus the Team Chat summary while ordinary chat/call approval checks remain enforced.
 
-`GET /chats/official/thread?before=<composite-message-id>&limit=50` returns the caller's announcements and all their historic support messages in a combined cursor-paginated timeline. Messages have IDs `announcement:<ObjectId>` or `support:<ObjectId>`, a `kind`, `senderType` (`user` or `official`), body, creation time and read state. Support messages also include their ticket, sequence and client message reference. Public announcements reach all users and hosts; personal updates and support replies remain scoped to the authenticated account.
+The current client negotiates the read-only channel with `teamChat=1` on `GET /chats` and `GET /chats/official/thread`. `GET /chats/official/thread?teamChat=1&before=<announcement-id>&limit=50` returns only owner-published announcements visible to the authenticated account's server-side audience: everyone, hosts or senders. Messages have IDs `announcement:<ObjectId>`, `kind:"announcement"`, `senderType:"official"`, body, creation time and read state. A fresh non-append snapshot replaces the displayed rows, and an account-role change retires the prior audience immediately.
 
-`POST /chats/official/messages` accepts `{body, clientMessageId}`. The server creates or reuses one private default support ticket, guarded by a partial unique index. Stable client references make uncertain sends safe to retry; the same reference with different content is rejected. Both the legacy support send endpoint and official send endpoint share the account's send budget. A new message reopens a resolved default conversation.
+`POST /chats/official/thread/read?teamChat=1` accepts `{ids: [...]}` for displayed announcements or `{all:true}` for an explicit mark-all action. Reads are scoped to the authenticated owner. Normal person-chat counts exclude Team Chat; the UI adds its unread conversation once. Team responses include the verified system identity and a read-only marker; the client normalizes exact compatible identities to a read-only shape and rejects support/user messages.
 
-`POST /chats/official/thread/read` accepts `{ids: [...]}` for displayed messages or `{all:true}` for an explicit mark-all action. Reads are scoped to the owner and preserve newer unseen support replies. Normal chat counts exclude the official channel; the UI adds its unread conversation once. The old announcement-only `/chats/official` and `/chats/official/read` endpoints remain available for compatibility. Legacy `/chats` summaries and announcement responses retain `canSend:false`, which older APKs require for a non-person system channel; the additive `supportEnabled:true` advertises the dedicated support API. Current clients accept that combination only for the verified system identity. New unified-thread responses use `canSend:true`.
+The current client never posts a Team Chat message. Unmarked official-thread requests and `POST /chats/official/messages` remain only as a rollout compatibility lane for installed clients that combined private support with announcements. They must never publish those legacy support messages into marked Team Chat responses. A marked message write is not supported.
 
-Staff handle private replies through **People > Support inbox** with the existing `support:read`/`support:write` permissions, assignment rules and audit trail. Existing `/support/tickets` APIs remain for admin handling and older clients. **Engagement > Official chat** publishes announcements or private updates using `notifications:write`; a support reply is never broadcast. Published APK releases already produce app-update notifications, which appear in the official timeline too.
+Private help continues through Settings > **Help & support**, the `/support/tickets` APIs and **People > Support inbox** with existing assignment, read/write permissions and audit trails. The owner publishes Team Chat announcements from the admin Binzo Team Chat area; support replies are never broadcasts.
 
-`src/official-bridge.ts` owns lifecycle, correlated reads/writes, reconnect invalidation and active foreground polling. `web/official-chat.js` and `.css` provide the shared chat-style row, header, bubbles and composer. The existing support helper remains for older cached callers. Drafts, pending sends and private history are retired when the account/document changes. Native requests cannot treat the official identity as an ordinary person-chat target.
+`src/official-bridge.ts` owns read lifecycle, reconnect invalidation and active foreground polling. `web/official-chat.js` and `.css` provide the pinned chat-style row, header and incoming announcement bubbles without a composer. `web/support.js` remains the separate private support UI. Account, role and document changes retire Team Chat content, and native requests cannot treat the official identity as an ordinary person-chat target.
 
-Run `npm run test:official-chat`, `npm run test:support`, `npm run typecheck`, backend support/official-chat regressions, and dashboard tests. Responsive browser checks cover phone/tablet widths, keyboard resizing, Dark Mode, retries, escaping, history and account retirement. An isolated HTTP smoke uses real admin login cookies plus the app's actual parsers to verify member and pending-host send → staff claim/reply → read → resolve → reopen, announcement visibility and cross-account isolation.
+Run `npm run test:official-chat`, `npm run test:support`, `npm run typecheck`, backend support/official-chat regressions, and dashboard tests. Responsive browser checks cover phone/tablet widths, Dark Mode, announcement reads/pagination, audience retirement, separate support navigation and account isolation. Support-specific suites verify member and pending-host send → staff claim/reply → read → resolve → reopen independently of Team Chat.
 
 This feature requires the matching backend and dashboard changes plus the updated APK. Building it does not deploy or publish a release.
 
@@ -685,5 +692,6 @@ This feature requires the matching backend and dashboard changes plus the update
 - Your own level and crown come from `GET /account/settings` as `standing`
   (`{level, crown}`; thresholds, crown amount and window are set in the admin
   dashboard). The crown is held while gifts sent in the window reach the
-  amount and drops by itself when they no longer do. Other people's lifetime coins,
-  levels and top supporters on host pages are still sample formulas.
+  amount and drops by itself when they no longer do. Public profiles expose the
+  MVP / Top supporters UI, but show `No MVP` until a production supporter-ranking
+  contract exists; production profiles never populate it with sample formulas.

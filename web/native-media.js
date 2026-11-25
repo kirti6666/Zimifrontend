@@ -5,7 +5,7 @@
   if (!window.ZIMI_NATIVE_MEDIA || DEMO) return;
   let sequence = 0, generation = 0, scheduled = false, lastLayout = '', lastControls = '', lastBeauty = '';
   let state = { hasVideo: false, hasRemoteVideo: false, facing: 'user', playbackMuted: false, quality: 'good' };
-  const pending = new Map(), shapes = {}, ancestors = new Set();
+  const pending = new Map(), shapes = {}, dimensions = {}, ancestors = new Set();
   const selector = 'video[data-zimi-local], video[data-zimi-remote]';
   const mediaViews = new Set(['precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
   function request(action, data = {}) {
@@ -71,7 +71,17 @@
       let parent = video.parentElement;
       while (parent) { nextAncestors.add(parent); parent = parent.parentElement; }
       const radius = parseFloat(getComputedStyle(video.parentElement).borderTopLeftRadius) || parseFloat(css.borderTopLeftRadius) || 0;
-      slots.push({ kind, x: rect.x, y: rect.y, width: rect.width, height: rect.height, radius, fit: css.objectFit === 'contain' ? 'contain' : 'cover' });
+      let x = rect.x, y = rect.y, width = rect.width, height = rect.height;
+      // Native RTCView centers `contain` and has no object-position prop. Give
+      // setup Beauty an aspect-matched top slot so the complete frame remains
+      // unzoomed while all unused space falls behind the bottom controls.
+      if (kind === 'local' && css.objectFit === 'contain' && video.closest('.hc-reference.zb-previewing')) {
+        const source = dimensions[kind] || { width: 3, height: 4 };
+        const sourceRatio = source.width / source.height, boxRatio = width / height;
+        if (sourceRatio > boxRatio) height = width / sourceRatio;
+        else { const fittedWidth = height * sourceRatio; x += (width - fittedWidth) / 2; width = fittedWidth; }
+      }
+      slots.push({ kind, x, y, width, height, radius, fit: css.objectFit === 'contain' ? 'contain' : 'cover' });
     });
     ancestors.forEach(el => { if (!nextAncestors.has(el)) { el.removeAttribute('data-zimi-native-underlay'); ancestors.delete(el); } });
     nextAncestors.forEach(el => { el.setAttribute('data-zimi-native-underlay', ''); ancestors.add(el); });
@@ -97,6 +107,7 @@
   });
   Native.on('native.media.dimensions', data => {
     if (!['local', 'remote'].includes(data.kind) || !(data.width > 0 && data.height > 0)) return;
+    dimensions[data.kind] = { width: data.width, height: data.height };
     shapes[data.kind] = data.width > data.height ? 'landscape' : 'portrait';
     scheduleLayout();
   });

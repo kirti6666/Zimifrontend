@@ -21,8 +21,18 @@ const summary = {
 const primary = ['Account','Payments','Privacy & Terms','General'];
 const receive = (page,type,data={}) => page.evaluate(message=>Native.receive(message),{type,data});
 const navigate = (page,view) => page.evaluate(view=>go(view),view);
-const dialog = (page,name) => page.getByRole('dialog',{name,exact:true});
+const detail = (page,name) => page.locator('.zp-settings-detail-page').filter({has:page.getByRole('heading',{name,exact:true})});
 const button = (page,name) => page.getByRole('button',{name,exact:true});
+async function assertDetailPage(page,name,backTo) {
+  const screen=detail(page,name);
+  await screen.waitFor();
+  assert.equal(await page.evaluate(()=>S.v),'settings-detail',`${name} is a dedicated app page`);
+  assert.equal(await page.locator('#zp-dialog').count(),0,`${name} does not create the legacy Settings dialog`);
+  assert.equal(await page.getByRole('dialog',{name,exact:true}).count(),0,`${name} is not exposed as a modal`);
+  assert.equal(await page.locator('#nav button').count(),0,`${name} hides the primary tabs`);
+  assert.equal(await screen.getByRole('button',{name:`Back to ${backTo}`,exact:true}).count(),1,`${name} has a real Back action`);
+  return screen;
+}
 
 async function audit(page,label) {
   const state=await page.evaluate(({round,straight})=>{
@@ -90,43 +100,56 @@ async function audit(page,label) {
         assert.equal(detail.icon?.fill,'none',`${name} ${width}px: no filled icon artwork`);
       }
       await page.screenshot({path:path.join(shots,`settings-${width}.png`)});
+      await button(page,'Account').click();
+      await assertDetailPage(page,'Account','settings');
+      await audit(page,`Account page ${width}px`);
+      await button(page,'Back to settings').click();
     }
 
     await page.setViewportSize({width:390,height:844});
     await button(page,'Account').click();
-    await dialog(page,'Account').waitFor();
+    let screen=await assertDetailPage(page,'Account','settings');
     await audit(page,'Account drilldown');
-    await dialog(page,'Account').getByRole('button',{name:/^Edit profile/}).click();
+    await screen.getByRole('button',{name:/^Edit profile/}).click();
     assert.equal(await page.evaluate(()=>S.v),'editprofile','Account keeps real profile editing reachable');
     await navigate(page,'settings');
     await button(page,'Account').click();
-    await dialog(page,'Account').getByRole('button',{name:/Phone & Email Security/}).click();
-    await dialog(page,'Phone & Email Security').waitFor();
-    assert.match(await dialog(page,'Phone & Email Security').innerText(),/3210/);
-    await button(page,'Close settings').click();
+    screen=await assertDetailPage(page,'Account','settings');
+    await screen.getByRole('button',{name:/Phone & Email Security/}).click();
+    screen=await assertDetailPage(page,'Phone & Email Security','Account');
+    assert.match(await screen.innerText(),/3210/);
+    await button(page,'Back to Account').click();
+    await assertDetailPage(page,'Account','settings');
+    await button(page,'Back to settings').click();
 
     await button(page,'Payments').click();
-    await dialog(page,'Payments').waitFor();
-    await dialog(page,'Payments').getByRole('button',{name:/Wallet & Activity/}).click();
+    screen=await assertDetailPage(page,'Payments','settings');
+    await screen.getByRole('button',{name:/Wallet & Activity/}).click();
     assert.equal(await page.evaluate(()=>S.v),'wallet','Payments keeps real wallet activity reachable');
     await navigate(page,'settings');
     await button(page,'Privacy & Terms').click();
-    await dialog(page,'Privacy & Terms').getByRole('button',{name:/Privacy & Blocked Users/}).click();
-    await dialog(page,'Privacy & Blocked Users').waitFor();
+    screen=await assertDetailPage(page,'Privacy & Terms','settings');
+    await screen.getByRole('button',{name:/Privacy & Blocked Users/}).click();
+    screen=await assertDetailPage(page,'Privacy & Blocked Users','Privacy & Terms');
     assert.equal(await page.getByRole('checkbox',{name:'Discoverable profile',exact:true}).isChecked(),true);
     await audit(page,'Privacy drilldown');
-    await button(page,'Close settings').click();
+    await button(page,'Back to Privacy & Terms').click();
+    await assertDetailPage(page,'Privacy & Terms','settings');
+    await button(page,'Back to settings').click();
 
     await button(page,'General').click();
-    await dialog(page,'General').waitFor();
-    await dialog(page,'General').getByRole('button',{name:/Language & Region/}).click();
-    await dialog(page,'Language & Region').waitFor();
-    await button(page,'Close settings').click();
+    screen=await assertDetailPage(page,'General','settings');
+    await screen.getByRole('button',{name:/Language & Region/}).click();
+    await assertDetailPage(page,'Language & Region','General');
+    await button(page,'Back to General').click();
+    await assertDetailPage(page,'General','settings');
+    await button(page,'Back to settings').click();
     await button(page,'About').click();
-    assert.match(await page.getByRole('dialog').innerText(),/BinzoLive/);
+    screen=await assertDetailPage(page,'About','settings');
+    assert.match(await screen.innerText(),/BinzoLive/);
     const version=await page.evaluate(()=>window.ZIMI_APP_VERSION);
-    assert.ok((await page.getByRole('dialog').innerText()).includes(version),'About shows the shipped app version');
-    await button(page,'Close settings').click();
+    assert.ok((await screen.innerText()).includes(version),'About shows the shipped app version');
+    await button(page,'Back to settings').click();
     assert.equal(await page.getByRole('button',{name:/^Become a Host$/i}).count(),1,'Members retain their application entry');
 
     await button(page,'Add coins').click();

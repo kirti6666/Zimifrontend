@@ -4,13 +4,13 @@
 :root[data-theme-id] :is(button,input,textarea,select){font-family:inherit}
 :root[data-theme-id] :is(.app,#top,.zh-header,.nav.zh-nav){background:var(--canvas);color:var(--ink)}
 :root[data-theme-id] .app{background-image:radial-gradient(ellipse at 100% 10%,color-mix(in srgb,var(--accent) 7%,transparent),transparent 65%)}
-:root[data-theme-id] :is(.zh-header,.zp-dialog,.zp-detail,.zp-dialog details,.zc-contact){border-color:var(--line)}
+:root[data-theme-id] :is(.zh-header,.zp-dialog,.zp-detail,.zp-dialog details,.zp-detail-body details,.zc-contact){border-color:var(--line)}
 :root[data-theme-id] :is(.zh-balance,.zp-heading-actions>button,.zp-row-icon,.zp-wallet-actions>button,.zp-dialog-heading>button,.zp-secondary,.zp-account-id,.zp-earnings,.zp-field>input,.zp-field>select,.zp-languages label,.zp-blocked button,.zc-dialog-heading>button,.zc-search,.zc-sort select,.zc-compose-search,.zh-soft,.zh-broadcast input,.zh-broadcast select,.zh-packs>button){background:var(--raised);color:var(--ink);border-color:var(--line)}
 :root[data-theme-id] :is(.zp-identity,.zp-wallet,.zp-dialog,.zc-dialog,.zh-match,.zh-bonus,.zh-tile-caption,.zh-payment-status,.zh-wallet-card,.zh-gift-sheet,.zh-notification){background:var(--surface);color:var(--ink)}
 :root[data-theme-id] :is(.zp-identity,.zp-wallet,.zh-match,.zh-wallet-card){background-image:linear-gradient(120deg,transparent,color-mix(in srgb,var(--accent) 7%,transparent))}
 :root[data-theme-id] :is(.zp-stats>div,.zp-bio,.zh-filters button,.zc-filters button,.zc-tabs>button.selected){background:var(--raised);color:var(--ink)}
 :root[data-theme-id] :is(.zp-row,.zp-person h2,.zh-match h2,.zh-tile h3,.zc-empty h2,.zh-empty h3,.zc-name){color:var(--ink)}
-:root[data-theme-id] :is(.zp-heading p,.zp-footer,.zp-footer small,.zp-footer>span,.zp-person-text>p,.zp-person-text .zp-id,.zp-chevron,.zp-dialog-body>p,.zp-guidelines>p,.zp-dialog details p,.zp-dialog .zp-note,.zp-field,.zp-detail>span,.zp-detail>small,.zp-earnings>span,.zp-earnings>small,.zp-empty,.zc-heading-actions>button,.zc-row-heading time,.zc-message,.zc-empty,.zc-sort,.zc-contact small,.zc-empty-contact,.zh-muted,.zh-empty,.zh-match p,.zh-tile p,.zh-section-title>span,.zh-available,.zh-bonus p,.zh-explore-heading>span,.zh-explore-heading p,.zh-stories>.zh-stage-empty,.zh-coins-note,.zh-packs span,.zh-broadcast>p){color:var(--muted)}
+:root[data-theme-id] :is(.zp-heading p,.zp-footer,.zp-footer small,.zp-footer>span,.zp-person-text>p,.zp-person-text .zp-id,.zp-chevron,.zp-dialog-body>p,.zp-detail-body>p,.zp-guidelines>p,.zp-dialog details p,.zp-detail-body details p,.zp-dialog .zp-note,.zp-detail-body .zp-note,.zp-field,.zp-detail>span,.zp-detail>small,.zp-earnings>span,.zp-earnings>small,.zp-empty,.zc-heading-actions>button,.zc-row-heading time,.zc-message,.zc-empty,.zc-sort,.zc-contact small,.zc-empty-contact,.zh-muted,.zh-empty,.zh-match p,.zh-tile p,.zh-section-title>span,.zh-available,.zh-bonus p,.zh-explore-heading>span,.zh-explore-heading p,.zh-stories>.zh-stage-empty,.zh-coins-note,.zh-packs span,.zh-broadcast>p){color:var(--muted)}
 :root[data-theme-id] :is(.zh-brand>svg,.zh-brand>span>span,.zh-balance svg,.zp-stats svg,.zp-row-icon,.zp-empty>svg,.zc-gift-message,.zc-unread .zc-gift-message,.zc-name .zh-verified svg,.zc-name>svg,.zc-contact>svg,.zc-dialog-reset,.zc-search>button.active,.zh-section-title>button,.zh-match h2>svg,.zh-packs svg){color:var(--accent-ink)}
 :root[data-theme-id] .zc-unread .zc-message{color:var(--ink)}
 :root[data-theme-id] :is(.zc-unread .zc-row-heading time,.zc-heading-actions>.zc-compose-button){color:var(--accent-ink)}
@@ -39,7 +39,7 @@
 :root[data-theme-id] .zh-notification>span{color:var(--accent-ink)}
 :root[data-theme-id] .zh-wave i{background:var(--accent-ink)}
 :root[data-theme-id] .zh-skeleton-shape{background-image:linear-gradient(100deg,color-mix(in srgb,var(--ink) 5%,transparent) 20%,color-mix(in srgb,var(--ink) 12%,transparent) 45%,color-mix(in srgb,var(--ink) 5%,transparent) 70%)}
-:root[data-theme-id] :is(.zp-stats span,.zp-field,.zp-preference,.zp-dialog-body>p,.zp-dialog details p,.zh-match p,.zh-tile p,.zh-bonus p){font-size:calc(12px * var(--theme-font-scale))}
+:root[data-theme-id] :is(.zp-stats span,.zp-field,.zp-preference,.zp-dialog-body>p,.zp-detail-body>p,.zp-dialog details p,.zp-detail-body details p,.zh-match p,.zh-tile p,.zh-bonus p){font-size:calc(12px * var(--theme-font-scale))}
 :root[data-theme-id] :is(.zp-row-text>b,.zc-message,.zc-contact b){font-size:calc(13px * var(--theme-font-scale))}
 :root[data-theme-id] :is(.zp-heading h1,.zc-heading h1){font-size:calc(27px * var(--theme-font-scale))}
 /* Every authenticated screen uses the same palette, including secondary flows. */

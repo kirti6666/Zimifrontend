@@ -169,7 +169,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(),['Following','Explore','For You','New'],'The Home header has the reference feed tabs');
     assert.equal(await page.getByRole('tab',{name:'Explore',exact:true}).getAttribute('aria-selected'),'true','Explore is the default feed');
     assert.equal(await page.locator('.zh-brand,.zh-logo').count(),0,'The discovery tabs replace the app-name header');
-    assert.deepEqual(await page.locator('.zh-header-actions button').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label'))),['Search creators','Leaderboard'],'Like the reference, the header has only Search and the trophy');
+    assert.deepEqual(await page.locator('.zh-header-actions button').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label'))),['Search creators','Leaderboard','Notifications'],'The Home header follows the reference action order');
     assert.deepEqual(await page.locator('.zh-region-chips button').allInnerTexts(),['Popular','India'],'Country chips offer Popular and India only');
     assert.equal(await page.locator('.zh-region-chips button[aria-pressed="true"]').innerText(),'Popular');
     assert.equal(await page.locator('.zh-host-status').count(),0,'Sender accounts do not show host availability');
@@ -386,7 +386,8 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await real.evaluate(()=>homeClaim());
     assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='awards.claim').length),0,'Hosts receive Diamond call rewards instead of claiming legacy Coin missions');
     assert.equal(await real.evaluate(()=>S.bal),901,'A retired reward never invents wallet credit');
-    assert.equal(await real.locator('.zh-bell,.zh-wallet-icon').count(),0,'Home has no bell or wallet in its header');
+    assert.equal(await real.locator('.zh-bell').count(),1,'Home keeps the reference notification bell');
+    assert.equal(await real.locator('.zh-wallet-icon').count(),0,'Home has no wallet action');
     await real.evaluate(()=>homeNotifications());
     await receive('data.notifications',{items:[{id:'507f1f77bcf86cd799439016',title:'A real update',body:'Welcome back',createdAt:new Date().toISOString(),read:false}],unreadCount:1});
     await real.getByRole('button',{name:'Mark all read',exact:true}).click();

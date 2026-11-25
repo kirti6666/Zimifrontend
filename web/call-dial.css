@@ -1,7 +1,7 @@
 /* Outgoing call: the incoming ring's quiet stage. The avatar rings, its small double
    nudge and the "Calling" dots keep time with the ringback tone's 3s cycle;
    web/call-ringback.js supplies --dial-phase so a redraw continues the cycle. */
-.ringscr.dial{justify-content:flex-start;padding:max(40px,8dvh) 24px max(36px,calc(var(--safe-bottom) + 24px));overflow-y:auto;overscroll-behavior:contain}
+.ringscr.dial{justify-content:flex-start;padding:max(40px,8vh) 24px max(36px,calc(var(--safe-bottom) + 24px));padding:max(40px,8dvh) 24px max(36px,calc(var(--safe-bottom) + 24px));overflow-y:auto;overscroll-behavior:contain}
 .ringscr.dial .ringbg{inset:0;opacity:1;filter:none;transform:none;background:radial-gradient(ellipse 75% 45% at 50% 40%,color-mix(in srgb,var(--accent) 14%,transparent),transparent);animation:dial-glow 3s ease-in-out var(--dial-phase,0s) infinite}
 .ringscr.dial .ringeye{z-index:1;gap:6px;margin:auto 0 48px;border:1px solid var(--line);font-size:10px;letter-spacing:.09em}
 .ringscr.dial .ringeye svg{width:13px;height:13px;color:var(--accent-ink)}
@@ -43,7 +43,7 @@
 .ringscr.dial:not(.is-video) .ringbg>video{visibility:hidden}
 .ringscr.dial:not(.is-video) .ringbg>:is(svg,.dialscrim){display:none}
 .ringscr.dial.is-video .ringeye{display:none}
-.ringscr.dial.is-video .ringorb{margin-top:max(8px,2dvh)}
+.ringscr.dial.is-video .ringorb{margin-top:max(8px,2vh);margin-top:max(8px,2dvh)}
 .ringscr.dial.is-video .ringorb::before,.ringscr.dial.is-video .ringorb::after{border-color:color-mix(in srgb,var(--accent) 40%,#fff)}
 .ringscr.dial.is-video h2{margin-top:28px;font-size:24px;color:#fff}
 .ringscr.dial.is-video .dialstatus{color:rgb(255 255 255 / .85)}

@@ -3,6 +3,9 @@ const resourceNames=['home','search','catalog','notifications','chats','wallet',
 const ContentLoading=Object.fromEntries(resourceNames.map(key=>[key,{loading:!DEMO,error:'',page:1,loaded:DEMO,background:false}]));
 function contentPending(key){return !!ContentLoading[key]?.loading}
 function contentStart(key,extra={}){Object.assign(ContentLoading[key],{loading:true,error:'',background:false,...extra})}
+// Start first-load requests at the next paint boundary so their skeleton gets
+// one real compositor opportunity, without holding it after data arrives.
+function contentAfterLoadingPaint(callback){requestAnimationFrame(callback)}
 function skeletonLine(width='70%',height=12){return `<span class="zh-skeleton-shape" style="width:${width};height:${height}px"></span>`}
 function contentSkeleton(kind='rows',label='Loading content',count=4){
   let body='';
@@ -14,7 +17,10 @@ function contentSkeleton(kind='rows',label='Loading content',count=4){
   else if(kind==='balance')body=skeletonLine('105px',38);
   else if(kind==='wallet')body=`<div class="zh-loading-wallet">${skeletonLine('45%',12)}${skeletonLine('55%',38)}${skeletonLine('90%',12)}${skeletonLine('100%',38)}</div>${Array.from({length:3},()=>`<div class="zh-skeleton-row">${skeletonLine('100%',48)}</div>`).join('')}`;
   else if(kind==='posts')body=`<div class="hpgrid">${Array.from({length:6},()=>'<div class="zh-skeleton-shape zh-skeleton-post"></div>').join('')}</div>`;
-  else if(kind==='thread')body=`<div class="zh-skeleton-thread-list">${Array.from({length:6},(_,i)=>`<div class="${i%3===1?'outgoing':''}">${skeletonLine(i%2?'62%':'79%',52)}</div>`).join('')}</div>`;
+  else if(kind==='thread'){
+    const rows=[['incoming','68%',false],['incoming','47%',true],['outgoing','58%',true],['incoming','76%',true],['outgoing','66%',false],['outgoing','42%',true]];
+    body=`<div class="zh-skeleton-thread-list">${rows.map(([side,width,end],index)=>`<div class="zh-skeleton-thread-row ${side} ${index===0||rows[index-1][0]!==side?'group-start':'group-continued'}">${side==='incoming'?end?'<span class="zh-skeleton-shape zh-skeleton-avatar"></span>':'<span class="zh-skeleton-avatar zh-skeleton-avatar-space"></span>':''}<span class="zh-skeleton-shape zh-skeleton-bubble" style="width:${width}"></span></div>`).join('')}</div>`;
+  }
   else body=Array.from({length:count},()=>`<div class="zh-skeleton-row"><span class="zh-skeleton-shape zh-skeleton-avatar"></span><div>${skeletonLine('56%',14)}${skeletonLine('89%',11)}${skeletonLine('34%',9)}</div></div>`).join('');
   return `<div class="zh-skeleton zh-skeleton-${kind}" role="status" aria-label="${esc(label)}" aria-busy="true"><div aria-hidden="true">${body}</div></div>`;
 }
@@ -34,7 +40,10 @@ function contentRetry(key){
   else if(key==='transactions')Native.send('transactions.load');
   else if(key==='catalog')Native.send('catalog.load');
   else if(key==='notifications')Native.send('notifications.load');
-  else if(key==='thread')Native.send('chat.open',{with:S.h});
+  else if(key==='thread'){
+    const peer=String(S.h||'');
+    contentAfterLoadingPaint(()=>{if(S.v==='thread'&&String(S.h)===peer)Native.send('chat.open',{with:peer})});
+  }
   else Native.send('data.reload');
 }
 function contentBeforeNavigate(view){
@@ -57,7 +66,7 @@ Native.on('data.loading',d=>{
   // A background refresh keeps an already shown list in place; only its new data replaces it.
   if(d.background&&d.resource!=='home'&&ContentLoading[d.resource].loaded)return;
   if(d.resource==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
-  if(d.resource==='search'&&d.q!==(S.sq||''))return;
+  if(d.resource==='search'&&d.q!==(S.sq||'').trim())return;
   Object.assign(ContentLoading[d.resource],{loading:d.loading,error:d.error||'',page:d.page||1});
   if(d.resource==='home'){ContentLoading.home.background=!!d.background&&Home.loaded&&Home.queryKey===homeFeedKey();Home.loading=d.loading;Home.loadingMore=d.loading&&d.page>1;if(!d.loading){Home.error=d.error||''}}
   if(d.resource==='search'){Home.searchLoading=d.loading;Home.searchMore=d.loading&&d.page>1;Home.searchError=d.error||''}
@@ -66,12 +75,13 @@ Native.on('data.loading',d=>{
 /* Results also settle placeholders when received from an older native shell. */
 for(const [event,key] of Object.entries({'data.home':'home','data.search':'search','data.catalog':'catalog','data.notifications':'notifications','data.chats':'chats','data.missed':'missed','data.calls':'calls','data.transactions':'transactions','data.leaderboard':'leaderboard','data.referral':'referral','data.posts':'posts','data.thread':'thread','wallet.balance':'wallet','data.profileSettings':'profileSettings','data.blocked':'blocked'}))Native.on(event,d=>{
   if(key==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
-  if(key==='search'&&d.q!==(S.sq||''))return;
+  if(key==='search'&&d.q!==(S.sq||'').trim())return;
   if(key==='thread'&&d.with!==S.h)return;
+  if(key==='leaderboard'&&d.period!==Board.period)return;
   Object.assign(ContentLoading[key],{loading:false,error:'',loaded:true});
   if(!['home','search','catalog','notifications'].includes(key))contentRender(key);
 });
-Native.on('operation.error',d=>{const key={'home.reload':'home','hosts.search':'search','catalog.load':'catalog','notifications.load':'notifications','chat.open':'thread'}[d.action];if(key){Object.assign(ContentLoading[key],{loading:false,error:d.message||'Unable to load. Please try again.'});contentRender(key)}});
+Native.on('operation.error',d=>{const key={'home.reload':'home','hosts.search':'search','profiles.search':'search','catalog.load':'catalog','notifications.load':'notifications','chat.open':'thread'}[d.action];if(key){Object.assign(ContentLoading[key],{loading:false,error:d.message||'Unable to load. Please try again.'});contentRender(key)}});
 function contentReset(){for(const key of resourceNames)Object.assign(ContentLoading[key],{loading:!DEMO,error:'',page:1,loaded:DEMO,background:false})}
 Native.on('session.none',contentReset);Native.on('session.expired',contentReset);
 

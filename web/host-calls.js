@@ -4,6 +4,14 @@
 /* preview: '' until the host asks to check their camera, then 'starting', 'ready' or 'failed'. */
 const HostCalls = { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: 0, visBusy: false, scene: '', sceneAt: 0, showTerms: false, rateDraft:null, rateBusy:false, rateError:'', rateRequest:0, rateSequence:0 };
 
+/* Use an explicit route class instead of CSS :has(), which is unavailable in
+   older Android System WebViews and otherwise collapses the setup to 0px. */
+function hcAfterRender() {
+  const screen = document.getElementById('screen');
+  const active = !!screen && !!screen.querySelector('.hc-setup,.hc-waiting,.hc-summary');
+  document.documentElement.classList.toggle('hc-active', active);
+}
+
 function hcIdentityAvatar(person, size = 104) {
   const name = String(person?.n || person?.name || 'Host').trim();
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => Array.from(part)[0]).join('').toUpperCase();
@@ -42,22 +50,51 @@ function hcEarningsValue() {
 }
 
 /* ---- Before going online ---- */
+function hcShownRate(st = HostCalls.status) {
+  if (!st) return 0;
+  const draft = HostCalls.rateDraft;
+  const raw = st.configurableRate && draft !== null && /^\d+$/.test(String(draft)) ? Number(draft) : Number(st.selectedRate ?? st.rate);
+  return Number.isSafeInteger(raw) && raw >= 0 ? raw : 0;
+}
+function hcRateStops(st) {
+  if (st.configurableRate) {
+    const min = Number(st.minRate), max = Number(st.maxRate);
+    if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max) || max <= min) return [hcShownRate(st)];
+    return [...new Set([min, Math.round(min + (max - min) / 3), Math.round(min + (max - min) * 2 / 3), max])];
+  }
+  const rates = (Array.isArray(st.tiers) ? st.tiers : []).map(tier => Number(tier.rate)).filter(rate => Number.isSafeInteger(rate) && rate >= 0);
+  const current = hcShownRate(st);
+  return [...new Set([...rates, current])].sort((a, b) => a - b);
+}
+function hcRatePercent(value, stops) {
+  const min = stops[0] || 0, max = stops.at(-1) ?? min;
+  return max > min ? Math.max(0, Math.min(100, (value - min) / (max - min) * 100)) : 0;
+}
+function hcPickRate(value) { hcDraftRate(String(value)); r(); }
 function hcRateCard() {
   const st = HostCalls.status;
-  if (HostCalls.error) return `<div class="hc-card hc-status-error" role="alert"><span>${esc(HostCalls.error)}</span><button type="button" onclick="hcLoadStatus()">Retry call details</button></div>`;
-  if (!st) return `<div class="hc-card" role="status" aria-label="Loading your call price" aria-busy="true">${skeletonLine('55%', 15)}${skeletonLine('85%', 11)}<div class="hc-tiers" aria-hidden="true">${skeletonLine('25%', 24)}${skeletonLine('25%', 24)}${skeletonLine('25%', 24)}</div></div>`;
-  const tiers = st.tiers.length > 1 ? st.tiers : [], next = st.next, fee = st.entryFeeCoins;
-  return `<div class="hc-card">
-    <button type="button" class="hc-card-head" aria-label="Call price details" aria-expanded="${HostCalls.showTerms}" onclick="HostCalls.showTerms=!HostCalls.showTerms;r()"><b>${st.rate ? `${n(st.rate * 60)} member coins/h` : 'Free calls'}</b>${next ? `<small>${n(Math.max(0, next.atCoins - st.earnedCoins))} member coins to next tier</small>` : tiers.length ? '<small>Top tier unlocked</small>' : '<small>Member call price</small>'}</button>
-    ${tiers.length ? `<div class="hc-tiers" role="list" aria-label="Member call price tiers">${tiers.map(t => `<span role="listitem" class="${t.tier === st.tier ? 'is-on' : t.tier < st.tier ? 'is-done' : ''}">${n(t.rate * 60)} coins/h</span>`).join('')}</div>` : ''}
-    ${st.configurableRate?`<form class="hc-rate-picker" onsubmit="event.preventDefault();hcSaveRate()"><label for="hc-call-rate">Member call price (coins/min)</label><div><input id="hc-call-rate" type="number" inputmode="numeric" min="${st.minRate}" max="${st.maxRate}" step="1" value="${esc(HostCalls.rateDraft===null?String(st.selectedRate):HostCalls.rateDraft)}" oninput="hcDraftRate(this.value)" ${HostCalls.rateBusy?'disabled':''}><button type="submit" ${HostCalls.rateBusy||DEMO?'disabled':''}>${HostCalls.rateBusy?'Saving...':'Save price'}</button></div><p>Choose ${n(st.minRate)}–${n(st.maxRate)} member coins per minute. This applies to new calls. Confirmed earnings appear as Diamonds in Wallet.</p>${HostCalls.rateError?`<p class="hc-rate-error" role="alert">${esc(HostCalls.rateError)}</p>`:''}</form>`:''}
-    ${HostCalls.showTerms ? `<div class="hc-rate-details"><b>${st.rate ? `Member pays ${n(st.rate)} coins / min` : 'Free calls'}</b>${tiers.length ? `<span>Tier ${st.tier} of ${tiers.length}</span>` : ''}${next ? `<span>Another ${n(Math.max(0, next.atCoins - st.earnedCoins))} member coins unlocks a ${n(next.rate)}-coin/min member price.</span>` : ''}${fee ? `<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. Your eligible share is credited in diamonds after the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span>` : ''}<span>Your confirmed diamond earnings appear in Wallet.</span></div>` : ''}
+  if (HostCalls.error) return `<div class="hc-card hc-rate-card hc-status-error" role="alert"><span>${esc(HostCalls.error)}</span><button type="button" onclick="hcLoadStatus()">Retry call details</button></div>`;
+  if (!st) return `<div class="hc-card hc-rate-card hc-rate-loading" role="status" aria-label="Loading your call price" aria-busy="true"><div>${skeletonLine('92px', 15)}${skeletonLine('74px', 20)}</div>${skeletonLine('100%', 6)}${skeletonLine('92%', 12)}</div>`;
+  const tiers = Array.isArray(st.tiers) && st.tiers.length > 1 ? st.tiers : [], next = st.next, fee = st.entryFeeCoins;
+  const rate = hcShownRate(st), stops = hcRateStops(st), percent = hcRatePercent(rate, stops);
+  const selected = Number(st.selectedRate ?? st.rate) || 0;
+  const dirty = st.configurableRate && Number.isSafeInteger(rate) && rate !== selected;
+  const note = `Choose ${n(st.minRate)}–${n(st.maxRate)} user coins per minute. This applies to new calls. Confirmed earnings appear as Diamonds in Wallet.`;
+  return `<div class="hc-card hc-rate-card">
+    <div class="hc-rate-heading"><button type="button" class="hc-card-head" aria-label="Call price details" aria-expanded="${HostCalls.showTerms}" onclick="HostCalls.showTerms=!HostCalls.showTerms;r()"><span class="hc-rate-icon">${hi('rings', 14)}</span><span><b>Call rate</b><small>${st.rate ? `${n(st.rate * 60)} user coins/h` : 'Free calls'}${next ? ` ${n(Math.max(0, next.atCoins - st.earnedCoins))} user coins to next tier` : tiers.length ? ' Top tier unlocked' : ''}</small></span></button><div class="hc-rate-value"><strong>${n(rate)}</strong><span>coins/min</span>${st.configurableRate ? `<button type="button" class="hc-rate-save ${dirty || HostCalls.rateBusy ? '' : 'is-clean'}" aria-label="Save price" onclick="hcSaveRate()" ${HostCalls.rateBusy || DEMO ? 'disabled' : ''}>${HostCalls.rateBusy ? 'Saving…' : 'Save'}</button>` : ''}</div></div>
+    <form class="hc-rate-picker" onsubmit="event.preventDefault();hcSaveRate()" style="--hc-rate-at:${percent}%">
+      <div class="hc-rate-track" aria-hidden="true"><i></i><b></b>${stops.map(value => `<span style="--hc-stop-at:${hcRatePercent(value, stops)}%"></span>`).join('')}</div>
+      ${st.configurableRate ? `<input id="hc-call-rate-slider" type="range" min="${st.minRate}" max="${st.maxRate}" step="1" value="${rate}" aria-label="Call rate, coins per minute" aria-valuetext="${n(rate)} coins per minute" oninput="hcDraftRate(this.value,this)" ${HostCalls.rateBusy ? 'disabled' : ''}><label class="hc-rate-manual" for="hc-call-rate">User call price (coins/min)</label><input class="hc-rate-manual-input" id="hc-call-rate" type="number" inputmode="numeric" min="${st.minRate}" max="${st.maxRate}" step="1" value="${esc(HostCalls.rateDraft === null ? String(st.selectedRate) : HostCalls.rateDraft)}" tabindex="-1" oninput="hcDraftRate(this.value,this)" ${HostCalls.rateBusy ? 'disabled' : ''}>` : ''}
+      <div class="hc-rate-labels" ${tiers.length ? 'role="list" aria-label="User call price tiers"' : 'aria-label="Call rate choices"'}>${stops.map(value => st.configurableRate ? `<button type="button" class="${value === rate ? 'is-on' : ''}" style="--hc-stop-at:${hcRatePercent(value, stops)}%" aria-label="${n(value)} coins per minute" onclick="hcPickRate(${value})" ${HostCalls.rateBusy ? 'disabled' : ''}>${n(value)}</button>` : `<span role="listitem" class="${value === rate ? 'is-on' : ''}" style="--hc-stop-at:${hcRatePercent(value, stops)}%">${n(value)}</span>`).join('')}</div>
+      ${st.configurableRate ? `<p class="hc-rate-note">${note}</p>` : ''}${HostCalls.rateError ? `<p class="hc-rate-error" role="alert">${esc(HostCalls.rateError)}</p>` : ''}
+    </form>
+    ${HostCalls.showTerms ? `<div class="hc-rate-details"><b>${st.rate ? `User pays ${n(st.rate)} coins / min` : 'Free calls'}</b>${tiers.length ? `<span>Tier ${st.tier} of ${tiers.length}</span>` : ''}${next ? `<span>Another ${n(Math.max(0, next.atCoins - st.earnedCoins))} user coins unlocks a ${n(next.rate)}-coin/min user price.</span>` : ''}${fee ? `<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. Your eligible share is credited in diamonds after the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span>` : ''}<span>Your confirmed diamond earnings appear in Wallet.</span></div>` : ''}
   </div>`;
 }
 function hcVisibilityRow() {
   const on = S.callVis !== false;
-  return `<button type="button" class="hc-toggle" role="switch" aria-checked="${on}" onclick="hcToggleVisible()" ${HostCalls.visBusy ? 'disabled' : ''}>
-    <span><b>Online on Home during calls</b><small>${on ? 'Others can still find you and call while you’re on a call.' : 'You’re hidden from Home while you’re on a call.'}</small></span>
+  return `<button type="button" class="hc-toggle" role="switch" aria-label="Show my profile in Explore and stay available while on a call" aria-checked="${on}" onclick="hcToggleVisible()" ${HostCalls.visBusy ? 'disabled' : ''}>
+    <span><b>Show in Explore</b><small>${on ? 'even while on a call' : 'hidden while on a call'}</small></span>
     <i class="hc-switch ${on ? 'is-on' : ''}" aria-hidden="true"></i></button>`;
 }
 function hcSetupView() {
@@ -65,30 +102,25 @@ function hcSetupView() {
   const status = !cam ? 'Camera is off'
     : p === 'ready' ? 'Camera ready' : p === 'starting' ? 'Starting camera…' : p === 'failed' ? HostCalls.previewError : '';
   /* The camera only starts when the host asks; opening this screen never captures anything. */
-  const check = cam && (!p || p === 'failed') ? `<button type="button" class="hc-check" onclick="hcStartPreview()">${hi('vid', 15)}${p ? 'Try again' : 'Check camera'}</button>` : '';
-  return `<section class="hc-setup hc-preview ${cam && p === 'ready' ? '' : 'is-off'}" aria-label="Get ready to go online">
-    <div class="hc-stage" aria-hidden="true">${hcStageVideo()}</div><div class="hc-stage-shade" aria-hidden="true"></div>
-    <header class="hc-setup-header">${backButton("go('home')")}<div class="hc-preview-tools">
-        <button type="button" onclick="hcSetupMic()" aria-pressed="${!S.mic}" aria-label="${S.mic ? 'Mute microphone' : 'Unmute microphone'}">${hi(S.mic ? 'mic' : 'micoff', 18)}</button>
-        <button type="button" onclick="hcSetupCam()" aria-pressed="${!cam}" aria-label="${cam ? 'Turn camera off' : 'Turn camera on'}">${hi(cam ? 'vid' : 'camoff', 18)}</button>
-      </div></header>
-    <div class="hc-setup-panels">${hcRateCard()}${hcVisibilityRow()}${hsCardButton()}</div>
-    <div class="hc-camera-space"><i class="hc-guide" aria-hidden="true"></i>
-      <div class="hc-camera-message" ${p === 'failed' ? 'role="alert"' : p === 'starting' ? 'role="status" aria-busy="true"' : ''}>
-        ${status ? `<b>${esc(status)}</b>` : ''}
-        ${!cam || p === 'starting' || p === 'failed' ? `<p>${!cam ? 'Callers will see your profile photo.' : p === 'starting' ? 'Allow camera and microphone access to see your preview.' : 'Check camera and microphone access, then try again.'}</p>` : ''}${check}
-      </div></div>
-    <p class="hc-camera-hint">Keep centred, head and shoulders in frame</p>
-    <footer class="hc-setup-footer"><button type="button" class="hc-setup-tool" aria-label="Beauty and filters" onclick="hsOpenSheet('appearance')">${hi('star', 19)}</button>
-      <button type="button" class="hc-primary" onclick="homeSetPresence(true)" aria-label="Go online for calls" aria-busy="${!!Home.presenceBusy}" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Connecting…' : 'Go online'}</button>
-      <button type="button" class="hc-setup-tool" aria-label="Mission" onclick="hsOpenSheet('mission')">${hi('cup', 19)}</button>
-      <button type="button" class="hc-setup-tool" aria-label="Gift target" onclick="hsOpenSheet('gift-target')">${hi('gift', 19)}</button></footer>${typeof hsSheet === 'function' ? hsSheet() : ''}</section>`;
+  const check = cam && (!p || p === 'failed') ? `<button type="button" class="hc-check" onclick="hcStartPreview()">${zi('camera', 17)}${p ? 'Try again' : 'Check camera'}</button>` : '';
+  const rate = hcShownRate(), rateLabel = HostCalls.status ? (rate ? `${n(rate)}/min` : 'Free') : '';
+  return `<section class="hc-setup hc-reference hc-preview ${cam && p === 'ready' ? '' : 'is-off'}" aria-label="Get ready to go online">
+    <div class="hc-setup-scroll" data-lenis-prevent><header class="hc-setup-header">${backButton("go('home')")}<h1>Go live</h1><span aria-hidden="true"></span></header>
+      ${hcRateCard()}
+      <div class="hc-camera-card"><div class="hc-stage" aria-hidden="true">${hcStageVideo()}</div><i class="hc-guide" aria-hidden="true"></i>
+        <button type="button" class="hc-filter-button" aria-label="Beauty and filters" onclick="hsOpenSheet('appearance')">${hi('tune', 17)}<span>Filters</span></button>
+        <div class="hc-preview-tools"><button type="button" onclick="hcSetupMic()" aria-pressed="${!S.mic}" aria-label="${S.mic ? 'Mute microphone' : 'Unmute microphone'}">${hi(S.mic ? 'mic' : 'micoff', 18)}</button><button type="button" onclick="hcSetupCam()" aria-pressed="${!cam}" aria-label="${cam ? 'Turn camera off' : 'Turn camera on'}">${hi(cam ? 'vid' : 'camoff', 18)}</button></div>
+        <div class="hc-camera-message" ${p === 'failed' ? 'role="alert"' : p === 'starting' ? 'role="status" aria-busy="true"' : ''}>${status && p ? `<b>${esc(status)}</b>` : ''}${!cam || p === 'starting' || p === 'failed' ? `<p>${!cam ? 'Callers will see your profile photo.' : p === 'starting' ? 'Allow camera and microphone access to see your preview.' : 'Check camera and microphone access, then try again.'}</p>` : ''}${check}</div>
+      </div>
+      <div class="hc-setup-cards">${hsCardButton()}${hcVisibilityRow()}</div>
+    </div>
+    <footer class="hc-setup-footer"><button type="button" class="hc-setup-tool hc-mission-tool" aria-label="Mission" onclick="hsOpenSheet('mission')">${hi('cup', 20)}<span>Missions</span>${DEMO ? '<b>3</b>' : ''}</button><button type="button" class="hc-setup-tool" aria-label="Gift target" onclick="hsOpenSheet('gift-target')">${hi('gift', 20)}<span>Gift target</span></button><button type="button" class="hc-primary" onclick="homeSetPresence(true)" aria-label="Go online for calls" aria-busy="${!!Home.presenceBusy}" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Connecting…' : `Go online${rateLabel ? `<small>· ${rateLabel}</small>` : ''}`}</button></footer>${typeof hsSheet === 'function' ? hsSheet() : ''}</section>`;
 }
 function hcWaitingView() {
   return `<section class="hc-waiting" style="${hcSceneStyle('waiting')}" aria-label="Online and waiting for calls">
     <div class="hc-waiting-main"><div class="hc-host-avatar is-waiting">${hcIdentityAvatar(me, 104)}<i aria-hidden="true"></i><i aria-hidden="true"></i></div>
     <h1>You’re online</h1><p class="hc-waiting-status">Waiting for callers… ${S.vis ? 'you’re visible on Home.' : 'you’re hidden from Home.'}</p>
-    <p class="hc-waiting-note">Members can call your profile at any time. Stay in the app to answer their calls.</p>
+    <p class="hc-waiting-note">Users can call your profile at any time. Stay in the app to answer their calls.</p>
     <div class="hc-waiting-actions"><button type="button" class="hc-primary" onclick="go('home')">Browse the app</button>
     <button type="button" class="hc-offline" onclick="homeSetPresence(false)" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Going offline…' : 'Go offline'}</button></div></div>
     </section>`;
@@ -98,7 +130,21 @@ function hcLoadStatus() {
   HostCalls.loading = true; HostCalls.error = '';
   Native.send('host.callStatus.load', {}); r();
 }
-function hcDraftRate(value){if(HostCalls.rateBusy)return;HostCalls.rateDraft=String(value);HostCalls.rateError=''}
+function hcDraftRate(value,source){
+ if(HostCalls.rateBusy)return;HostCalls.rateDraft=String(value);HostCalls.rateError='';
+ const st=HostCalls.status,number=/^\d+$/.test(HostCalls.rateDraft)?Number(HostCalls.rateDraft):NaN,dirty=Number.isSafeInteger(number)&&number!==Number(st?.selectedRate??st?.rate);
+ const card=source?.closest?.('.hc-rate-card')||document.querySelector('.hc-rate-card');
+ card?.querySelector('.hc-rate-save')?.classList.toggle('is-clean',!dirty);
+ card?.querySelector('.hc-rate-error')?.remove();
+ if(!st?.configurableRate||!Number.isSafeInteger(number)||number<st.minRate||number>st.maxRate)return;
+ const stops=hcRateStops(st),picker=card?.querySelector('.hc-rate-picker'),slider=card?.querySelector('#hc-call-rate-slider'),manual=card?.querySelector('#hc-call-rate');
+ picker?.style.setProperty('--hc-rate-at',`${hcRatePercent(number,stops)}%`);
+ const shown=card?.querySelector('.hc-rate-value strong');if(shown)shown.textContent=n(number);
+ if(slider){if(slider!==source)slider.value=String(number);slider.setAttribute('aria-valuetext',`${n(number)} coins per minute`)}
+ if(manual&&manual!==source)manual.value=String(number);
+ card?.querySelectorAll('.hc-rate-labels>[style]').forEach(label=>label.classList.toggle('is-on',Number(label.textContent.replaceAll(',',''))===number));
+ const footerRate=document.querySelector('.hc-setup-footer .hc-primary small');if(footerRate)footerRate.textContent=`\u00b7 ${number?n(number)+'/min':'Free'}`;
+}
 function hcSaveRate(){
  const h=HostCalls,st=h.status;if(DEMO||S.v!=='setup'||h.rateBusy||!isApprovedHost()||!st?.configurableRate)return;
  const raw=h.rateDraft===null?String(st.selectedRate):h.rateDraft,value=/^\d+$/.test(raw)?Number(raw):NaN;
@@ -176,8 +222,8 @@ function hcSummaryView(s) {
     <h1>A moment well shared.</h1>
     <p>You spent <b>${fmtDur(s.sec || 0)}</b> on calls. Confirmed earnings appear in your diamond wallet.</p>
     <div class="hc-session-stats"><div><span>Diamond balance</span><b>${hcEarningsValue()}</b></div><div><span>Gifts</span><b>${n(s.gifts || 0)}</b></div><div><span>${s.callers === 1 ? 'Caller' : 'Callers'}</span><b>${n(s.callers || 1)}</b></div></div>
-    ${fees.length ? `<div class="hc-fees"><div class="hc-fees-head"><span>Member entry fees</span></div>
-      ${fees.map(f => `<div class="hc-fee-row ${f.ok ? 'is-ok' : ''}">${hi(f.ok ? 'check' : 'clock', 14)}<span>${esc(first(f.n))}</span><em>${f.ok ? `${n(f.fee)} member coins · hold completed` : 'Ended early · no host share'}</em></div>`).join('')}
+    ${fees.length ? `<div class="hc-fees"><div class="hc-fees-head"><span>User entry fees</span></div>
+      ${fees.map(f => `<div class="hc-fee-row ${f.ok ? 'is-ok' : ''}">${hi(f.ok ? 'check' : 'clock', 14)}<span>${esc(first(f.n))}</span><em>${f.ok ? `${n(f.fee)} user coins · hold completed` : 'Ended early · no host share'}</em></div>`).join('')}
       ${fees.some(f => f.early) ? `<p class="hc-warn">Early endings today: <b>${n(s.early || 0)}</b>.${s.penaltyCoins ? ` Past ${n(s.earlyLimit)} a day, early endings can reduce diamond earnings. Check Wallet for confirmed adjustments.` : ''}</p>` : ''}</div>` : ''}
     <button type="button" class="hc-primary" onclick="S.callId=null;go('setup')">${hi('vid', 18)} Set targets &amp; continue</button>
     <div class="hc-summary-actions"><button type="button" onclick="S.callId=null;go('wallet')">${hi('wal', 17)} Wallet</button><button type="button" onclick="S.callId=null;go('home');homeLoad()">${hi('house', 17)} Home</button></div>

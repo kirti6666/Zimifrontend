@@ -95,11 +95,14 @@ export function parseWebMessage(raw: string): WebMessage | null {
       (d.userAgent === undefined || (typeof d.userAgent === "string" && d.userAgent.trim().length > 0 && d.userAgent.length <= 1024 && !/[\x00-\x1f\x7f-\x9f]/.test(d.userAgent))) &&
       Object.keys(d).every(key => ["requestId", "userAgent"].includes(key)); break;
     case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant", "online", "following", "foryou", "new"].includes(String(d.mode))) && (d.country === undefined || (typeof d.country === "string" && d.country.trim().length > 0 && d.country.length <= 100)) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
-    case "leaderboard.load": valid = ["daily", "weekly", "all"].includes(String(d.period)) && Object.keys(d).every(key => key === "period"); break;
+    case "leaderboard.load": valid = typeof d.period === "string" && ["daily", "weekly", "monthly"].includes(d.period) && Object.keys(d).every(key => key === "period"); break;
     case "referral.load": case "referral.share": valid = Object.keys(d).length === 0; break;
     case "referral.apply": valid = typeof d.code === "string" && d.code.trim().length > 0 && d.code.length <= 20 && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 &&
       Object.keys(d).every(key => ["code", "requestId"].includes(key)); break;
     case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
+    case "profiles.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.filter === "all" || d.filter === "online") &&
+      (d.page === undefined || (Number.isSafeInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) &&
+      Object.keys(d).every(key => key === "q" || key === "page" || key === "filter"); break;
     case "users.load": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isSafeInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => key === "q" || key === "page"); break;
     case "hosts.active.load": valid = typeof d.q === "string" && d.q.length <= 80 && (d.page === undefined || (Number.isSafeInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 1000)) && Object.keys(d).every(key => key === "q" || key === "page"); break;
     case "notifications.load": valid = notificationQuery(d); break;
@@ -111,7 +114,6 @@ export function parseWebMessage(raw: string): WebMessage | null {
     }
     case "official.activity": valid = boolean(d.active) && supportKeys(d, ["active"]);break;
     case "official.load": valid = supportRequest(d) && (d.before === undefined || officialCursor(d.before)) && supportKeys(d, ["before", "requestId"]);break;
-    case "official.send": valid = supportRequest(d) && supportBody(d.body) && idempotency(d.clientMessageId) && supportKeys(d, ["body", "clientMessageId", "requestId"]);break;
     case "support.activity": valid = boolean(d.active) && (d.ticketId === undefined || supportId(d.ticketId)) && supportKeys(d, ["active", "ticketId"]);break;
     case "support.load": valid = supportRequest(d) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) &&
       (d.status === undefined || d.status === "all" || SUPPORT_STATUSES.includes(d.status as never)) && supportKeys(d, ["page", "status", "requestId"]);break;
@@ -129,7 +131,11 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "payments.routes.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => key === "requestId"); break;
     case "profile.settings.load": valid = true; break;
     case "profile.load": valid = identifier(d.id) && Object.keys(d).every(key => ["id", "requestId"].includes(key)); break;
+    case "profile.share": valid = typeof d.id === "string" && d.id.trim().length > 0 && d.id.length <= 128 &&
+      typeof d.name === "string" && d.name.length <= 100 && Object.keys(d).every(key => ["id", "name"].includes(key)); break;
     case "profile.posts.load": valid = identifier(d.id) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => ["id", "page", "requestId"].includes(key)); break;
+    case "profile.mvps.load": valid = identifier(d.id) && (d.period === "week" || d.period === "all") && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 &&
+      Object.keys(d).every(key => ["id", "period", "requestId"].includes(key)); break;
     case "profile.settings.save": case "settings.set": valid = settingsPatch(d); break;
     case "privacy.save": valid = privacyPatch(d); break;
     case "blocked.load": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;
@@ -192,6 +198,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "follow.set": valid = identifier(d.id) && boolean(d.on) && Object.keys(d).every(key => ["id", "on", "requestId"].includes(key)); break;
     case "chat.open": valid = identifier(d.with) && (d.background === undefined || boolean(d.background)) && (d.knownIds === undefined || (Array.isArray(d.knownIds) && d.knownIds.length <= 200 && d.knownIds.every(id => typeof id === "string" && /^[a-f\d]{24}$/i.test(id)) && new Set(d.knownIds).size === d.knownIds.length)) && Object.keys(d).every(key => ["with", "background", "knownIds"].includes(key)); break;
     case "chat.activity": valid = identifier(d.with) && boolean(d.active) && Object.keys(d).every(key => ["with", "active"].includes(key)); break;
+    case "chat.typing": valid = identifier(d.to) && boolean(d.typing) && Object.keys(d).every(key => ["to", "typing"].includes(key)); break;
     case "chats.reload": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;
     case "chats.readAll": valid = true; break;
     case "chat.send": valid = identifier(d.to) && text(d.text, 4000) && (d.inCall === undefined || boolean(d.inCall)) && (d.replyTo === undefined || identifier(d.replyTo)) && (d.clientId === undefined || voiceClientId(d.clientId)); break;

@@ -96,7 +96,7 @@ test('foreground calls sound only for the current account and an unexpired autho
 });
 test('granular preferences normalize older servers and reject malformed/unknown quiet-hour authority', () => {
   const { preferences: p } = harness(); const defaults = p.notificationPreferencesFrom(undefined);
-  assert.equal(defaults.calls, true); assert.equal(defaults.earningsAlerts, false); assert.equal(defaults.quietHours.enabled, false);
-  assert.equal(p.validNotificationPreferencesPatch({ messages: false, quietHours: { enabled: true, startHour: 22, endHour: 8, timeZone: 'Asia/Kolkata' } }), true);
+  assert.equal(defaults.calls, true); assert.equal(defaults.follows, true); assert.equal(defaults.earningsAlerts, false); assert.equal(defaults.quietHours.enabled, false);
+  assert.equal(p.validNotificationPreferencesPatch({ messages: false, follows: false, quietHours: { enabled: true, startHour: 22, endHour: 8, timeZone: 'Asia/Kolkata' } }), true);
   for (const patch of [{ calls: 'false' }, { admin: true }, { quietHours: { startHour: 24 } }, { quietHours: { endHour: -1 } }, { quietHours: { timeZone: 'Invalid/Zone' } }, { quietHours: { minutes: 0 } }]) assert.equal(p.validNotificationPreferencesPatch(patch), false);
 });

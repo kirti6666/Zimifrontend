@@ -137,7 +137,7 @@ test('local update checks use HTTP only for private addresses in development', a
   }
 });
 
-test('the update gate reveals checking, mandatory and error screens after layout', async () => {
+test('the mandatory update screen replaces the native splash after layout', async () => {
   let hidden = 0;
   const jsx = (type, props) => ({ type, props });
   const h = modules({
@@ -150,14 +150,11 @@ test('the update gate reveals checking, mandatory and error screens after layout
     'expo-splash-screen': { hideAsync: async () => { hidden++; } },
   });
   const { AppUpdateScreen } = h.load('src/app-update-screen.tsx');
-  for (const status of ['checking', 'required', 'error']) {
-    const tree = AppUpdateScreen({ state: { status, phase: 'idle', checking: status === 'checking', progress: 0 }, update() {}, check() {} });
-    const layout = tree.props.children.props.onLayout;
-    assert.equal(typeof layout, 'function');
-    const before = hidden;
-    layout(); await settle();
-    assert.equal(hidden, before + 1, `${status} must be visible above the native splash`);
-  }
+  const tree = AppUpdateScreen({ state: { status: 'required', phase: 'idle', checking: false, progress: 0 }, update() {}, check() {} });
+  const layout = tree.props.children.props.onLayout;
+  assert.equal(typeof layout, 'function');
+  layout(); await settle();
+  assert.equal(hidden, 1, 'The mandatory update must be visible above the native splash');
 });
 
 test('public update checks omit account credentials, reject bad envelopes and bound a stalled response body', async () => {

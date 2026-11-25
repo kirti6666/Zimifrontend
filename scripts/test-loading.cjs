@@ -45,6 +45,28 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
   const gone = async label => assert.equal(await status(label).count(), 0, `${label} settles after its request`);
   const navigate = view => page.evaluate(value => go(value), view);
   const lastSent = type => page.evaluate(value => window.__sent.filter(message => message.type === value).at(-1)?.data, type);
+  const sentCount = type => page.evaluate(value => window.__sent.filter(message => message.type === value).length, type);
+  const holdAnimationFrame = () => page.evaluate(() => {
+    window.__heldSkeletonFrame = { original: window.requestAnimationFrame, callbacks: [] };
+    window.requestAnimationFrame = callback => { window.__heldSkeletonFrame.callbacks.push(callback); return window.__heldSkeletonFrame.callbacks.length; };
+  });
+  const releaseAnimationFrame = () => page.evaluate(() => {
+    const held = window.__heldSkeletonFrame;
+    if (!held) return 0;
+    window.requestAnimationFrame = held.original;
+    delete window.__heldSkeletonFrame;
+    const at = performance.now();
+    held.callbacks.forEach(callback => callback(at));
+    return held.callbacks.length;
+  });
+  const skeletonVisual = locator => locator.evaluate(node => {
+    const box = node.getBoundingClientRect(), style = getComputedStyle(node), probe = document.createElement('span');
+    probe.style.cssText = 'position:fixed;visibility:hidden;background-color:var(--raised)';
+    document.body.append(probe);
+    const raised = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return { width: box.width, height: box.height, color: style.backgroundColor, raised };
+  });
   try {
     await page.goto(pathToFileURL(path.join(root, 'assets/aurora.html')).href + '?role=sender');
     assert.deepEqual(errors, [], 'Production startup must initialize loading state before rendering');
@@ -217,17 +239,44 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     assert.equal(await personConversations.count(), 0);
     assert.equal(await page.locator('[data-official-chat]').count(), 1, 'Refreshing person conversations preserves the official account');
     await result('data.chats', chats, 'chats');
+    const opensBeforeThread = await sentCount('chat.open');
+    await holdAnimationFrame();
     await personConversations.click();
     await visible('Loading messages');
+    const threadSkeleton = page.locator('#tf .zh-skeleton-thread');
+    const skeletonRows = threadSkeleton.locator('.zh-skeleton-thread-row');
+    const incomingSkeletonRows = threadSkeleton.locator('.zh-skeleton-thread-row.incoming');
+    const outgoingSkeletonRows = threadSkeleton.locator('.zh-skeleton-thread-row.outgoing');
+    assert.equal(await threadSkeleton.count(), 1, 'A pending conversation paints one chat-shaped skeleton in its transcript');
+    assert.ok(await skeletonRows.count() >= 5, 'The transcript skeleton has enough bubble rows to hold the conversation layout');
+    assert.ok(await incomingSkeletonRows.count() > 0, 'The skeleton includes incoming message geometry');
+    assert.ok(await outgoingSkeletonRows.count() > 0, 'The skeleton includes outgoing message geometry');
+    assert.equal(await incomingSkeletonRows.locator('.zh-skeleton-avatar').count(), await incomingSkeletonRows.count(), 'Every incoming skeleton row reserves avatar geometry');
+    assert.ok(await skeletonRows.locator('.zh-skeleton-shape:not(.zh-skeleton-avatar)').count() >= await skeletonRows.count(), 'Every skeleton row has a message-bubble placeholder');
+    assert.equal(await outgoingSkeletonRows.locator('.zh-skeleton-avatar').count(), 0, 'Outgoing skeleton bubbles never reserve a peer avatar');
+    assert.equal(await page.locator('#tf .zc-thread-empty, #tf .zc-meta').count(), 0, 'Loading never flashes an empty conversation or message metadata');
+    assert.equal(await sentCount('chat.open'), opensBeforeThread, 'The conversation skeleton is in the DOM before its native history request starts');
+    for (const dark of [false, true]) {
+      await page.evaluate(value => ZimiThemes.setDark(value), dark);
+      const visual = await skeletonVisual(threadSkeleton.locator('.zh-skeleton-bubble').first());
+      assert.ok(visual.width > 80 && visual.height > 20, `${dark ? 'Dark' : 'Light'} conversation skeleton has rendered bubble geometry`);
+      assert.equal(visual.color, visual.raised, `${dark ? 'Dark' : 'Light'} conversation skeleton uses the visible raised-surface color`);
+    }
+    await page.evaluate(() => ZimiThemes.setDark(false));
+    assert.ok(await releaseAnimationFrame() > 0, 'The first painted frame releases the real conversation request');
+    await page.waitForFunction(({ type, before }) => window.__sent.filter(message => message.type === type).length > before, { type: 'chat.open', before: opensBeforeThread });
     const draft = page.getByRole('textbox', { name: 'Message Mira North', exact: true });
     await draft.fill('Draft while history is loading');
     await receive('data.thread', { with: secondId, messages: [{ text: 'Wrong conversation', mine: false }] });
     await visible('Loading messages');
+    assert.ok(await skeletonRows.count() >= 5, 'A stale response cannot retire the active conversation skeleton');
     await result('data.thread', { with: hostId, messages: [{ text: 'The real conversation', mine: false, time: '12:00' }] }, 'thread');
+    assert.equal(await threadSkeleton.count(), 0, 'Only the matching thread response removes its skeleton');
     assert.match(await page.locator('#tf').innerText(), /The real conversation/);
     assert.equal(await draft.inputValue(), 'Draft while history is loading', 'Settling history preserves the message draft');
     await loading('thread', true);
     assert.equal(await page.locator('#tf .bub').count(), 0);
+    assert.ok(await skeletonRows.count() >= 5, 'A foreground history refresh restores the same chat-shaped skeleton');
     await loading('thread', false, { error: 'Messages are unavailable' });
     await gone('Loading messages');
     assert.equal(await draft.inputValue(), 'Draft while history is loading', 'A history failure preserves the message draft');

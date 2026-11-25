@@ -118,12 +118,16 @@ function responseError(response: Response, body: unknown): ApiError {
   if (response.status === 426 && code === "APP_UPDATE_REQUIRED") notifyAppUpdate(true);
   const mediaMessage = code === "STORAGE_NOT_CONFIGURED" ? "Photo uploads are not available yet. Please try again later." :
     code === "UPLOAD_UNAVAILABLE" ? "Couldn't confirm your upload. Please try again." : undefined;
+  // Account-pair policy codes stay machine-readable, but internal financial
+  // terminology must never be rendered in a call card, gift sheet or toast.
+  const policyMessage = code === "FINANCIAL_SELF_DEALING" ? "This action isn't available for this account." : undefined;
   const fallback = response.status === 429 ? "Too many attempts. Please wait before trying again." :
     response.status >= 500 ? "BinzoLive is temporarily unavailable. Please try again shortly." : "Couldn't complete that request. Please try again.";
   const raw = object(body) && typeof body.message === "string" ? body.message : "";
   // User-facing failures never contain HTML, stack traces, or oversized server responses.
-  const message = response.status >= 500 && mediaMessage ? mediaMessage :
-    response.status < 500 && raw.length > 0 && raw.length <= 500 && !/[<>\x00-\x08]/.test(raw) ? raw : fallback;
+  const message = policyMessage ?? (response.status >= 500 && mediaMessage ? mediaMessage :
+    response.status < 500 && raw.length > 0 && raw.length <= 500 && !/[<>\x00-\x08]/.test(raw) ? raw : fallback
+  );
   const requiredCoins = code === "INSUFFICIENT_COINS" && object(body) && Number.isSafeInteger(body.requiredCoins) && Number(body.requiredCoins) > 0 ? Number(body.requiredCoins) : undefined;
   const rejection = response.status === 409 && ["PAYOUT_QUOTE_STALE", "PAYOUT_KYC_CHANGED"].includes(code ?? "") && object(body) && object(body.data) && body.data.noReservation === true &&
     typeof body.data.idempotencyKey === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(body.data.idempotencyKey) ? { noReservation: true as const, idempotencyKey: body.data.idempotencyKey } : undefined;

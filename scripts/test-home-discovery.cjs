@@ -1,6 +1,7 @@
 /* Production Home with authenticated fixture responses: the reference header (feed tabs,
-   Search and the leaderboard trophy), Popular/India chips, one square-card grid, the host's
-   floating availability button and the leaderboard. No sample creators or network requests. */
+   Search, leaderboard and notification actions), Popular/India chips, one square-card grid, the host's
+   floating availability button and the leaderboard. Also checks that sample rankings
+   are available only in the standalone preview. */
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -9,7 +10,7 @@ const root = path.resolve(__dirname, '..');
 const member = { user: { id: '507f1f77bcf86cd799439001', name: 'Member', role: 'sender', serverRole: 'user', hostStatus: 'none', isVerifiedHost: false, isPhoneVerified: true }, verification: 'none', requiresOnboarding: false };
 const host = { ...member, user: { ...member.user, role: 'host', serverRole: 'host', hostStatus: 'approved', isVerifiedHost: true }, verification: 'verified' };
 const creators = ['Aanya', 'Mira', 'Tara'].map((name, index) => ({ id: `507f1f77bcf86cd79943901${index}`, name, role: 'host', serverRole: 'host', hostStatus: 'approved', isVerifiedHost: true, verified: true, online: true, availableForCall: true, ratePerMin: 0, category: ['Music', 'Dance', 'Gaming'][index], country: index === 2 ? 'Nepal' : 'India' }));
-const feed = rows => ({ hosts: rows, stage: [], featured: rows[0] || null, total: rows.length, page: 1, limit: 20, categories: ['Music', 'Dance', 'Gaming'], broadcasterCount: 0, availableCount: rows.length });
+const feed = rows => ({ hosts: rows, stage: [], featured: rows[0] || null, total: rows.length, page: 1, limit: 20, categories: ['Music', 'Dance', 'Gaming'], broadcasterCount: 0, availableCount: rows.length, unreadCount: 2 });
 const receive = (page, type, data = {}) => page.evaluate(message => Native.receive(message), { type, data });
 const lastSent = (page, type) => page.evaluate(type => __sent.filter(message => message.type === type).at(-1)?.data, type);
 const shownIds = page => page.locator('.zh-discover article[data-host-id]').evaluateAll(nodes => nodes.map(node => node.dataset.hostId));
@@ -32,11 +33,17 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
   try {
     const page = await open();
     assert.equal(await page.evaluate(() => DEMO), false);
+    assert.equal(await page.evaluate(() => typeof lbPreviewRows), 'undefined', 'The live app never bundles sample leaderboard rows');
     const tabs = page.locator('.zh-feed-tabs').getByRole('tab');
     assert.deepEqual(await tabs.allInnerTexts(), ['Following', 'Explore', 'For You', 'New']);
     assert.equal(await page.getByRole('tab', { name: 'Explore', exact: true }).getAttribute('aria-selected'), 'true', 'Explore is the default feed');
     assert.equal(await page.locator('.zh-brand,.zh-logo,.zh-dashboard-filters,.zh-dashboard .zh-filters').count(), 0);
-    assert.deepEqual(await page.locator('.zh-header-actions button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['Search creators', 'Leaderboard'], 'Search and the trophy are the only header actions');
+    assert.deepEqual(await page.locator('.zh-header-actions button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['Search creators', 'Leaderboard', 'Notifications'], 'Home keeps the reference header actions in order');
+    assert.equal(await page.locator('.zh-bell>i').count(), 1, 'Unread notifications show the reference accent dot');
+    assert.equal(await page.locator('.zh-feed-tabs').evaluate(tabs => { const last=tabs.lastElementChild.getBoundingClientRect(), viewport=tabs.getBoundingClientRect(); return last.left>=viewport.left-1&&last.right<=viewport.right+1; }),true,'All four Home tabs remain fully visible beside the three reference actions');
+    await page.getByRole('button', { name: 'Notifications', exact: true }).click();
+    assert.equal(await page.evaluate(() => S.v), 'notifications', 'The Home bell opens the real notification inbox');
+    await page.getByRole('button', { name: 'Back to home', exact: true }).click();
     assert.equal(await page.locator('.zh-host-status').count(), 0, 'Sender accounts never see the host status control');
     // The selected tab reads larger and bolder, as in the reference.
     const [following, explore] = await Promise.all(['Following', 'Explore'].map(name => page.getByRole('tab', { name, exact: true }).evaluate(el => { const style = getComputedStyle(el); return { size: parseFloat(style.fontSize), weight: Number(style.fontWeight) }; })));
@@ -142,25 +149,33 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     await page.getByRole('button', { name: 'Leaderboard', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'board');
     assert.equal(await page.locator('#nav').isVisible(), false, 'The leaderboard has Back instead of the bottom tabs');
+    assert.deepEqual(await page.locator('.zlb-periods [role="tab"]').allInnerTexts(), ['Daily', 'Weekly', 'Monthly']);
     assert.deepEqual(await lastSent(page, 'leaderboard.load'), { period: 'daily' });
     assert.equal(await page.getByRole('status', { name: 'Loading leaderboard', exact: true }).count(), 1, 'The leaderboard waits on its request');
     const rows = [{ id: creators[1].id, name: 'Mira <b>', avatarUrl: '', coins: 4200, rank: 1 }, { id: '507f1f77bcf86cd799439099', name: 'Not loaded yet', avatarUrl: '', coins: 900, rank: 2 }];
     await receive(page, 'data.leaderboard', { period: 'daily', items: rows, total: 2 });
     await receive(page, 'data.loading', { resource: 'leaderboard', loading: false });
-    assert.deepEqual(await page.locator('.zlb-row .zlb-name').allInnerTexts(), ['Mira <b>', 'Not loaded yet'], 'Rows show escaped server names in rank order');
-    assert.match(await page.locator('.zlb-row').first().innerText(), /4,200/);
+    assert.deepEqual(await page.locator('.zlb-row .zlb-name').allInnerTexts(), ['Mira <b>', 'Not loaded yet'], 'Only returned, escaped host names are shown');
+    assert.deepEqual(await page.locator('.zlb-coins').allInnerTexts(), ['4,200', '900'], 'Only the actual server scores are shown');
+    assert.match(await page.getByRole('button', { name: /^Rank 1, Mira <b>/ }).innerText(), /4,200/, 'The server rank and score stay together');
     await page.getByRole('tab', { name: 'Weekly', exact: true }).click();
     assert.deepEqual(await lastSent(page, 'leaderboard.load'), { period: 'weekly' });
     await receive(page, 'data.leaderboard', { period: 'daily', items: rows, total: 2 });
-    assert.equal(await page.locator('.zlb-row').count(), 0, 'A late answer for another period is ignored');
+    assert.equal(await page.locator('.zlb-row').count(), 0, 'A late answer for another period cannot paint rows');
+    assert.equal(await page.getByRole('status', { name: 'Loading leaderboard', exact: true }).count(), 1, 'A stale answer cannot settle the active period');
     await receive(page, 'data.leaderboard', { period: 'weekly', items: [], total: 0 });
     await receive(page, 'data.loading', { resource: 'leaderboard', loading: false });
-    assert.equal(await page.getByRole('heading', { name: 'No rankings yet', exact: true }).count(), 1);
+    assert.equal(await page.locator('.zlb-row').count(), 0, 'An empty period adds no filler rows');
+    await page.getByRole('heading', { name: 'No rankings yet', exact: true }).waitFor();
+    await page.getByRole('tab', { name: 'Monthly', exact: true }).click();
+    assert.deepEqual(await lastSent(page, 'leaderboard.load'), { period: 'monthly' });
+    await receive(page, 'data.leaderboard', { period: 'monthly', items: [{ ...rows[1], rank: 1, coins: 7250 }], total: 1 });
+    assert.deepEqual(await page.locator('.zlb-coins').allInnerTexts(), ['7,250'], 'Monthly shows the server total for that period');
     await page.getByRole('tab', { name: 'Daily', exact: true }).click();
     await receive(page, 'data.loading', { resource: 'leaderboard', loading: false, error: 'Leaderboard is unavailable' });
     assert.match(await page.getByRole('alert').innerText(), /Leaderboard is unavailable/);
     await page.getByRole('alert').getByRole('button', { name: 'Retry', exact: true }).click();
-    assert.equal((await page.evaluate(() => __sent.filter(message => message.type === 'leaderboard.load').length)), 4, 'Retry asks again');
+    assert.equal((await page.evaluate(() => __sent.filter(message => message.type === 'leaderboard.load').length)), 5, 'Retry asks again');
     await receive(page, 'data.leaderboard', { period: 'daily', items: rows, total: 2 });
     await receive(page, 'data.loading', { resource: 'leaderboard', loading: false });
     await page.getByRole('button', { name: /^Rank 2, Not loaded yet/ }).click();
@@ -183,6 +198,44 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     await hosting.evaluate(() => go('home'));
     assert.equal(await hosting.locator('.zh-host-status').innerText(), 'Online');
     assert.equal(await hosting.locator('.zh-host-status').getAttribute('aria-label'), 'Manage your call availability');
+
+    const preview = await browser.newPage({ viewport: { width: 360, height: 761 }, reducedMotion: 'reduce' });
+    preview.on('pageerror', error => errors.push(error.message));
+    await preview.route('https://**/*', route => route.abort());
+    await preview.clock.install({ time: new Date('2026-11-25T23:59:00Z') });
+    await preview.goto(pathToFileURL(path.join(root, 'dist/index.html')).href + '?role=sender');
+    await preview.getByRole('button', { name: 'Leaderboard', exact: true }).click();
+    await preview.getByText(/Design preview · sample hosts and Coin totals/).waitFor();
+    const sampleHosts = ['Pihu Mishra', 'Simran Kaur', 'Ishita Verma', 'Sana Khan', 'Aarohi Sharma'];
+    const sampleRow = name => preview.getByRole('button', { name: new RegExp(`^Sample rank \\d+, ${name},`) });
+    const score = name => sampleRow(name).locator('.zlb-coins').innerText();
+    const previousDay = await score('Pihu Mishra');
+    assert.match(previousDay, /M$/);
+    assert.match(await score('Simran Kaur'), /L$/);
+    assert.match(await score('Aarohi Sharma'), /K$/);
+    await preview.clock.fastForward(61_000);
+    assert.notEqual(await score('Pihu Mishra'), previousDay, 'An open preview refreshes its daily scores at midnight UTC');
+    for (const period of ['Daily', 'Weekly', 'Monthly']) {
+      await preview.getByRole('tab', { name: period, exact: true }).click();
+      assert.equal(await preview.locator('.zlb-coins').count(), 17);
+      for (const name of sampleHosts) assert.equal(await sampleRow(name).count(), 1, `${period} includes ${name}`);
+    }
+    const actual = await preview.evaluate(() => {
+      const date = day => new Date(`2026-03-0${day}T12:00:00Z`);
+      const coins = (period, day) => lbPreviewRows(period, date(day)).find(row => row.id === 'preview-board-pihu-mishra').coins;
+      const [sunday, monday, tuesday] = [1, 2, 3].map(day => coins('daily', day));
+      return [
+        coins('monthly', 1) === sunday,
+        coins('weekly', 2) === monday,
+        coins('weekly', 3) === monday + tuesday,
+        coins('monthly', 3) === sunday + monday + tuesday,
+      ];
+    });
+    assert.deepEqual(actual, [true, true, true, true], 'Sample totals accumulate only within their UTC calendar week and month');
+    await sampleRow('Pihu Mishra').click();
+    await preview.getByRole('heading', { name: 'Pihu Mishra', exact: true }).waitFor();
+    assert.equal(await preview.evaluate(() => S.v), 'host', 'A new leaderboard sample opens its preview profile');
+    await preview.close();
     assert.deepEqual(errors, [], 'No browser exceptions');
     console.log('PASS Home discovery: Following/Explore/For You/New header with Search and trophy, keyboard tabs, Popular/India chips on the server, square grid without a featured card, round call buttons and rectangular flags, campaign banners after two rows (11:3, Ad label, dots, auto-advance, per-slide views and counted taps) and cards after ten hosts, real leaderboard (periods, stale answers, empty, error/retry, profiles) and the host availability button');
   } finally { await browser.close(); }
