@@ -2,7 +2,10 @@
 const Board = { period:'daily', rows:[] };
 const BOARD_PERIODS = [['daily','Daily','today'],['weekly','Weekly','this week'],['monthly','Monthly','this month']];
 function lbLoad(){
-  if(DEMO){Board.rows=lbPreviewRows(Board.period);r();return}
+  if(DEMO){
+    const now=new Date();
+    Board.rows=lbPreviewRows(Board.period,now);lbPreviewSchedule(now);r();return;
+  }
   contentStart('leaderboard');Native.send('leaderboard.load',{period:Board.period});r();
 }
 function lbPeriod(value){if(!BOARD_PERIODS.some(([key])=>key===value)||value===Board.period)return;Board.period=value;Board.rows=[];lbLoad()}
@@ -20,7 +23,7 @@ function lbView(){
   const pending=!DEMO&&contentPending('leaderboard'),error=!pending&&!DEMO&&ContentLoading.leaderboard.error;
   const tabs=`<div class="zlb-periods" role="tablist" aria-label="Leaderboard period" onkeydown="lbPeriodKey(event)">${BOARD_PERIODS.map(([key,label])=>{const on=Board.period===key;return `<button type="button" id="board-period-${key}" role="tab" aria-selected="${on}" aria-controls="board-panel" tabindex="${on?'0':'-1'}" onclick="lbPeriod('${key}')">${label}</button>`}).join('')}</div>`;
   const rows=Board.rows,periodText=BOARD_PERIODS.find(([key])=>key===Board.period)[2];
-  const list=rows.length?`<ol class="zlb-list">${rows.map(row=>`<li><button type="button" class="zlb-row ${row.rank<=3?'is-top':''}" onclick="lbOpen('${domId(row.id)}')" aria-label="${DEMO?'Sample rank':'Rank'} ${row.rank}, ${esc(row.name)}, ${n(row.coins)} coins"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-coins">${hi('rings',15)}${DEMO?boardPreviewNumber.format(row.coins):n(row.coins)}</span></button></li>`).join('')}</ol>`:`<div class="zlb-empty">${hi('trophy',30)}<h2>No rankings yet</h2><p>Creators appear here after receiving paid gifts ${periodText}.</p></div>`;
+  const list=rows.length?`<ol class="zlb-list">${rows.map(row=>`<li><button type="button" class="zlb-row ${row.rank<=3?'is-top':''}" onclick="lbOpen('${domId(row.id)}')" aria-label="${DEMO?'Sample rank':'Rank'} ${row.rank}, ${esc(row.name)}, ${n(row.coins)} coins"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-coins">${hi('rings',15)}${DEMO?lbPreviewCoinText(row.coins):n(row.coins)}</span></button></li>`).join('')}</ol>`:`<div class="zlb-empty">${hi('trophy',30)}<h2>No rankings yet</h2><p>Creators appear here after receiving paid gifts ${periodText}.</p></div>`;
   const body=pending?contentSkeleton('rows','Loading leaderboard',6):error?contentError('leaderboard'):list;
   const note=DEMO?'Design preview &middot; sample hosts and Coin totals'+MODEL_NOTE:'Creators ranked by gift coins received';
   return `<section class="zlb-page" aria-label="Leaderboard">${tabs}<div id="board-panel" role="tabpanel" aria-labelledby="board-period-${Board.period}"><p class="zlb-note">${note}</p>${body}</div></section>`;

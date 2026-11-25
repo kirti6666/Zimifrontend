@@ -4,28 +4,56 @@ const BOARD_PREVIEW_PROFILES = new Map([
   ['preview-board-rhea', {name:'Rhea Kapoor'}],
   ['preview-board-vikram', {name:'Vikram Anand'}],
   ['preview-board-alina', {name:'Alina Roy'}],
+  ['preview-board-pihu-mishra', {name:'Pihu Mishra'}],
+  ['preview-board-simran-kaur', {name:'Simran Kaur'}],
+  ['preview-board-ishita-verma', {name:'Ishita Verma'}],
+  ['preview-board-sana-khan', {name:'Sana Khan'}],
+  ['preview-board-aarohi-sharma', {name:'Aarohi Sharma'}],
 ]);
-const BOARD_PREVIEW_SCORES = [
-  // Host ID, daily, weekly, monthly
-  ['aanya', 1_300_000, 3_800_000, 12_400_000],
-  ['meher', 800_000, 4_200_000, 11_100_000],
-  ['ishaan', 645_000, 2_700_000, 8_600_000],
-  ['noor', 510_000, 1_900_000, 6_400_000],
-  ['kabir', 438_000, 1_400_000, 7_200_000],
-  ['tara', 375_000, 1_650_000, 5_100_000],
-  ['preview-board-naina', 310_000, 1_200_000, 4_600_000],
-  ['rehan', 265_000, 970_000, 3_800_000],
-  ['preview-board-rhea', 210_000, 910_000, 3_250_000],
-  ['dev', 162_000, 720_000, 2_600_000],
-  ['preview-board-vikram', 140_000, 610_000, 2_100_000],
-  ['preview-board-alina', 95_000, 480_000, 1_800_000],
+const BOARD_PREVIEW_BASES = [
+  ['aanya', 1_300_000],
+  ['meher', 800_000],
+  ['ishaan', 645_000],
+  ['noor', 510_000],
+  ['kabir', 438_000],
+  ['tara', 375_000],
+  ['preview-board-naina', 310_000],
+  ['rehan', 265_000],
+  ['preview-board-rhea', 210_000],
+  ['dev', 162_000],
+  ['preview-board-vikram', 140_000],
+  ['preview-board-alina', 95_000],
+  ['preview-board-pihu-mishra', 1_450_000],
+  ['preview-board-simran-kaur', 800_000],
+  ['preview-board-ishita-verma', 525_000],
+  ['preview-board-sana-khan', 205_000],
+  ['preview-board-aarohi-sharma', 68_000],
 ];
-const boardPreviewNumber = new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1});
-function lbPreviewRows(period){
-  const rows=BOARD_PREVIEW_SCORES.flatMap(([id,daily,weekly,monthly])=>{
+const BOARD_PREVIEW_DAY = 86_400_000;
+const boardPreviewNumber = new Intl.NumberFormat('en-US',{maximumFractionDigits:1});
+let boardPreviewTimer;
+function lbPreviewCoinText(coins){
+  const [unit,suffix]=coins>=1_000_000?[1_000_000,'M']:coins>=100_000?[100_000,'L']:coins>=1_000?[1_000,'K']:[1,''];
+  return boardPreviewNumber.format(coins/unit)+suffix;
+}
+function lbPreviewRows(period,now=new Date()){
+  const today=Math.floor(now.getTime()/BOARD_PREVIEW_DAY), start=new Date(today*BOARD_PREVIEW_DAY);
+  if(period==='weekly')start.setUTCDate(start.getUTCDate()-(start.getUTCDay()+6)%7);
+  if(period==='monthly')start.setUTCDate(1);
+  const firstDay=start.getTime()/BOARD_PREVIEW_DAY;
+  const rows=BOARD_PREVIEW_BASES.flatMap(([id,base],index)=>{
     const known=g(id);
     const profile=known?{name:known.n,avatarUrl:known.avatarUrl}:BOARD_PREVIEW_PROFILES.get(id);
-    return profile?[{id,...profile,coins:{daily,weekly,monthly}[period]}]:[];
+    if(!profile)return [];
+    // The same date always gives the same sample score, in every period.
+    let coins=0;
+    for(let day=firstDay;day<=today;day++)coins+=Math.round(base*(88+(day*11+index*13)%25)/100);
+    return [{id,...profile,coins}];
   });
   return rows.sort((a,b)=>b.coins-a.coins).map((row,index)=>({...row,rank:index+1}));
+}
+function lbPreviewSchedule(now){
+  clearTimeout(boardPreviewTimer);
+  const nextDay=BOARD_PREVIEW_DAY-(now.getTime()%BOARD_PREVIEW_DAY);
+  boardPreviewTimer=setTimeout(()=>{if(S.v==='board')lbLoad()},nextDay);
 }

@@ -202,19 +202,38 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     const preview = await browser.newPage({ viewport: { width: 360, height: 761 }, reducedMotion: 'reduce' });
     preview.on('pageerror', error => errors.push(error.message));
     await preview.route('https://**/*', route => route.abort());
+    await preview.clock.install({ time: new Date('2026-11-25T23:59:00Z') });
     await preview.goto(pathToFileURL(path.join(root, 'dist/index.html')).href + '?role=sender');
     await preview.getByRole('button', { name: 'Leaderboard', exact: true }).click();
     await preview.getByText(/Design preview · sample hosts and Coin totals/).waitFor();
-    const scores = preview.locator('.zlb-coins');
-    assert.equal(await scores.count(), 12);
-    assert.deepEqual((await scores.allInnerTexts()).slice(0, 2), ['1.3M', '800K']);
-    for (const [period, firstScore] of [['Weekly', '4.2M'], ['Monthly', '12.4M']]) {
+    const sampleHosts = ['Pihu Mishra', 'Simran Kaur', 'Ishita Verma', 'Sana Khan', 'Aarohi Sharma'];
+    const sampleRow = name => preview.getByRole('button', { name: new RegExp(`^Sample rank \\d+, ${name},`) });
+    const score = name => sampleRow(name).locator('.zlb-coins').innerText();
+    const previousDay = await score('Pihu Mishra');
+    assert.match(previousDay, /M$/);
+    assert.match(await score('Simran Kaur'), /L$/);
+    assert.match(await score('Aarohi Sharma'), /K$/);
+    await preview.clock.fastForward(61_000);
+    assert.notEqual(await score('Pihu Mishra'), previousDay, 'An open preview refreshes its daily scores at midnight UTC');
+    for (const period of ['Daily', 'Weekly', 'Monthly']) {
       await preview.getByRole('tab', { name: period, exact: true }).click();
-      assert.equal(await scores.count(), 12);
-      assert.equal(await scores.first().innerText(), firstScore);
+      assert.equal(await preview.locator('.zlb-coins').count(), 17);
+      for (const name of sampleHosts) assert.equal(await sampleRow(name).count(), 1, `${period} includes ${name}`);
     }
-    await preview.getByRole('button', { name: /^Sample rank \d+, Naina Shah,/ }).click();
-    await preview.getByRole('heading', { name: 'Naina Shah', exact: true }).waitFor();
+    const actual = await preview.evaluate(() => {
+      const date = day => new Date(`2026-03-0${day}T12:00:00Z`);
+      const coins = (period, day) => lbPreviewRows(period, date(day)).find(row => row.id === 'preview-board-pihu-mishra').coins;
+      const [sunday, monday, tuesday] = [1, 2, 3].map(day => coins('daily', day));
+      return [
+        coins('monthly', 1) === sunday,
+        coins('weekly', 2) === monday,
+        coins('weekly', 3) === monday + tuesday,
+        coins('monthly', 3) === sunday + monday + tuesday,
+      ];
+    });
+    assert.deepEqual(actual, [true, true, true, true], 'Sample totals accumulate only within their UTC calendar week and month');
+    await sampleRow('Pihu Mishra').click();
+    await preview.getByRole('heading', { name: 'Pihu Mishra', exact: true }).waitFor();
     assert.equal(await preview.evaluate(() => S.v), 'host', 'A new leaderboard sample opens its preview profile');
     await preview.close();
     assert.deepEqual(errors, [], 'No browser exceptions');
