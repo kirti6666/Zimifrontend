@@ -32,7 +32,7 @@ function coinRechargeContinue(){
  }
  Home.giftTo=null;CoinUI.topup=false;S.tray=0;S.sh=0;go('coins');
 }
-function coinPaint(){const catalog=document.querySelector('.zg-catalog');if(catalog)CoinUI.giftScroll=catalog.scrollTop;if(Home.giftTo||S.v==='coins')r()}
+function coinPaint(){const catalog=document.querySelector('.zw-sheet .zg-catalog');if(catalog)CoinUI.giftScroll=catalog.scrollTop;if(Home.giftTo||S.v==='coins')r()}
 function coinWalletReady(){return !isHostWallet()&&(DEMO||(!contentPending('wallet')&&!ContentLoading.wallet.error))}
 function coinHasPendingPayment(){return coinPendingPayment()||Array.from(CoinUI.orders.values()).some(p=>p.status==='PENDING'&&!CoinUI.dismissedOrders.has(p.merchantOrderId))}
 function coinPendingPayment(){return !!Home.checkout&&!CoinUI.dismissedOrders.has(Home.checkout.merchantOrderId)&&!['SUCCESS','FAILED','REVERTED'].includes(Home.checkout.status)}
@@ -172,14 +172,18 @@ function coinWarmGift(id){const gift=Home.gifts.find(item=>item.id===id);if(gift
 function homeSelectGift(id){if(Home.giftBusy)return;CoinUI.giftId=id;CoinUI.giftError='';coinWarmGift(id);coinPaint()}
 function homeGiftUrl(raw){try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password&&!/[<>"'`\s]/.test(raw)?esc(u.href):''}catch{return ''}}
 function homeGiftTopup(){if(isHostWallet())return;CoinUI.topup=true;CoinUI.paymentError='';coinPaint()}
-function homeGiftDisplayOrder(){
+function homeGiftDisplayOrder(gifts=Home.gifts){
  const names=['rosewaterfall','rose','kiss','berry','bear','cheers','party','tulip','bunny','blossom','bouquet','hibiscus'];
  const rank=name=>{const index=names.indexOf(String(name).toLowerCase().replace(/[^a-z0-9]/g,''));return index<0?names.length:index};
- return [...Home.gifts].sort((a,b)=>rank(a.name)-rank(b.name));
+ return [...gifts].sort((a,b)=>rank(a.name)-rank(b.name));
+}
+function giftPickerTile(gift,{selected,action,label,focusKey,disabled=false}){
+ const id=domId(gift.id);
+ const artwork=giftStillUrl(gift.name,gift.mediaUrl,gift.coverUrl);
+ return `<button type="button" data-gift-id="${id}" aria-pressed="${selected}" aria-label="${esc(label||gift.name+', '+giftPriceLabel(gift))}" class="zg-gift ${selected?'selected':''}" onclick="${action}('${id}')" ${focusKey?`data-hs-focus="${esc(focusKey)}"`:''} ${disabled?'disabled':''}><span class="zg-art">${artwork?`<img src="${artwork}" alt="" loading="lazy" decoding="async">`:`<span class="zg-emoji" aria-hidden="true">${esc(gift.emoji||'🎁')}</span>`}</span><b>${esc(gift.name)}</b><small class="zg-price">${giftIsFree(gift)?'Free':coinIcon(14)+'<span>'+n(gift.coins)+'</span>'}</small></button>`;
 }
 function homeGiftTile(gift){
- const artwork=giftStillUrl(gift.name,gift.mediaUrl,gift.coverUrl);
- return `<button type="button" data-gift-id="${domId(gift.id)}" aria-pressed="${gift.id===CoinUI.giftId}" aria-label="${esc(gift.name)}, ${giftPriceLabel(gift)}" class="zg-gift ${gift.id===CoinUI.giftId?'selected':''}" onclick="homeSelectGift('${domId(gift.id)}')" ${Home.giftBusy?'disabled':''}><span class="zg-art">${artwork?`<img src="${artwork}" alt="" loading="lazy" decoding="async">`:`<span class="zg-emoji" aria-hidden="true">${esc(gift.emoji||'🎁')}</span>`}</span><b>${esc(gift.name)}</b><small class="zg-price">${giftIsFree(gift)?'Free':coinIcon(14)+'<span>'+n(gift.coins)+'</span>'}</small></button>`;
+ return giftPickerTile(gift,{selected:gift.id===CoinUI.giftId,action:'homeSelectGift',disabled:Home.giftBusy});
 }
 function coinGiftWalletState(){
  const recover=Home.giftAttempt?.to===Home.giftTo&&Home.giftAttempt?.gift===CoinUI.giftId,gift=Home.gifts.find(x=>x.id===CoinUI.giftId)||(recover?CoinUI.receipts.get(Home.giftAttempt.idempotencyKey):null),ready=giftIsFree(gift)||coinWalletReady();
@@ -258,4 +262,4 @@ Native.on('call.failed',d=>{if(d.code==='INSUFFICIENT_COINS'&&!isHost())coinRequ
 window.addEventListener('zimi:host-access',()=>{if(isHostWallet()){coinCloseRecharge(false);coinCloseCheckoutPrompt(false);Home.giftTo=null;CoinUI.topup=false;if(S.loggedIn&&['coins','refer'].includes(S.v))go('wallet')}});
 document.addEventListener('aurora:navigate',()=>{coinCloseRecharge(false);if(S.v!=='coins'&&!(Home.giftTo&&CoinUI.topup))coinClosePurchase();if(!DEMO&&['wallet','transactions'].includes(S.v)){contentStart('transactions');Native.send('transactions.load');r()}});
 document.addEventListener('keydown',e=>{if(CoinUI.rechargePrompt){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();coinCloseRecharge()}return}if(CoinUI.checkoutPrompt){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();coinCloseCheckoutPrompt()}return}if(!Home.giftTo)return;const sheet=document.querySelector('.zw-sheet');if(!sheet)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();homeCloseGifts();return}if(e.key==='Tab'){const items=Array.from(sheet.querySelectorAll('button:not(:disabled),select:not(:disabled),[tabindex="0"]'));if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&(document.activeElement===first||!sheet.contains(document.activeElement))){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||!sheet.contains(document.activeElement))){e.preventDefault();first.focus()}}},true);
-window.ZimiCoins={requireRecharge:coinRequireRecharge,giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=>{coinCloseRecharge(false);coinCloseCheckoutPrompt(false);Object.assign(CoinUI,{giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null});CoinUI.orders.clear();CoinUI.dismissedOrders.clear();CoinUI.returnedOrders.clear();CoinUI.receipts.clear();CoinUI.confirmed.clear()},afterRender:()=>{coinPaintCheckoutPrompt();const catalog=document.querySelector('.zg-catalog');if(catalog){catalog.scrollTop=CoinUI.giftScroll;catalog.onscroll=()=>{if(catalog.isConnected)CoinUI.giftScroll=catalog.scrollTop}}const sheet=document.querySelector('.zw-sheet');if(sheet&&!CoinUI.checkoutPrompt&&!CoinUI.rechargePrompt&&!sheet.contains(document.activeElement))sheet.querySelector('[aria-pressed="true"],button:not(:disabled)')?.focus({preventScroll:true})}};
+window.ZimiCoins={requireRecharge:coinRequireRecharge,giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=>{coinCloseRecharge(false);coinCloseCheckoutPrompt(false);Object.assign(CoinUI,{giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null});CoinUI.orders.clear();CoinUI.dismissedOrders.clear();CoinUI.returnedOrders.clear();CoinUI.receipts.clear();CoinUI.confirmed.clear()},afterRender:()=>{coinPaintCheckoutPrompt();const catalog=document.querySelector('.zw-sheet .zg-catalog');if(catalog){catalog.scrollTop=CoinUI.giftScroll;catalog.onscroll=()=>{if(catalog.isConnected)CoinUI.giftScroll=catalog.scrollTop}}const sheet=document.querySelector('.zw-sheet');if(sheet&&!CoinUI.checkoutPrompt&&!CoinUI.rechargePrompt&&!sheet.contains(document.activeElement))sheet.querySelector('[aria-pressed="true"],button:not(:disabled)')?.focus({preventScroll:true})}};

@@ -18,8 +18,6 @@ html:root .zr-gift-celebration .zr-gift-stage-art>img{display:block;width:100%;h
 html:root .fxg{position:absolute;left:50%;top:46%;width:min(78vw,320px);height:min(62vh,560px);margin:0;transform:translate(-50%,-50%);animation:none!important;opacity:1}
 html:root .fxg>img{width:100%;height:100%;object-fit:contain}
 html:root .gbub .gl{animation:none;transform:none}
-html:root .hs-gift-options>button{background:transparent;border-color:transparent}
-html:root .hs-gift-options>button.is-on>small{text-decoration:underline;text-underline-offset:4px}
 /* Bound portrait images to their artwork slot, so natural image dimensions
    cannot push the animation into the gift name, coin price or input. */
 html:root :is(.zc-gift-icon,.zc-quick-gift-art,.hs-gift-art,.hs-target-art,.zr-gift-emoji,.zr-gift-stage-art){grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}

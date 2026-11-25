@@ -1,7 +1,7 @@
 /* The requested gift reference is a scoped dark sheet; the surrounding account
    theme and embedded coin checkout retain their existing palettes. */
 html:root .zg-reference-backdrop{background:rgba(0,0,0,.62);backdrop-filter:blur(5px);padding-top:max(20px,var(--safe-top))}
-html:root[data-theme-id] .zh-sheet.zw-sheet.zg-reference{
+html:root[data-theme-id] :is(.zh-sheet.zw-sheet,.hs-sheet).zg-reference{
   --ink:#fff;--muted:#b8b2bf;--surface:#1b1b20;--raised:#27222d;
   --accent:#ff2e93;--accent-ink:#ff8cc6;--cta-ink:#fff;--line:#ffffff24;
   position:relative;isolation:isolate;display:flex;flex-direction:column;
@@ -43,7 +43,11 @@ html:root .zg-reference .zw-send{min-height:42px;background:linear-gradient(135d
 .zg-reference .zw-error{color:#ffb4d0;background:#ff2e931a}
 .zg-reference .zh-skeleton-shape{background:#ffffff16}
 .zg-reference button:focus-visible{outline:2px solid #ff9dcc;outline-offset:2px}
-@media(min-width:560px){html:root[data-theme-id] .zh-sheet.zw-sheet.zg-reference{border-radius:22px!important;margin-bottom:20px}}
+.zg-reference.hs-sheet-gift-target .zg-heading{grid-template-columns:minmax(0,1fr) 28px}
+.zg-reference.hs-sheet-gift-target .hs-sheet-body{display:flex;flex-direction:column;min-height:0;padding:0}
+.zg-reference .hs-gift-target-footer .hs-options>button[aria-pressed="true"]{background:var(--accent);color:var(--cta-ink)}
+.zg-reference .hs-gift-target-footer .hs-target-detail{margin:5px 0 9px}
+@media(min-width:560px){html:root[data-theme-id] :is(.zh-sheet.zw-sheet,.hs-sheet).zg-reference{border-radius:22px!important;margin-bottom:20px}}
 @media(max-width:350px){.zg-reference .zg-heading{padding-inline:12px;gap:6px}.zg-reference .zg-heading p{font-size:10.5px}.zg-reference .zg-balance{padding-inline:9px;font-size:12px}.zg-reference .zg-catalog{padding-inline:5px}.zg-reference .zg-art>img{width:48px;height:48px}.zg-reference .zw-gifts{column-gap:3px}}
 @media(prefers-reduced-motion:reduce){.zg-reference,.zg-reference button{animation:none!important;transition:none!important}}
 /* Keep the header glow inside the narrowest supported gift sheet. */
