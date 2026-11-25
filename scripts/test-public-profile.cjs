@@ -201,7 +201,7 @@ async function run() {
     await page.getByRole('alert').filter({ hasText: 'This profile is temporarily unavailable.' }).getByRole('button', { name: 'Try again', exact: true }).click();
     const retry = await lastSent(page, 'profile.load');
     assert.ok(retry.requestId > first.requestId, 'Retry issues a fresh correlated request');
-    await acceptProfile(page);
+    await acceptProfile(page, creator, { lifetimeGiftDiamondUnits: 12_345_625_000 });
     await acceptPosts(page);
     await page.getByRole('heading', { name: creator.name, exact: true }).waitFor();
     assert.equal(await skeletons(page).count(), 0, 'Completed profile and post reads clear their skeletons');
@@ -209,7 +209,8 @@ async function run() {
     assert.equal(await page.locator('.zu-page .post,.zu-page .zu-post').count(), 0, 'An empty server gallery does not show preview posts');
     assert.equal(await page.locator('.zu-bio').innerText(), creator.about, 'The biography remains visible in the profile identity');
     assert.deepEqual(await page.locator('.zu-stats span').allInnerTexts(),['Diamonds','Followers','Following'],'A public Host shows the reference statistics in order');
-    assert.equal(await page.locator('.zu-stats strong').first().innerText(),'—','A public Host without a Diamond total never displays the viewer’s balance or a fabricated zero');
+    const publicDiamonds = page.getByRole('group', { name: 'Lifetime Diamonds earned from gifts', exact: true }).locator('strong');
+    assert.equal(await publicDiamonds.innerText(), '12,345.625', 'The public stat shows the host’s confirmed gift Diamonds with their recorded precision');
     assert.equal(await tab(page, 'Posts').getAttribute('aria-selected'), 'true', 'The Posts gallery stays available below the Host statistics');
     assert.equal(await tab(page, 'MVP').count(), 1, 'The MVP tab stays available below the Host statistics');
     assert.match(await page.locator('.zu-meta').innerText(),/English/,'The compact public profile uses language metadata like the reference');
@@ -296,7 +297,20 @@ async function run() {
     await tab(page, 'MVP').click(); await acceptMvps(page, creator, supporters, 'week');
     await mvpPanel.getByRole('button', { name: /View Riya Kapoor's profile/ }).click();
     assert.deepEqual(await page.evaluate(() => [S.v, S.u]), ['user', supporters[0].id], 'A User supporter opens the User profile route');
-    console.log('PASS public profile: real MVP loading, period switching, retry/stale isolation, ranked coin totals and supporter navigation');
+    await page.evaluate(() => go('board'));
+    await navigate(page); await acceptProfile(page); await acceptPosts(page);
+    await tab(page, 'MVP').click();
+    await mvpPanel.getByRole('button', { name: 'All time', exact: true }).click();
+    await acceptMvps(page, creator, supporters, 'all');
+    await mvpPanel.getByRole('button', { name: /View Riya Kapoor's profile/ }).click();
+    await page.locator('.zu-toolbar').getByRole('button', { name: 'Back', exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => [S.v, S.h]), ['host', creator.id], 'Toolbar Back returns to the Host who opened the supporter');
+    await acceptProfile(page);
+    assert.equal(await tab(page, 'MVP').getAttribute('aria-selected'), 'true', 'Returning to a Host restores the selected MVP tab');
+    await acceptMvps(page, creator, supporters, 'all');
+    await receive(page, 'app.back');
+    assert.equal(await page.evaluate(() => S.v), 'board', 'Android Back returns to the original leaderboard');
+    console.log('PASS public profile: real MVP loading, period switching, retry/stale isolation, ranked coin totals and supporter Back navigation');
 
     await navigate(page);
     await acceptProfile(page);
@@ -333,13 +347,12 @@ async function run() {
     assert.equal(await button(postFeed, 'Post options').count(), 0, 'Visitors cannot delete a creator\'s posts');
     await page.keyboard.press('Escape');
     assert.equal(await page.getByRole('dialog').count(), 0);
-    await tab(page, 'Posts').focus();
-    await page.keyboard.press('ArrowRight');
+    await tab(page, 'Posts').press('ArrowRight');
     assert.equal(await tab(page, 'MVP').getAttribute('aria-selected'), 'true', 'Profile tabs support keyboard navigation');
     await page.getByRole('status', { name: 'Loading top supporters', exact: true }).waitFor();
     await acceptMvps(page, creator, [], 'week');
     assert.equal(await page.locator('#zu-panel .zu-mvp-empty').innerText(), 'No MVP');
-    await page.keyboard.press('Home');
+    await tab(page, 'MVP').press('Home');
     assert.equal(await tab(page, 'Posts').getAttribute('aria-selected'), 'true');
     console.log('PASS public profile: real photo loading/retry, pagination, stale response isolation, post feed and keyboard tabs');
 
@@ -452,13 +465,14 @@ async function run() {
 
     const stale = await navigate(page, creator);
     const current = await navigate(page, other);
-    await receive(page, 'data.publicProfile', { id: creator.id, requestId: stale.requestId, profile: profile(creator, { name: 'Stale profile response' }) });
+    await receive(page, 'data.publicProfile', { id: creator.id, requestId: stale.requestId, profile: profile(creator, { name: 'Stale profile response', lifetimeGiftDiamondUnits: 12_345_625_000 }) });
     assert.equal(await page.getByRole('heading', { name: 'Stale profile response', exact: true }).count(), 0);
     await receive(page, 'data.loading', { resource: 'publicProfile', id: creator.id, requestId: stale.requestId, loading: false, error: 'Stale profile error' });
     assert.equal(await page.getByText('Stale profile error', { exact: true }).count(), 0);
-    await receive(page, 'data.publicProfile', { id: other.id, requestId: current.requestId, profile: profile(other) });
+    await receive(page, 'data.publicProfile', { id: other.id, requestId: current.requestId, profile: profile(other, { lifetimeGiftDiamondUnits: 0 }) });
     await acceptPosts(page, other);
     await page.getByRole('heading', { name: other.name, exact: true }).waitFor();
+    assert.equal(await publicDiamonds.innerText(), '0', 'An explicit zero from the server replaces the previous host’s total');
     assert.equal(await button(page, 'Start video call').isEnabled(), true, 'An offline host still permits an explicit manual call');
     assert.equal(await page.locator('.zu-presence').innerText(), 'Currently offline', 'The availability toggle takes precedence over a connected socket');
     assert.equal(await page.locator('.zu-presence.is-online').count(),0,'Call permission never gives an offline profile an Online badge');
@@ -467,6 +481,7 @@ async function run() {
     assert.equal(await page.evaluate(()=>S.v),'precall','An offline profile opens manual video-call confirmation');
     assert.equal(await sentCount(page,'call.start'),beforeOfflineSetup,'Manual call setup does not charge or ring before confirmation');
     await navigate(page,other); await acceptProfile(page,other); await acceptPosts(page,other);
+    assert.equal(await publicDiamonds.innerText(), '—', 'An older server without the stat leaves the public value unavailable');
     console.log('PASS public profile: stale response isolation, truthful offline presence and preserved manual call access');
 
     const blocksBefore = await sentCount(page, 'block.set');

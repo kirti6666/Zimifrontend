@@ -173,7 +173,7 @@ const th=()=>"";
 function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
-function go(v,id){
+function go(v,id,{returnRoute}={}){
  if(v==='thread'&&id==='bingo-live-official'&&window.ZimiOfficialChat)return window.ZimiOfficialChat.open('chats');
  /* A minimized call stays the only call until it ends (web/ongoing-call.js). */
  if(S.bgCall&&["dial","dialback","call","voice","hcall"].includes(v)){appNotice("Finish your current call first.");return}
@@ -205,10 +205,10 @@ function go(v,id){
  if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
  if(v==="hcall")S.cel=S.hcel;
  S.more=0;
- window.ZimiPublicProfile?.beforeNavigate(v,id);
+ window.ZimiPublicProfile?.beforeNavigate(v,id,returnRoute);
  if(v==='host'&&id!==S.h)S.ht='posts';
  if(v==='user'){S.back='host';S.backId=S.h;S.u=id;id=null}
- if(v==='search')S.sq='';
+ if(v==='search')S.sq=returnRoute?.query??'';
  if(S.v==='editprofile'&&v!=='editprofile'){mediaSequence++;obResetProfileDraft()}
  if(S.v!==v&&S.mediaPreparing){mediaSequence++;S.mediaPreparing=false}
  if(v==='editprofile'){S.editBack=['settings','settings-detail'].includes(S.v)?'settings':'profile';obResetProfileDraft()}
@@ -217,7 +217,7 @@ function go(v,id){
  const navigationChange=window.ZimiNavigation?.before(v);
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);
- window.ZimiPublicProfile?.afterNavigate(v);
+ window.ZimiPublicProfile?.afterNavigate(v,returnRoute);
  if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;S.swap=0;
   S.rmsgs=[["sys","",DEMO&&!window.ZimiHome?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:S.callRate?`Connected · ${n(S.callRate)} coins a minute, billed by the second`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO&&!window.ZimiHome?g(S.h).fee:0;
   if(DEMO&&!window.ZimiHome)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&!window.ZimiHome&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
@@ -226,7 +226,7 @@ function go(v,id){
  if(v==="dialback"){S.caller.voice=!!S.nextCallVoice;if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id,voice:!!S.nextCallVoice})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
   if(!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
-  if(DEMO)S.wt=setTimeout(()=>{S.ringBack="waiting";S.caller=nextCaller();go("ring")},3200)}
+  if(DEMO)S.wt=setTimeout(()=>{S.ringBack={view:"waiting"};S.caller=nextCaller();go("ring")},3200)}
  if(v==="hcall"){S.sec=0;S.earned=0;S.recvN=0;S.callersN=1;S.tray=0;S.gifted=0;S.favGot=0;S.swap=0;
   S.cstart=0;S.feeOk=0;S.feeHide=0;S.confirm=0;S.feeLog=[];
   /* The preview has no server: it shows the default terms. */
@@ -1125,7 +1125,7 @@ function toggleVis(){S.vis=S.vis?0:1;Native.send("presence.set",{online:!!S.onli
 /* Preview only: while online and not in a call, a caller rings wherever the host is in the app. */
 if(DEMO)setInterval(()=>{
  if(!isHost()||!S.online||["ring","hcall","dialback","waiting"].includes(S.v)){S.idle=0;return}
- if((S.idle=(S.idle||0)+1)>=25){S.idle=0;S.ringBack=S.v;S.caller=nextCaller();go("ring")}},1000);
+ if((S.idle=(S.idle||0)+1)>=25){S.idle=0;S.ringBack=ringOrigin();S.caller=nextCaller();go("ring")}},1000);
 
 function nextCaller(){
  const nm=SENDERS[(S.ci=(S.ci||0)+1)%SENDERS.length];
@@ -1156,8 +1156,13 @@ function memberIncoming(d){
  if(busy&&S.memberRing?.callId!==d.callId){Native.send("call.decline",{callId:d.callId});return}
  const from=d.from||{},h=knowHost({id:from.id,name:from.name,avatarUrl:from.avatarUrl,city:from.city,gender:from.gender,verified:true,role:"host",serverRole:"host"});
  S.memberRing={callId:d.callId,id:h.id,voice:!!d.voice,rate:d.rate||0,error:""};
- S.acceptingCall=false;if(S.v!=="incoming")S.ringBack={view:S.v,id:S.v==="thread"||S.v==="host"?S.h:undefined};go("incoming")}
-function ringReturn(){const back=S.ringBack||{};S.ringBack=null;go(back.view&&back.view!=="incoming"?back.view:"home",back.id)}
+ S.acceptingCall=false;if(S.v!=="incoming")S.ringBack=ringOrigin();go("incoming")}
+function ringOrigin(){return window.ZimiPublicProfile?.returnRoute()??{view:S.v}}
+function ringReturn(fallback="home"){
+ const back=S.ringBack;S.ringBack=null;
+ if(!back?.view||["incoming","ring"].includes(back.view))return go(fallback);
+ go(back.view,back.id,{returnRoute:back});
+}
 function vMemberRing(){const m=S.memberRing,h=m&&g(m.id);if(!h)return "";
  const name=first(h.n),short=!!m.topupRequired||m.rate>0&&S.bal<m.rate;
  return `<div class="ringscr host ring ${S.acceptingCall?'is-connecting':''}" role="region" aria-label="Incoming ${m.voice?'voice':'video'} call from ${esc(h.n)}">
@@ -1218,7 +1223,7 @@ function incBanner(){const c=S.inc;
   <button class="no" aria-label="Decline" onclick="declineInc()">${I("ph",17)}</button>
   <button class="yes" aria-label="Switch to this call" onclick="hostEnd('switch')">${I("vid",17)}</button></div>`}
 
-function declineRing(){S.acceptingCall=false;Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting");ringQueued()}
+function declineRing(){S.acceptingCall=false;Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);ringReturn("waiting");ringQueued()}
 function acceptRing(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;if(!DEMO&&window.ZimiHome)return homeAcceptCall();Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
 /* A second caller while the host is in a call: a banner, never a busy signal. */
 function ringIncoming(c){
@@ -1346,7 +1351,7 @@ function endCall(remote){
  }
  S.callFee=0;
  go("summary");
- if(waiting){S.ringBack="summary";S.caller=waiting;go("ring")}}
+ if(waiting){S.ringBack={view:"summary"};S.caller=waiting;go("ring")}}
 
 /* Where this session's spend sits among the host's recent callers. */
 function supportPct(h,spent){
@@ -1769,11 +1774,11 @@ Native.on("call.incoming",d=>{if(d.fromHost&&!isHost())return memberIncoming(d);
  /* One ring screen at a time: a caller arriving meanwhile rings once that one is answered or declined. */
  if(S.v==="ring"){if(S.caller?.callId!==c.callId)S.queuedInc=c;return}
  if(["dial","dialback","call","voice"].includes(S.v))return;
- S.acceptingCall=false;S.ringBack=S.v;S.caller=c;go("ring")});
+ S.acceptingCall=false;S.ringBack=ringOrigin();S.caller=c;go("ring")});
 /* The caller who arrived while another call was ringing: a banner on the call, or the next ring. */
 function ringQueued(){const q=S.queuedInc;if(!q)return;S.queuedInc=null;
  if(S.v==="hcall")return ringIncoming(q);
- S.acceptingCall=false;S.caller=q;go("ring")}
+ S.acceptingCall=false;S.ringBack=ringOrigin();S.caller=q;go("ring")}
 /* the other side hung up, or a ringing call was given up */
 Native.on("call.ended",d=>{const id=d.callId;
  /* A minimized call ends as it would on screen: a summary, or the unanswered notice. */
@@ -1790,7 +1795,7 @@ Native.on("call.ended",d=>{const id=d.callId;
  if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr=d.reason==='host_unavailable'?'Host can’t accept the call.':'The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
  if(S.queuedInc?.callId===id){addMissed(S.queuedInc);S.queuedInc=null;return}
- if(S.v==="ring"&&S.caller.callId===id){S.acceptingCall=false;addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}
+ if(S.v==="ring"&&S.caller.callId===id){S.acceptingCall=false;addMissed(S.caller);ringReturn("waiting");return ringQueued()}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
  if((S.v==="call"||S.v==="voice")&&(!S.callId||S.callId===id))endCall(true)});
 /* A balance update can let the member answer: show it on the ring screen at once. */

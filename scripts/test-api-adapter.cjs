@@ -825,14 +825,22 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     bio: 'Live music and conversation', avatar: { url: 'https://cdn.example.test/avatar.jpg' }, coverUrl: 'https://cdn.example.test/cover.jpg',
     city: 'Pune', followers: 42, following: 3, isFollowing: true, level: 4, crown: false, createdAt: '2026-01-01T00:00:00.000Z',
     languages: ['English', 'Hindi'], interests: ['Music'], category: 'Music', callRateCoinsPerMinute: 35, isOnline: true, availableForCall: true, stream: null };
-  expect('GET', '/users/host-id', publicHost);
+  expect('GET', '/users/host-id', { ...publicHost, lifetimeGiftDiamondUnits: 12_345_625_000 });
   const publicProfile = await api.publicProfile('host-id');
   assert.equal(publicProfile.id, 'host-id'); assert.equal(publicProfile.followingCount, 3); assert.equal(publicProfile.followers, 42); assert.equal(publicProfile.following, true);
   assert.equal(publicProfile.role, 'host'); assert.equal(publicProfile.serverRole, 'host'); assert.equal(publicProfile.verified, true);
+  assert.equal(publicProfile.lifetimeGiftDiamondUnits, 12_345_625_000, 'Public gift Diamond units survive the native adapter exactly');
   assert.equal(publicProfile.joined, publicHost.createdAt); assert.equal(publicProfile.ratePerMin, 35); assert.equal(publicProfile.availableForCall, true);
   assert.deepEqual(plain(publicProfile.interests), ['Music']);
   assert.equal(adapters.publicProfileFrom({ ...publicHost, isVerifiedHost: false }).verified, false, 'Explicit server approval overrides legacy verification');
   assert.equal(adapters.publicProfileFrom({ ...publicHost, role: 'user', isVerifiedHost: true }).verified, false, 'A member never gains creator authority');
+  assert.equal(adapters.publicProfileFrom({ ...publicHost, isVerifiedHost: true, isPhoneVerified: false, lifetimeGiftDiamondUnits: 0 }).lifetimeGiftDiamondUnits, 0);
+  for (const profile of [
+    publicHost,
+    { ...publicHost, role: 'user', lifetimeGiftDiamondUnits: 12_000_000 },
+    { ...publicHost, isVerifiedHost: false, lifetimeGiftDiamondUnits: 12_000_000 },
+    ...[-1, 1.5, '12000000', Number.MAX_SAFE_INTEGER + 1].map(lifetimeGiftDiamondUnits => ({ ...publicHost, lifetimeGiftDiamondUnits })),
+  ]) assert.equal(adapters.publicProfileFrom(profile).lifetimeGiftDiamondUnits, undefined, 'Missing, invalid or non-host totals are omitted');
   for (const invalid of [{ ...publicHost, followers: undefined }, { ...publicHost, following: -1 }, { ...publicHost, isFollowing: undefined }]) assert.throws(() => adapters.publicProfileFrom(invalid), /could not be loaded/, 'Missing counts never become invented zeroes');
 
   const rankedHost = { _id: '507f1f77bcf86cd799439011', name: 'Aster', avatar: publicHost.avatar, coins: 7250, rank: 1 };

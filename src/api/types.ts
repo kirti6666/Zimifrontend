@@ -169,6 +169,8 @@ export interface PublicProfile extends Host {
   interests: string[];
   level?: number;
   crown?: boolean;
+  /** Lifetime confirmed gift earnings, in millionths of a Diamond, for approved hosts. */
+  lifetimeGiftDiamondUnits?: number;
   /** This person follows the viewer. */
   followsYou?: boolean;
 }

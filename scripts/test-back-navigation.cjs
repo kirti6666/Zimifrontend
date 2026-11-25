@@ -116,7 +116,44 @@ async function navigationChecks(page) {
   await navigate(page, 'host', creator.id);
   await back(page);
   assert.equal(await current(page), 'chats', 'Public profile uses its existing origin-aware Back action');
+
+  await openThread(page);
+  await page.locator('.zc-thread-person').click();
+  const otherHostId = '507f1f77bcf86cd799439012';
+  await navigate(page, 'host', otherHostId);
+  await back(page);
+  assert.deepEqual(await page.evaluate(() => [S.v, S.h]), ['host', creator.id], 'Back returns to the specific previous profile');
+  const threadOpens = (await sent(page, 'chat.open')).length;
+  await back(page);
+  assert.deepEqual(await page.evaluate(() => [S.v, S.h]), ['thread', creator.id], 'Back from nested profiles restores the original chat peer');
+  await page.waitForFunction(count => __sent.filter(message => message.type === 'chat.open').length > count, threadOpens);
+  assert.equal((await sent(page, 'chat.open')).at(-1).with, creator.id);
+
+  await navigate(page, 'settings');
+  await page.getByRole('button', { name: 'Open your profile', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit profile', exact: true }).click();
+  await back(page);
+  assert.equal(await current(page), 'profile');
+  await back(page);
+  assert.equal(await current(page), 'settings', 'Profile Back remembers Settings after visiting the edit screen');
+
+  await navigate(page, 'chats');
+  await navigate(page, 'host', creator.id);
+  await navigate(page, 'settings');
+  await navigate(page, 'editprofile');
+  await page.getByRole('button', { name: 'Create a post', exact: true }).click();
+  await back(page);
+  assert.equal(await current(page), 'profile');
+  await back(page);
+  assert.equal(await current(page), 'home', 'Opening an owner tool without a profile origin cannot reopen an old conversation');
+
+  await navigate(page, 'home');
   await navigate(page, 'search');
+  await page.evaluate(() => { S.sq = 'Test Creator'; homeSearchRequest(); });
+  await navigate(page, 'host', creator.id);
+  await back(page);
+  assert.deepEqual(await page.evaluate(() => [S.v, S.sq]), ['search', 'Test Creator'], 'Profile Back restores the original search');
+  assert.equal((await sent(page, 'profiles.search')).at(-1).q, 'Test Creator');
   await back(page);
   assert.equal(await current(page), 'home');
   await navigate(page, 'wallet');
@@ -126,6 +163,27 @@ async function navigationChecks(page) {
   await navigate(page, 'home');
   await back(page);
   assert.deepEqual(await sent(page, 'app.exit.request'), [{}], 'Only root Back asks the native shell to confirm exit');
+}
+
+async function profileInterruptionChecks(page) {
+  await seed(page);
+  await navigate(page, 'board');
+  await navigate(page, 'host', creator.id);
+  await receive(page, 'call.incoming', { callId: 'incoming-member-test', fromHost: true, from: { ...creator, id: '507f1f77bcf86cd799439012' } });
+  assert.equal(await current(page), 'incoming');
+  await back(page);
+  assert.deepEqual(await page.evaluate(() => [S.v, S.h]), ['host', creator.id], 'Declining an incoming call resumes the host profile');
+  await back(page);
+  assert.equal(await current(page), 'board', 'The dismissed call does not replace the profile origin');
+
+  await seed(page, host);
+  await navigate(page, 'user', member.user.id);
+  await receive(page, 'call.incoming', { callId: 'incoming-host-test', from: member.user });
+  assert.equal(await current(page), 'ring');
+  await receive(page, 'call.ended', { callId: 'incoming-host-test' });
+  assert.deepEqual(await page.evaluate(() => [S.v, S.u]), ['user', member.user.id], 'A missed call restores the exact member profile');
+  await back(page);
+  assert.equal(await current(page), 'home', 'Back continues to Home after returning from the call');
 }
 
 async function chatChecks(page) {
@@ -294,6 +352,8 @@ async function onboardingChecks(page) {
   try {
     const page = await open(browser, errors);
     await navigationChecks(page);
+    await profileInterruptionChecks(page);
+    await seed(page);
     await chatChecks(page);
     await mediaChecks(page);
     await onboardingChecks(page);

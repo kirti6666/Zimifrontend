@@ -167,6 +167,7 @@ export function publicProfileFrom(value: unknown): PublicProfile {
   // This route exposes phone verification and authoritative Host approval separately.
   const verified = profile.role === "host" && profile.hostStatus === "approved" &&
     (typeof profile.isVerifiedHost === "boolean" ? profile.isVerifiedHost : profile.isPhoneVerified === true);
+  const giftUnits = profile.lifetimeGiftDiamondUnits;
   return {
     ...hostFrom({ ...profile, isVerifiedHost: verified }),
     followingCount: profile.following as number,
@@ -174,6 +175,8 @@ export function publicProfileFrom(value: unknown): PublicProfile {
     interests: stringList(profile.interests),
     ...(typeof profile.level === "number" && Number.isSafeInteger(profile.level) && profile.level >= 0 ? { level: profile.level } : {}),
     ...(typeof profile.crown === "boolean" ? { crown: profile.crown } : {}),
+    ...(verified && typeof giftUnits === "number" && Number.isSafeInteger(giftUnits) && giftUnits >= 0
+      ? { lifetimeGiftDiamondUnits: giftUnits } : {}),
     ...flags(profile, ["followsYou"]),
   };
 }

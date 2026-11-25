@@ -313,6 +313,7 @@ for it (login, call failed).
 | Edit your message | `PATCH /chats/:id/messages/:messageId` `{text}` | The edited message (filtered again) |
 | Delete a message | `DELETE /chats/:id/messages/:messageId?for=everyone` (your own) or `?for=me` (any) | The deleted placeholder, or `{_id}` |
 | Follow | `POST /users/:id/follow` `{following}` | `{following}`; members follow hosts, hosts follow members back |
+| Public profile | `GET /users/:id` | Approved host profiles can include `lifetimeGiftDiamondUnits`, the total confirmed gift earnings in millionths of a Diamond. The public view shows an explicit zero for no recorded Diamond credits and a dash when the field is omitted. The host's own Profile and Wallet use the authenticated balance. |
 | A profile's posts | `GET /users/:id/posts?page=1` | `{items, total, page, limit}`; each post has `likes`, `comments` and the viewer's `liked` |
 | Like a post | `POST /posts/:id/like` `{liked}` | `{liked, likes}` |
 | Post comments | `GET /posts/:id/comments?page=1`, `POST /posts/:id/comments` `{text}` | Newest first, with the author; text is moderated like chat |
