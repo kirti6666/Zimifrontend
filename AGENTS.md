@@ -296,7 +296,13 @@ keeps it identical to the original Next.js version.
   and empty activity states visible.
 - The host go-live flow (`web/host-calls.js`, `web/host-studio.js`, the host
   call in `web/live-room.js`) follows the host reference layout but always
-  uses the selected theme's colors, never a fixed palette. The host's camera
+  uses the selected theme's colors, never a fixed palette. The Mission and
+  Gift target sheets (`.hs-ref` in `web/host-studio.css`, setup and in-call)
+  are a scoped exception like the gift picker: the user's dark reference sheet
+  (grip, glow, three-column gift cards with tinted circles, a HOW MANY stepper
+  of 1-999 with 5/10/20/50 chips, a summary card; goal chips 5K-1M plus an
+  exact amount from 1,000 to 9,99,99,999 that − / + move by 10,000). Selection,
+  progress and Done use the theme accent, and corners stay 10px. The host's camera
   retains its full source image: native Android requests 1920x1440 at 30 fps;
   the browser fallback captures 1280x720 with `resizeMode: 'none'`. Use
   `cover` on the visible video call's main stage and video dial preview so they

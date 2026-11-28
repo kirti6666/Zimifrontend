@@ -86,7 +86,8 @@
 .zh-creator-shade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.28),rgba(0,0,0,0) 26%,rgba(0,0,0,0) 58%,rgba(0,0,0,.72))}
 .zh-creator-hit{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;background:transparent}
 .zh-creator-status{position:absolute;top:0;left:0;display:inline-flex;align-items:center;gap:5px;max-width:calc(100% - 14px);padding:4px 10px;background:rgba(0,0,0,.42);color:#fff;font-size:12px;font-weight:500;line-height:1.4;white-space:nowrap;pointer-events:none}
-.zh-creator-status>i{width:6px;height:6px;flex:none;border-radius:50%;background:var(--online)}
+/* Online hosts get a bright green dot: the theme's success green is too dark on the photo tag. */
+.zh-creator-status>i{width:7px;height:7px;flex:none;border-radius:50%;background:#22c55e}
 .zh-creator-status.is-live>i{background:var(--live)}
 .zh-creator-bottom{position:absolute;left:10px;right:7px;bottom:7px;display:flex;align-items:center;gap:6px;pointer-events:none}
 .zh-creator-name{display:flex;align-items:center;gap:6px;flex:1;min-width:0;margin:0;color:#fff;font-size:calc(15px * var(--theme-font-scale,1));font-weight:600;line-height:1.3;letter-spacing:-.1px}

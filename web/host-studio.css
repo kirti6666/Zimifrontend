@@ -16,34 +16,10 @@
 .hs-sheet button:focus-visible,.hs-targets button:focus-visible,.hs-gift-rail button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 .hs-sheet-close{flex:none;display:grid;place-items:center;width:32px;height:32px;margin-top:2px;border-radius:50%;background:var(--raised);color:var(--muted)}
 .hs-sheet-body{padding:5px 15px 12px}
-.hs-options{display:flex;gap:6px;overflow-x:auto;padding:1px 0 5px;scrollbar-width:none}
-.hs-options>button{flex:none;min-width:50px;min-height:32px;padding:6px 13px;border-radius:999px;background:var(--raised);color:var(--muted);font-size:12px;font-weight:750;line-height:1.3}
-.hs-options>button.is-on{background:var(--cta);color:var(--cta-ink);box-shadow:0 3px 12px rgb(0 0 0 / .16)}
-.hs-mission-total{display:flex;align-items:baseline;gap:5px;margin:8px 0 7px}
-.hs-mission-total>strong{color:var(--accent-ink);font-size:28px;font-weight:800;letter-spacing:-.8px;line-height:1.1;font-variant-numeric:tabular-nums}
-.hs-mission-total>span{color:var(--muted);font-size:12px}
 .hs-progress{height:7px;border-radius:999px;background:var(--line);overflow:hidden}
 .hs-progress>i,.hs-target-track>em{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--accent-ink),var(--accent));transition:width .2s ease}
-.hs-section-label{display:flex;align-items:center;gap:9px;margin:19px 0 8px;font-size:12px}
-.hs-section-label>b{font-size:14px;font-weight:750;color:var(--ink)}
-.hs-section-label>span{color:var(--muted);font-size:11px}
-.hs-task{display:flex;align-items:center;gap:10px;min-height:63px;margin-top:7px;padding:11px;border:1px solid var(--line);border-radius:14px;background:var(--raised);color:var(--ink)}
-.hs-task-icon{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:linear-gradient(135deg,var(--accent-ink),var(--accent));color:var(--cta-ink)}
-.hs-task-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}
-.hs-task-copy>b{font-size:12px;font-weight:650;line-height:1.4}
-.hs-task-copy>small{color:var(--muted);font-size:10px;line-height:1.4}
-.hs-task-copy>i{display:block;max-width:160px;height:3px;margin-top:3px;border-radius:2px;overflow:hidden;background:var(--line)}
-.hs-task-copy>i>em{display:block;height:100%;background:var(--accent)}
-.hs-task>strong{display:flex;align-items:center;gap:3px;color:var(--accent-ink);font-size:12px;white-space:nowrap}
-.hs-tasks-empty{margin:13px 0 0;font-size:11px;line-height:1.6;color:var(--muted)}
-.hs-claim{width:100%;margin-top:12px;padding:11px;border-radius:99px;background:var(--cta);color:var(--cta-ink);font-size:12px;font-weight:700}
 .hs-gift-art{display:grid;place-items:center;width:36px;height:36px;font-size:28px;line-height:1}
 .hs-gift-art>img,.hs-target-art>img{width:100%;height:100%;object-fit:contain}
-.hs-target-detail{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:13px;color:var(--muted);font-size:11px}
-.hs-target-detail>span:first-child{display:flex;align-items:center;gap:5px;min-width:0;font-size:20px}
-.hs-target-detail>span:first-child>b{overflow:hidden;font-size:12px;white-space:nowrap;text-overflow:ellipsis;color:var(--ink)}
-.hs-target-detail img{width:27px;height:27px;object-fit:contain}
-.hs-target-detail>span:last-child{flex:none;font-size:10px;text-align:right;font-variant-numeric:tabular-nums}
 .hs-empty{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:15px 5px;color:var(--muted);font-size:11px;line-height:1.5;text-align:center}
 .hs-empty button{display:flex;align-items:center;gap:5px;min-height:34px;padding:7px 12px;border-radius:99px;background:var(--raised);color:var(--ink);font-size:11px}
 .hs-gift-loading{display:flex;align-items:center;gap:12px;padding:7px 0 15px;overflow:hidden}
@@ -167,12 +143,114 @@
 .hc-reference .zb-reference-panel .zb-footer[data-zimi-beauty-alert=false]{display:none}
 .hc-reference .zb-reference-panel .zb-footer{margin:0;min-height:0}
 
+/* Mission and Gift target follow the go-live sheet reference: a dark sheet with a
+   glow, grip and round close whatever the account theme. Only the accent (chosen
+   chips, check, Done, progress) comes from the theme. Corners keep the 10px
+   contract; the round gift backgrounds are painted circles. */
+.hs-ref-backdrop{background:rgba(0,0,0,.55);backdrop-filter:blur(6px)}
+.hs-sheet.hs-ref{
+  --surface:#1e1b23;--raised:#2a2730;--ink:#fff;--muted:#a19da8;--line:#34303b;
+  --hs-accent:var(--cta);--hs-on-accent:var(--cta-ink);--hs-accent-soft:#ff8ac9;--hs-picked:#351a2e;--hs-gold:#ffd60a;
+  --accent-ink:var(--hs-accent-soft);
+  position:relative;display:flex;flex-direction:column;max-height:calc(100% - 40px);overflow-y:auto;
+  padding:8px 20px calc(24px + var(--safe-bottom));border:0;color:#fff;color-scheme:dark;
+  background:radial-gradient(60% 100% at 50% 0%,rgba(255,46,147,.38) 0%,rgba(90,70,220,.18) 45%,rgba(30,27,35,0) 75%) 0 0/100% 170px no-repeat,#1e1b23}
+.hs-sheet-gift-target.hs-ref{height:min(694px,calc(100% - max(56px,18%)));max-height:none;overflow:hidden}
+.hs-ref .hs-grip{display:block;flex:none;width:36px;height:5px;margin:0 auto;background:#4a4652}
+.hs-sheet.hs-ref .hs-ref-head{position:relative;display:flex;flex:none;align-items:flex-start;justify-content:space-between;gap:12px;margin-top:14px;padding:0}
+.hs-sheet.hs-ref .hs-ref-head h2{margin:0;color:#fff;font-size:21px;font-weight:700;line-height:1.25;letter-spacing:-.3px}
+.hs-sheet.hs-ref .hs-ref-head p{margin:3px 0 0;color:#b3afba;font-size:14px;line-height:19px}
+.hs-ref .hs-sheet-close{width:32px;height:32px;margin:0;padding:0;border:0;background:rgba(255,255,255,.08);color:#d6d3dc}
+.hs-ref .hs-sheet-close svg{stroke-width:2.6}
+.hs-sheet.hs-ref .hs-sheet-body{position:relative;display:flex;flex:1 1 auto;min-height:0;flex-direction:column;padding:0}
+.hs-ref .hs-section-title{flex:none;margin:18px 0 0;padding:0 2px 8px;color:#a19da8;font-size:12px;line-height:1.3;letter-spacing:.4px}
+.hs-sheet-mission .hs-section-title{margin-top:20px}
+.hs-ref .zh-skeleton-shape{background:#ffffff16}
+/* Gift target: a 3-column gift grid that scrolls above a fixed quantity footer. */
+.hs-gift-scroll{position:relative;flex:1 1 auto;min-height:0;margin:0 -20px;padding:2px 20px 12px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+.hs-gift-scroll::-webkit-scrollbar{display:none}
+.hs-gift-grid,.hs-gift-scroll .zh-skeleton-catalog{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0;padding:0}
+.hs-gift-scroll .zh-skeleton-catalog>div{display:flex;flex-direction:column;align-items:center;gap:8px;min-height:118px;padding:12px 6px 10px;background:#2a2730}
+.hs-ref .hs-gift-tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;padding:12px 6px 10px;border:2px solid transparent;background:#2a2730;color:#fff;font:inherit;text-align:center;cursor:pointer}
+.hs-ref .hs-gift-tile.is-on{border-color:var(--hs-accent);background:var(--hs-picked)}
+.hs-gift-icon{display:grid;flex:none;place-items:center;width:46px;height:46px;font-size:24px;line-height:1;background:radial-gradient(circle closest-side,var(--hs-tint,#3a3640) 96%,transparent 100%)}
+.hs-gift-icon>img{width:32px;height:32px;object-fit:contain}
+.hs-gift-tile>b{max-width:100%;font-size:14px;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.hs-gift-price{display:flex;align-items:center;gap:4px;color:var(--hs-gold);font-size:13px;font-weight:600;line-height:1.3;font-variant-numeric:tabular-nums}
+.hs-gift-price>svg{flex:none;width:13px;height:13px}
+.hs-gift-check{position:absolute;top:7px;right:7px;display:grid;place-items:center;width:18px;height:18px;background:var(--hs-accent);color:var(--hs-on-accent)}
+.hs-gift-check svg{stroke-width:3.2}
+.hs-gift-footer{position:relative;flex:none;margin:0 -20px;padding:14px 20px 0;border-top:.5px solid #34303b;background:#1e1b23}
+.hs-gift-footer>.hs-section-title{margin-top:0}
+.hs-count-row{display:flex;align-items:center;gap:10px}
+.hs-stepper{display:flex;flex:none;align-items:center;height:46px;background:#2a2730}
+.hs-ref .hs-stepper>button{display:grid;place-items:center;width:44px;height:46px;min-height:46px;padding:0;border:0;background:transparent;color:#fff}
+.hs-ref .hs-stepper>button:disabled{color:#48484a;cursor:default;opacity:1}
+.hs-stepper>output{min-width:44px;font-size:20px;font-weight:700;line-height:1;text-align:center;font-variant-numeric:tabular-nums}
+.hs-quick{display:grid;flex:1;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;min-width:0}
+.hs-ref :is(.hs-quick,.hs-goals)>button{min-width:0;height:46px;min-height:46px;padding:0;border:0;background:#2a2730;color:#c9c5d0;font:inherit;font-size:15px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.hs-ref :is(.hs-quick,.hs-goals)>button.is-on{background:var(--hs-accent);color:var(--hs-on-accent)}
+.hs-gift-summary{display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;background:#2a2730}
+.hs-gift-summary>.hs-gift-icon{width:36px;height:36px;font-size:19px}
+.hs-gift-summary>.hs-gift-icon>img{width:24px;height:24px}
+.hs-summary-copy{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}
+.hs-summary-copy>b{overflow:hidden;font-size:15px;font-weight:600;line-height:1.3;text-overflow:ellipsis;white-space:nowrap}
+.hs-summary-copy>small,.hs-summary-total>small{color:#8e8e93;font-size:12px;line-height:1.3}
+.hs-summary-total{display:flex;flex:none;flex-direction:column;align-items:flex-end;gap:2px;text-align:right}
+.hs-summary-total>b{color:var(--hs-gold);font-size:16px;font-weight:700;line-height:1.3;font-variant-numeric:tabular-nums}
+.hs-ref .hs-done{display:flex;align-items:center;justify-content:center;width:100%;height:54px;min-height:54px;margin-top:14px;padding:0;border:0;background:var(--hs-accent);color:var(--hs-on-accent);font:inherit;font-size:17px;font-weight:600}
+/* Mission: goal chips, an exact amount with − / +, and the progress card. */
+.hs-goals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.hs-ref .hs-goals>button{height:42px;min-height:42px;font-size:14px;font-weight:700}
+.hs-goal-row{display:flex;align-items:center;gap:8px;margin-top:10px}
+.hs-ref .hs-goal-step{display:grid;flex:none;place-items:center;width:46px;height:50px;min-height:50px;padding:0;border:0;background:#2a2730;color:#fff}
+.hs-goal-field{display:flex;flex:1;align-items:center;gap:8px;min-width:0;height:50px;margin:0;padding:0 14px;border:1.5px solid var(--hs-accent);background:#2a2730;cursor:text}
+.hs-goal-field:focus-within{background:#312d38}
+.hs-goal-field.is-invalid{border-color:#ff6961}
+html:root .hs-goal-field>input{flex:1;min-width:0;width:100%;height:40px;min-height:0;margin:0;padding:0;border:0;outline:0;background:transparent;color:#fff;font:inherit;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;-webkit-appearance:none;appearance:none}
+.hs-goal-field>input::placeholder{color:#6e6a76;font-weight:600}
+.hs-goal-field>span{flex:none;color:#a19da8;font-size:13px}
+.hs-goal-hint{margin:0;padding:6px 4px 0;color:#a19da8;font-size:12px;line-height:1.4}
+.hs-goal-hint.is-invalid{color:#ff6961}
+.hs-mission-card{margin-top:16px;padding:16px;background:#2a2730}
+.hs-mission-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.hs-mission-head p{margin:0;color:#a19da8;font-size:12px;line-height:1.3}
+.hs-mission-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 6px;margin-top:2px}
+.hs-mission-total>strong{color:var(--hs-accent-soft);font-size:34px;font-weight:800;line-height:1.15;letter-spacing:-.8px;font-variant-numeric:tabular-nums}
+.hs-mission-total>span{color:#b3afba;font-size:15px}
+.hs-mission-pct{display:flex;flex:none;align-items:center;height:26px;padding:0 10px;background:#3a3640;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.hs-ref .hs-progress{height:8px;margin-top:12px;background:#3a3640}
+.hs-ref .hs-progress>i{background:var(--hs-accent)}
+.hs-mission-foot{display:flex;justify-content:space-between;gap:12px;margin-top:8px;color:#a19da8;font-size:13px;line-height:1.3;font-variant-numeric:tabular-nums}
+@media(max-width:360px){
+  .hs-sheet.hs-ref{padding-inline:16px}
+  .hs-gift-scroll,.hs-gift-footer{margin-inline:-16px;padding-inline:16px}
+  .hs-count-row{gap:6px}
+  .hs-ref .hs-stepper>button{width:34px}
+  .hs-stepper>output{min-width:34px;font-size:18px}
+  .hs-quick{gap:4px}
+  .hs-ref :is(.hs-quick,.hs-goals)>button{font-size:13px}
+  .hs-gift-tile>b{font-size:13px}
+  .hs-ref .hs-goal-step{width:40px}
+  .hs-goal-field{padding-inline:10px}
+  html:root .hs-goal-field>input{font-size:18px}
+}
+/* Short phones: a taller sheet and a tighter footer keep more than a row of gifts in view. */
+@media(max-height:680px){
+  .hs-sheet-gift-target.hs-ref{height:calc(100% - 32px)}
+  .hs-sheet-gift-target .hs-sheet-body>.hs-section-title{margin-top:14px}
+  .hs-gift-footer{padding-top:10px}
+  .hs-gift-summary{margin-top:10px;padding-block:9px}
+  .hs-ref .hs-done{height:48px;min-height:48px;margin-top:10px}
+}
+
 /* Chrome 94 accepts unknown color functions during parsing but can invalidate
    the winning declaration at computed-value time. Keep every solid fallback
    outside this feature query so old Android WebViews never lose the surface. */
 @supports (background:color-mix(in srgb,#000,#fff)){
   .hs-sheet{background:radial-gradient(ellipse 48% 110px at 50% 0,color-mix(in srgb,var(--accent) 34%,transparent),transparent 72%),var(--surface)}
-  .hs-options>button.is-on{box-shadow:0 3px 12px color-mix(in srgb,var(--cta) 30%,transparent)}
+  .hs-sheet.hs-ref{--hs-accent-soft:color-mix(in srgb,var(--hs-accent) 50%,#fff);--hs-picked:color-mix(in srgb,var(--hs-accent) 12%,#1f1720);
+    background:radial-gradient(60% 100% at 50% 0%,color-mix(in srgb,var(--hs-accent) 38%,transparent) 0%,rgba(90,70,220,.18) 45%,rgba(30,27,35,0) 75%) 0 0/100% 170px no-repeat,#1e1b23}
   .hs-target-card{background:color-mix(in srgb,var(--room-glass,var(--surface)) 88%,transparent)}
   .hs-sheet-card-image .hs-card-preview{border-color:color-mix(in srgb,var(--muted) 60%,transparent)}
   .hc-reference.zb-previewing.is-off .hc-stage:before,.hc-reference.zb-previewing.is-off .hc-stage:after{background:color-mix(in srgb,var(--ink) 7%,var(--media-canvas))}
@@ -202,4 +280,4 @@
 }
 @keyframes hs-sheet-in{from{transform:translateY(100%);opacity:.6}to{transform:none;opacity:1}}
 @media(prefers-reduced-motion:reduce){.hs-sheet{animation:none}.hs-progress>i,.hs-target-track>em{transition:none}}
-@media(max-width:360px){.hs-sheet header{padding-inline:14px}.hs-sheet-body{padding-inline:13px}.hs-targets{gap:6px}.hs-target-card{gap:6px;padding-inline:8px}.hs-target-art{width:26px;height:26px;font-size:21px}.hs-target-label{font-size:7.5px;letter-spacing:.5px}.hs-target-copy>strong{font-size:11.5px}.hs-task{gap:7px;padding:9px}.hs-task-copy>b{font-size:11px}}
+@media(max-width:360px){.hs-sheet header{padding-inline:14px}.hs-sheet-body{padding-inline:13px}.hs-targets{gap:6px}.hs-target-card{gap:6px;padding-inline:8px}.hs-target-art{width:26px;height:26px;font-size:21px}.hs-target-label{font-size:7.5px;letter-spacing:.5px}.hs-target-copy>strong{font-size:11.5px}}

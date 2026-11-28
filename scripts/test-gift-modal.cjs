@@ -123,11 +123,6 @@ async function checkLayout(page,label){
     await receive(page,'data.catalog',{...catalog,gifts:[gifts[1]]});
     assert.equal(await dialog(page).locator('.zw-gifts>button').count(),1,'Absent reference gifts are never invented');
     assert.equal(await giftButton(page,'Rose').count(),1);
-    const sheetStyle=modal=>modal.evaluate(sheet=>{
-      const style=getComputedStyle(sheet),price=getComputedStyle(sheet.querySelector('.zg-price'));
-      return [style.backgroundImage,style.borderTopLeftRadius,price.color];
-    });
-    const chatStyle=await sheetStyle(dialog(page));
     await dialog(page).getByRole('button',{name:'Close gifts',exact:true}).click();
 
     const giftSends=await page.evaluate(()=>__sent.filter(message=>message.type==='gift.send').length);
@@ -145,21 +140,28 @@ async function checkLayout(page,label){
     await target.getByRole('button',{name:'Retry gift targets',exact:true}).click();
     assert.equal(await loading.count(),1,'Retry restores the grid-shaped loading state');
     await receive(page,'data.catalog',{...catalog,gifts:[...catalog.gifts,...extra]});
-    const grid=target.locator('.zw-gifts');
-    assert.equal(await grid.evaluate(node=>getComputedStyle(node).gridTemplateColumns.split(' ').length),4);
-    assert.deepEqual(await sheetStyle(target),chatStyle,'Host Gift target shares Chat’s dark sheet, corners and gold prices');
+    const grid=target.locator('.hs-gift-grid');
+    assert.equal(await grid.evaluate(node=>getComputedStyle(node).gridTemplateColumns.split(' ').length),3,'Gift target follows its reference: three columns of gift cards');
+    const targetStyle=await target.evaluate(sheet=>({background:getComputedStyle(sheet).backgroundColor,price:getComputedStyle(sheet.querySelector('.hs-gift-price')).color}));
+    assert.deepEqual(targetStyle,{background:'rgb(30, 27, 35)',price:'rgb(255, 214, 10)'},'Host Gift target keeps the reference dark sheet and gold prices');
     assert.deepEqual((await grid.locator('b').allInnerTexts()).slice(0,12),entries.map(row=>row[0]));
     assert.equal(await target.getByRole('button',{name:/Add coins|Send gift/}).count(),0);
     await page.evaluate(()=>{window.__targetSheet=document.querySelector('.hs-sheet-gift-target');window.__hostPreview=document.querySelector('.hc-stage video')});
-    const custom=target.getByRole('button',{name:'Target Custom gift 11',exact:true});
+    const custom=target.getByRole('button',{name:'Custom gift 11, 61 coins',exact:true});
     await custom.click();
     assert.equal(await custom.getAttribute('aria-pressed'),'true');
     assert.equal(await custom.evaluate(node=>node===document.activeElement),true);
-    assert.ok(await target.locator('.zg-catalog').evaluate(node=>node.scrollTop)>0,'The selected gift stays in view after the grid updates');
-    const count=target.getByRole('button',{name:'20 ×',exact:true});
+    assert.ok(await target.locator('.hs-gift-scroll').evaluate(node=>node.scrollTop)>0,'The selected gift stays in view after the grid updates');
+    const count=target.getByRole('button',{name:'20×',exact:true});
     await count.click();
     assert.equal(await count.getAttribute('aria-pressed'),'true');
-    assert.match(await target.locator('.hs-target-detail').innerText(),/0 \/ 20 · 1,220 user coins/);
+    assert.match(await target.locator('.hs-gift-summary').innerText(),/Custom gift 11 × 20\s+0 of 20 received\s+1,220\s+coins total/);
+    await target.getByRole('button',{name:'More gifts',exact:true}).click();
+    assert.equal(await target.locator('.hs-stepper output').innerText(),'21','Plus adds one gift to the target');
+    assert.equal(await count.getAttribute('aria-pressed'),'false','A stepped quantity leaves the quick choices');
+    assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('aria-label')),'More gifts','Focus stays on the stepper');
+    await target.getByRole('button',{name:'Fewer gifts',exact:true}).click();
+    assert.equal(await count.getAttribute('aria-pressed'),'true');
     assert.equal(await page.evaluate(()=>document.querySelector('.hs-sheet-gift-target')===__targetSheet && document.querySelector('.hc-stage video')===__hostPreview),true,'Gift and quantity changes leave the modal and camera mounted');
     const done=target.getByRole('button',{name:'Done',exact:true}), doneBounds=await done.boundingBox();
     assert.ok(doneBounds.y>=0 && doneBounds.y+doneBounds.height<=568,'Done stays visible on a short phone');
@@ -173,6 +175,6 @@ async function checkLayout(page,label){
     assert.equal(await target.count(),0,'Android Back dismisses Gift target first');
     assert.equal(await page.evaluate(()=>S.v),'setup');
     assert.equal(await page.evaluate(()=>__sent.filter(message=>message.type==='gift.send').length),giftSends,'Setting a target never sends a gift');
-    assert.deepEqual(errors,[]);console.log('PASS gift modals: shared Chat and host target styling, four-column catalog, artwork, real prices, retry, scroll and focus, target quantity and Back');
+    assert.deepEqual(errors,[]);console.log('PASS gift modals: Chat four-column catalog, host Gift target reference sheet (three columns, stepper, summary), artwork, real prices, retry, scroll and focus, target quantity and Back');
   }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});
