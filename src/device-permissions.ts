@@ -38,11 +38,11 @@ export function readDevicePermissions(): Promise<DevicePermissions> {
   return setupRequest?.promise ?? queuePermissionRequest(readCurrent);
 }
 
-async function requestSensors(isCurrent: () => boolean): Promise<Pick<DevicePermissions, "camera" | "microphone">> {
+async function requestSensors(isCurrent: () => boolean, waitForForeground?: () => Promise<boolean>): Promise<Pick<DevicePermissions, "camera" | "microphone">> {
   const status = await readSensors(), permissions = sensors();
-  if (!isCurrent() || AppState.currentState !== "active") return status;
   const missing = (Object.keys(permissions) as Array<keyof typeof permissions>).filter(key => status[key] === "denied");
-  if (!missing.length) return status;
+  if (!missing.length || !isCurrent() || (waitForForeground && !await waitForForeground())) return status;
+  if (!isCurrent() || AppState.currentState !== "active") return status;
   try {
     const results = await PermissionsAndroid.requestMultiple(missing.map(key => permissions[key]));
     for (const key of missing) {
@@ -55,20 +55,23 @@ async function requestSensors(isCurrent: () => boolean): Promise<Pick<DevicePerm
   return status;
 }
 
-/** Called only after the registration screen's Allow action. Duplicate taps
- * share one setup, and declining never changes account completion or access. */
-export function requestDevicePermissions(isCurrent: () => boolean = () => true): Promise<DevicePermissions> {
+/** First-open and explicit access setup share one request. Declining never
+ * changes account completion or access. */
+export function requestDevicePermissions(
+  isCurrent: () => boolean = () => true,
+  waitForForeground?: () => Promise<boolean>,
+): Promise<DevicePermissions> {
   const current = () => { try { return isCurrent(); } catch { return false; } };
   if (setupRequest) {
     if (setupRequest.current()) return setupRequest.promise;
     // A new registration never inherits the retired registration's result.
     // Its explicit action can continue once the old OS dialog has settled.
-    return setupRequest.promise.then(() => current() ? requestDevicePermissions(current) : readDevicePermissions());
+    return setupRequest.promise.then(() => current() ? requestDevicePermissions(current, waitForForeground) : readDevicePermissions());
   }
   const request = (async (): Promise<DevicePermissions> => {
     if (!supported()) return unavailable();
-    const status = await queuePermissionRequest(() => requestSensors(current));
-    const notifications = current() ? await requestPushPermission("prompt", current) : await readPushPermission();
+    const status = await queuePermissionRequest(() => requestSensors(current, waitForForeground));
+    const notifications = current() ? await requestPushPermission("prompt", current, waitForForeground) : await readPushPermission();
     return { ...status, notifications };
   })();
   setupRequest = { promise: request, current };

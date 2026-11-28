@@ -155,20 +155,34 @@ function znDetails(id){
   const item=Home.notifications.find(entry=>entry.id===id);if(!item)return;
   znCloseDetail();ZNotices.detail={...item};
   const dialog=document.createElement('dialog');dialog.id='zn-detail';dialog.className='zn-dialog';dialog.setAttribute('aria-label','Notification details');
-  dialog.innerHTML=`<div class="zn-dialog-heading"><span>Notification details</span><button aria-label="Close notification" onclick="znCloseDetail()">${hi('close',21)}</button></div><div class="zn-detail-content"><span class="zn-detail-icon">${hi(item.audience==='announcements'?'broadcast':'bell',30)}</span><span class="zn-tag">${znAudience(item)}</span><h2>${esc(item.title)}</h2><time>${esc(znDate(item))}</time><p>${esc(item.body)}</p><div id="zn-detail-status" role="status"></div></div>`;
+  dialog.innerHTML=`<header class="zn-dialog-heading">
+    <span class="zn-detail-icon" aria-hidden="true">${hi(item.audience==='announcements'?'broadcast':'bell',20)}</span><span class="zn-tag">${znAudience(item)}</span>
+    <button type="button" aria-label="Close notification" onclick="znCloseDetail()">${hi('close',21)}</button>
+  </header><div class="zn-detail-content" tabindex="0" role="region" aria-label="Notification message">
+    <h2>${esc(item.title)}</h2><time datetime="${esc(item.createdAt||'')}">${esc(znDate(item))}</time><p>${esc(item.body)}</p>
+  </div><footer class="zn-detail-actions"><hr aria-hidden="true">
+    <div id="zn-detail-status"><span role="status"></span><button class="zn-detail-retry" type="button" onclick="znRetryUpdate()" hidden>Retry update</button>
+    <button class="zn-detail-toggle" type="button" onclick="znUpdate(!ZNotices.detail.read,[ZNotices.detail.id])"></button></div>
+  </footer>`;
   dialog.addEventListener('close',()=>{dialog.remove();if(document.getElementById('zn-detail'))return;ZNotices.detail=null;const row=[...document.querySelectorAll('.zh-notification[data-notification-id]')].find(node=>node.dataset.notificationId===id);row?.querySelector('.zn-notice-main')?.focus({preventScroll:true})});
   dialog.addEventListener('click',event=>{if(event.target===dialog){const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)znCloseDetail()}});
-  document.body.append(dialog);dialog.showModal();znPaintDetailStatus();
   if(item.targetType&&item.targetType!=='inbox'){
-    const open=document.createElement('button');open.type='button';open.className='zn-primary';open.textContent=znTargetLabel(item.targetType);
-    open.onclick=()=>znRequestTarget(item);dialog.querySelector('.zn-detail-content').append(open);
+    const open=document.createElement('button');open.type='button';open.className='zn-primary zn-detail-open';open.textContent=znTargetLabel(item.targetType);
+    open.onclick=()=>znRequestTarget(item);dialog.querySelector('.zn-detail-actions').append(open);
   }
+  document.body.append(dialog);znPaintDetailStatus();dialog.showModal();
   if(!item.read&&!ZNotices.pending)znUpdate(true,[id]);
 }
 function znPaintDetailStatus(){
   const el=document.getElementById('zn-detail-status'),item=ZNotices.detail;if(!el||!item)return;
-  const status=ZNotices.pending?'Saving&hellip;':ZNotices.mutationError?`${esc(ZNotices.mutationError)} <button onclick="znRetryUpdate()">Retry update</button>`:item.read?'Read':'Unread';
-  el.innerHTML=`<span>${status}</span><button class="zn-detail-toggle" aria-label="Mark as ${item.read?'unread':'read'}: ${esc(item.title)}" ${ZNotices.pending?'disabled':''} onclick="znUpdate(!ZNotices.detail.read,[ZNotices.detail.id])">Mark as ${item.read?'unread':'read'}</button>`;
+  const pending=ZNotices.pending,ids=ZNotices.lastMutation?.request.ids;
+  const saving=pending&&(pending.all||pending.request.ids.includes(item.id));
+  const error=ids?.length===1&&ids[0]===item.id?ZNotices.mutationError:'';
+  const retry=el.querySelector('.zn-detail-retry'),toggle=el.querySelector('.zn-detail-toggle');
+  el.querySelector('[role="status"]').textContent=saving?'Saving…':error||(item.read?'Read':'Unread');
+  retry.hidden=!error;retry.disabled=!!pending;
+  const label=item.read?'Mark as unread':'Mark as read';
+  toggle.textContent=label;toggle.setAttribute('aria-label',`${label}: ${item.title}`);toggle.disabled=!!pending;
 }
 function znCloseDetail(){const dialog=document.getElementById('zn-detail');if(dialog){dialog.close();dialog.remove()}ZNotices.detail=null}
 function znReset(){clearTimeout(ZNotices.timer);znCloseDetail();Object.assign(ZNotices,{q:'',status:'all',audience:'all',period:'all',sort:'newest',page:1,total:0,totalCount:0,loaded:false,requestId:++ZNotices.sequence,selected:new Set(),pending:null,lastMutation:null,mutationError:'',message:'',timer:null,focus:null,changed:false,accountId:'',filtersOpen:false,selecting:false,pendingTarget:null,postTarget:null});Home.notifications=[];Home.unreadCount=0}

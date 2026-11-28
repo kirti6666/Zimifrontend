@@ -10,11 +10,18 @@ const CAMERA = 'android.permission.CAMERA', MIC = 'android.permission.RECORD_AUD
 const settle = async () => { for (let i = 0; i < 4; i++) await new Promise(resolve => setImmediate(resolve)); };
 const deferred = () => { let resolve;const promise = new Promise(done => { resolve = done; });return { promise, resolve }; };
 
-function harness(os = 'android') {
+function harness(os = 'android', storage = new Map()) {
   const calls = [], state = { appState: 'active', grants: new Set(), permission: { granted: false, canAskAgain: true }, notificationResult: { granted: true, canAskAgain: true }, prompts: 0, maxPrompts: 0 };
+  const appStateListeners = new Set();
   const start = () => { state.prompts++;state.maxPrompts = Math.max(state.maxPrompts, state.prompts); };
   const rn = {
-    Platform: { OS: os }, AppState: { get currentState() { return state.appState; } },
+    Platform: { OS: os }, AppState: {
+      get currentState() { return state.appState; },
+      addEventListener: (_name, listener) => {
+        appStateListeners.add(listener);
+        return { remove: () => appStateListeners.delete(listener) };
+      },
+    },
     Linking: { openSettings: async () => { calls.push(['settings']); } },
     PermissionsAndroid: {
       PERMISSIONS: { CAMERA, RECORD_AUDIO: MIC }, RESULTS: { GRANTED: 'granted', DENIED: 'denied', NEVER_ASK_AGAIN: 'never_ask_again' },
@@ -42,14 +49,22 @@ function harness(os = 'android') {
     getDevicePushTokenAsync: async () => { calls.push(['token']);if (state.tokenRead) await state.tokenRead();return { data: 'fcm:fixture' }; },
   };
   const cache = new Map(), context = vm.createContext({ console, Date });
+  const secureStore = {
+    getItemAsync: async key => storage.get(key) ?? null,
+    setItemAsync: async (key, value) => storage.set(key, value),
+  };
   const load = file => {
     const filename = path.resolve(root, file);if (cache.has(filename)) return cache.get(filename).exports;
     const module = { exports: {} };cache.set(filename, module);
     const compiled = ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-    const requireMock = id => id === 'react-native' ? rn : id === 'expo-notifications' ? notifications : load(path.relative(root, path.resolve(path.dirname(filename), id + '.ts')));
+    const requireMock = id => id === 'react-native' ? rn : id === 'expo-notifications' ? notifications : id === 'expo-secure-store' ? secureStore : load(path.relative(root, path.resolve(path.dirname(filename), id + '.ts')));
     vm.runInContext(`(function(require,module,exports){${compiled}\n})`, context)(requireMock, module, module.exports);return module.exports;
   };
-  return { service: load('src/device-permissions.ts'), push: load('src/push.ts'), state, calls };
+  const setAppState = next => {
+    state.appState = next;
+    appStateListeners.forEach(listener => listener(next));
+  };
+  return { service: load('src/device-permissions.ts'), push: load('src/push.ts'), launch: load('src/first-launch-permissions.ts'), state, calls, setAppState };
 }
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -75,6 +90,52 @@ test('an explicit setup requests only missing camera/microphone then notificatio
   assert.equal(h.state.maxPrompts, 1);assert.equal(h.calls.some(call => call[0] === 'token'), false, 'A permission grant is not FCM registration');
   assert.deepEqual(h.calls.filter(call => call[0] === 'sensors').flatMap(call => call[1]), [MIC], 'No contacts, location or storage permission is requested');
   await h.service.requestDevicePermissions();assert.equal(h.calls.filter(call => call[0] === 'sensors').length, 1);assert.equal(h.calls.filter(call => call[0] === 'notification.prompt').length, 1, 'Already granted permissions do not prompt again');
+});
+
+test('first launch asks for missing Android permissions once per installation before sign-in', async () => {
+  const storage = new Map(), h = harness('android', storage);
+  h.state.sensorResponse = async () => ({ [CAMERA]: 'denied', [MIC]: 'granted' });
+  h.state.notificationResult = { granted: false, canAskAgain: true };
+  await Promise.all([new AbortController(), new AbortController()].map(controller => h.launch.requestFirstLaunchPermissions(controller.signal)));
+  assert.deepEqual(h.calls.filter(call => ['sensors', 'notification.prompt'].includes(call[0])), [['sensors', [CAMERA, MIC]], ['notification.prompt']]);
+  assert.equal(h.state.maxPrompts, 1);
+  assert.equal(h.calls.some(call => ['settings', 'token'].includes(call[0])), false);
+  const reopened = harness('android', storage);
+  await reopened.launch.requestFirstLaunchPermissions(new AbortController().signal);
+  assert.deepEqual(reopened.calls, [], 'A later open does not prompt again after a denial');
+  const existing = harness('android', new Map([['zimi.installation.v1', '01234567-0123-4123-8123-012345678901']]));
+  await existing.launch.requestFirstLaunchPermissions(new AbortController().signal);
+  assert.deepEqual(existing.calls, [], 'An existing signed-in installation is not interrupted after updating');
+});
+
+test('first launch waits for the foreground between prompts and cancels when priority changes', async () => {
+  const h = harness();
+  h.setAppState('background');
+  const request = h.launch.requestFirstLaunchPermissions(new AbortController().signal);
+  await settle();
+  assert.deepEqual(h.calls, []);
+  h.state.sensorResponse = async () => {
+    h.setAppState('background');
+    return { [CAMERA]: 'granted', [MIC]: 'granted' };
+  };
+  h.setAppState('active');
+  await settle();
+  assert.equal(h.calls.filter(call => call[0] === 'sensors').length, 1);
+  assert.equal(h.calls.some(call => call[0] === 'notification.prompt'), false);
+  h.setAppState('active');
+  await request;
+  assert.equal(h.calls.filter(call => call[0] === 'notification.prompt').length, 1);
+
+  const canceled = harness(), controller = new AbortController();
+  canceled.setAppState('background');
+  const waiting = canceled.launch.requestFirstLaunchPermissions(controller.signal);
+  await settle();
+  controller.abort();
+  await waiting;
+  canceled.setAppState('active');
+  assert.deepEqual(canceled.calls, [], 'The retired startup cannot ask over the incoming-call screen');
+  await canceled.launch.requestFirstLaunchPermissions(new AbortController().signal);
+  assert.equal(canceled.calls.filter(call => call[0] === 'notification.prompt').length, 1);
 });
 
 test('denied and never-ask-again stay distinct, and only an explicit Settings action opens the phone settings', async () => {

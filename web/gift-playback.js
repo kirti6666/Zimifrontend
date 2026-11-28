@@ -1,5 +1,6 @@
 ﻿/* Keep original gift bytes cached and each playback image alive outside screen
    redraws. Calls and conversations share presentation, never financial state. */
+function giftIsVideo(media){try{return /\.mp4$/i.test(new URL(media).pathname)}catch{return false}}
 window.ZimiGiftPlayback=(()=>{
   const artwork=new Map(),warmImages=new Map(),maxBytes=64*1024*1024,maxEntries=3;
   function fetchSource(media){
@@ -81,6 +82,8 @@ window.ZimiGiftPlayback=(()=>{
   }
   function preload(media){
     if(!media)return Promise.resolve(false);
+    const video=giftIsVideo(media);
+    if(video&&matchMedia('(prefers-reduced-motion: reduce)').matches)return Promise.resolve(false);
     // Selecting another gift must not leave several large originals downloading
     // on the call's connection. Active/queued consumers hold explicit leases.
     for(const [key,entry] of artwork)if(key!==media&&!entry.ready&&entry.warm){
@@ -88,7 +91,7 @@ window.ZimiGiftPlayback=(()=>{
       if(!entry.users){artwork.delete(key);entry.controller.abort()}
     }
     for(const [key,entry] of warmImages)if(key!==media&&entry.image){warmImages.delete(key);entry.finish(false)}
-    return warmImages.has(media)?warmImage(media):originalFile(media).then(()=>true,error=>error?.name==='AbortError'?false:warmImage(media));
+    return warmImages.has(media)?warmImage(media):originalFile(media).then(()=>true,error=>video||error?.name==='AbortError'?false:warmImage(media));
   }
   function duration(value,fallback=6400){
     const time=Number(value);
@@ -111,11 +114,24 @@ window.ZimiGiftPlayback=(()=>{
     }
     function release(item){
       if(item?.frameRequest)cancelAnimationFrame(item.frameRequest);
+      stopVideo(item);
       item?.releaseFile?.();item?.releaseWarm?.();
       if(item){item.releaseFile=null;item.releaseWarm=null}
       if(item?.image){item.image.onload=null;item.image.onerror=null;item.image.removeAttribute('src');item.image=null}
       if(item?.objectUrl){URL.revokeObjectURL(item.objectUrl);item.objectUrl=null}
       if(item){clearFeedback(item);item.art=null;item.loading=null}
+    }
+    function stopVideo(item){
+      const video=item?.video;
+      if(!video)return;
+      if(item.videoFrame!==undefined){
+        if(video.cancelVideoFrameCallback)video.cancelVideoFrameCallback(item.videoFrame);
+        else cancelAnimationFrame(item.videoFrame);
+      }
+      video.onloadeddata=video.onended=video.onerror=null;
+      video.pause();video.removeAttribute('src');video.load();
+      item.renderer?.destroy();item.canvas?.remove();
+      item.renderer=item.video=item.canvas=null;
     }
     function clearFeedback(item){
       for(const property of ['background-image','background-size','background-position','background-repeat'])item.art?.style.removeProperty(property);
@@ -182,6 +198,62 @@ window.ZimiGiftPlayback=(()=>{
         item.motionSource=media;item.image.src=media;
       }finally{lease?.release();if(item.releaseFile===lease?.release)item.releaseFile=null}
     }
+    function videoStill(item){
+      if(active!==item)return;
+      stopVideo(item);
+      if(item.poster&&!giftIsVideo(item.poster)){
+        const image=item.image=document.createElement('img');
+        image.className=options.imageClass||'';image.alt='';image.src=item.poster;
+        item.art.appendChild(image);
+      }else{
+        const emoji=document.createElement('span');emoji.textContent=item.emoji||'🎁';item.art.appendChild(emoji);
+      }
+      item.durationMs=2400;
+      if(!item.at){play(item);return}
+      clearTimeout(timer);
+      item.timer=timer=setTimeout(()=>finish(item),item.durationMs);
+    }
+    async function videoSource(item){
+      if(matchMedia('(prefers-reduced-motion: reduce)').matches){videoStill(item);return}
+      const lease=originalFile(item.media,true);item.releaseFile=lease.release;
+      item.releaseWarm?.();item.releaseWarm=null;
+      try{
+        const blob=await lease.promise;
+        if(active!==item)return;
+        const video=item.video=document.createElement('video');
+        video.muted=true;video.playsInline=true;video.preload='auto';
+        video.onerror=()=>videoStill(item);
+        video.onended=()=>finish(item);
+        video.onloadeddata=()=>{
+          video.onloadeddata=null;
+          if(active!==item)return;
+          try{
+            const canvas=item.canvas=document.createElement('canvas');
+            canvas.className=options.imageClass||'';
+            canvas.dataset.mediaUrl=item.media;canvas.dataset.transferId=item.transferId||item.requestId||'';
+            item.renderer=createGiftVideoRenderer(canvas,video);
+            item.renderer.draw();
+            if(Number.isFinite(video.duration)&&video.duration>0)item.durationMs=Math.ceil(video.duration*1000);
+            item.art.appendChild(canvas);
+            play(item);
+          }catch{videoStill(item)}
+        };
+        item.objectUrl=URL.createObjectURL(blob);video.src=item.objectUrl;
+      }catch{videoStill(item)}
+      finally{lease.release();if(item.releaseFile===lease.release)item.releaseFile=null}
+    }
+    function startVideo(item){
+      const video=item.video;
+      const tick=()=>{
+        if(active!==item||item.video!==video)return;
+        try{item.renderer.draw()}catch{videoStill(item);return}
+        schedule();
+      };
+      function schedule(){
+        item.videoFrame=video.requestVideoFrameCallback?video.requestVideoFrameCallback(tick):requestAnimationFrame(tick);
+      }
+      video.play().then(()=>{if(active===item&&item.video===video)tick()},()=>{if(item.video===video)videoStill(item)});
+    }
     async function cacheCompleted(item){
       if(item.cacheFillStarted||item.corsRetried)return;
       item.cacheFillStarted=true;
@@ -202,8 +274,9 @@ window.ZimiGiftPlayback=(()=>{
       clearFeedback(item);
       portal.dataset.state='playing';portal.dataset.startedAt=String(item.at);position();
       // Downloads and poster visibility do not consume motion playback time.
-      item.timer=timer=setTimeout(()=>finish(item),item.durationMs);
+      item.timer=timer=setTimeout(()=>finish(item),item.durationMs+(item.video?750:0));
       options.onStart?.(item);
+      if(item.video)startVideo(item);
     }
     function next(){
       if(active||!queue.length)return;
@@ -216,7 +289,7 @@ window.ZimiGiftPlayback=(()=>{
       const art=options.artClass?document.createElement('div'):portal;
       item.art=art;
       if(art!==portal){art.className=options.artClass;portal.appendChild(art)}
-      if(item.media){
+      if(item.media&&!giftIsVideo(item.media)){
         const image=item.image=document.createElement('img');
         image.className=options.imageClass||'';image.alt='';image.draggable=false;image.decoding='async';
         image.dataset.transferId=item.transferId||item.requestId||'';image.dataset.mediaUrl=item.media;
@@ -231,9 +304,11 @@ window.ZimiGiftPlayback=(()=>{
           finish(item);
         };
         art.appendChild(image);
+      }
+      if(item.media){
         // A separate static still survives while the network image has no
         // frames. Never load an animation URL again as its own background.
-        if(item.poster&&item.poster!==item.media){
+        if(item.poster&&item.poster!==item.media&&!giftIsVideo(item.poster)){
           art.style.setProperty('background-image','url('+JSON.stringify(item.poster)+')','important');
           art.style.setProperty('background-size','contain','important');
           art.style.setProperty('background-position','center','important');
@@ -247,7 +322,9 @@ window.ZimiGiftPlayback=(()=>{
       }
       document.body.appendChild(portal);position();options.onLoading?.(item);
       loadingTimer=setTimeout(()=>finish(item),60000);
-      if(item.media)source(item);else play(item);
+      if(giftIsVideo(item.media))videoSource(item);
+      else if(item.media)source(item);
+      else play(item);
       warmNext();
     }
     function warmNext(){
@@ -308,6 +385,7 @@ window.ZimiGiftPlayback=(()=>{
       if(active===item&&portal){
         portal.dataset.provisional='false';portal.dataset.transferId=item.transferId||item.requestId||'';
         if(item.image)item.image.dataset.transferId=portal.dataset.transferId;
+        if(item.canvas)item.canvas.dataset.transferId=portal.dataset.transferId;
       }
       if(provisional)options.onConfirm?.(item);
       next();warmNext();

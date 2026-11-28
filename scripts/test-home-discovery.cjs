@@ -17,7 +17,7 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
 (async () => {
   const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
   const errors = [];
-  async function open(reducedMotion = 'no-preference', account = member) {
+  async function open(reducedMotion = 'no-preference', account = member, coins = 1250) {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion });
     page.setDefaultTimeout(8000);
     page.on('pageerror', error => errors.push(error.message));
@@ -26,12 +26,14 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     await page.goto(pathToFileURL(path.join(root, 'assets/aurora.html')).href + '?role=sender');
     await receive(page, 'session', account);
     await receive(page, 'data.home', feed(creators));
-    await receive(page, 'wallet.balance', { coins: 1250 });
+    if(coins!==null)await receive(page, 'wallet.balance', { coins });
     return page;
   }
   try {
-    const page = await open();
+    const page = await open('no-preference',member,null);
     assert.equal(await page.evaluate(() => DEMO), false);
+    assert.equal(await page.locator('.zh-home-coins').getByRole('status',{name:'Loading balance'}).isVisible(),true);
+    assert.equal(await page.locator('.zh-home-coin-exact').count(),0,'Home waits for a confirmed balance');
     assert.equal(await page.evaluate(() => typeof lbPreviewRows), 'undefined', 'The live app never bundles sample leaderboard rows');
     const tabs = page.locator('.zh-feed-tabs').getByRole('tab');
     assert.deepEqual(await tabs.allInnerTexts(), ['Following', 'Explore', 'For You', 'New']);
@@ -40,6 +42,27 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     assert.deepEqual(await page.locator('.zh-header-actions button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['Search creators', 'Notifications'], 'Home hides the leaderboard trophy');
     assert.equal(await page.locator('.zh-bell>i').count(), 1, 'Unread notifications show the reference accent dot');
     assert.equal(await page.locator('.zh-feed-tabs').evaluate(tabs => { const last=tabs.lastElementChild.getBoundingClientRect(), viewport=tabs.getBoundingClientRect(); return last.left>=viewport.left-1&&last.right<=viewport.right+1; }),true,'All four Home tabs remain fully visible beside Search and Notifications');
+    const balance = page.locator('.zh-home-coin-count [aria-hidden="true"]');
+    for (const [coins, label] of [[1250,'1,250'],[99999,'99,999'],[100000,'100K'],[331700,'331.7K'],[1200000,'1200K']]) {
+      await receive(page,'wallet.balance',{coins});
+      assert.equal(await balance.innerText(),label);
+      assert.equal(await page.locator('.zh-home-coin-count').getAttribute('title'),`${await page.evaluate(value=>n(value),coins)} coins`,'The exact balance stays accessible above the display threshold');
+    }
+    await receive(page,'wallet.balance',{coins:331700});
+    for(const dark of [false,true]){
+      await page.evaluate(dark=>ZimiThemes.setDark(dark),dark);
+      for(const width of [320,390]){
+        await page.setViewportSize({width,height:844});
+        const layout=await page.locator('.zh-home-toolbar').evaluate(row=>{
+          const coins=row.querySelector('.zh-home-coins').getBoundingClientRect(),filters=row.querySelector('.zh-home-discovery').getBoundingClientRect(),box=row.getBoundingClientRect();
+          const lastChip=row.querySelector('.zh-region-chips > button:last-child').getBoundingClientRect();
+          return {coinsEnd:coins.right,filterEnd:filters.right,lastChipEnd:lastChip.right,coinsStart:coins.left,topDistance:Math.abs(coins.top-filters.top),end:box.right,width:innerWidth};
+        });
+        assert.ok(layout.lastChipEnd<=layout.filterEnd+1&&layout.filterEnd<=layout.coinsStart&&layout.coinsEnd<=layout.end+1&&layout.end<=layout.width+1&&layout.topDistance<=4,`${width}px: both country filters and balance fit on the reference row without overlap`);
+      }
+    }
+    await page.evaluate(()=>ZimiThemes.setDark(false));
+    await receive(page,'wallet.balance',{coins:1250});
     await page.getByRole('button', { name: 'Notifications', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'notifications', 'The Home bell opens the real notification inbox');
     await page.getByRole('button', { name: 'Back to home', exact: true }).click();

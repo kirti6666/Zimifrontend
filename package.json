@@ -41,7 +41,7 @@
     "test:host-statistics": "npm run build:web && node scripts/test-host-statistics.cjs",
     "test:host-users": "npm run build:web && node scripts/test-host-user-directory.cjs && node --test --test-name-pattern=\"member directory|active host directory\" scripts/test-auth-bridge.cjs && node scripts/test-api-adapter.cjs",
     "test:payouts": "npm run build:web && node scripts/test-payout-cache.cjs && node scripts/test-payouts.cjs && node scripts/test-payout-verification.cjs && node scripts/test-host-reward-restart.cjs",
-    "test:payments": "npm run build:web && node scripts/test-api-adapter.cjs && node scripts/test-auth-bridge.cjs && node scripts/test-payment-routes.cjs && node scripts/test-coins.cjs && node scripts/test-themes.cjs && node scripts/test-profile-premium.cjs",
+    "test:payments": "npm run build:web && node scripts/test-api-adapter.cjs && node scripts/test-auth-bridge.cjs && node scripts/test-coin-checkout.cjs && node scripts/test-payment-return.cjs && node scripts/test-coins.cjs && node scripts/test-themes.cjs && node scripts/test-profile-premium.cjs",
     "test:home": "npm run build:web && node scripts/test-home.cjs && node scripts/test-home-infinite.cjs && node scripts/test-home-media.cjs",
     "test:home-stability": "npm run build:web && node scripts/test-home-stability.cjs",
     "test:referral": "npm run build:web && node scripts/test-referral.cjs",

@@ -16,6 +16,7 @@ const homeIcons = {
   tune:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
   pause:'<path d="M8 5v14M16 5v14"/>',
   close:'<path d="m6 6 12 12M6 18 18 6"/>',
+  minus:'<path d="M5 12h14"/>',
   checks:'<path d="m2 12 5 5L18 6M10 15l2 2L23 6"/>',
   arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',
   info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
@@ -130,7 +131,7 @@ function homeMatch(){if(homeContentPending())return `<div class="zh-match">${con
    always active. Tapping the photo opens the profile; chat belongs on the profile. */
 function homeTile(h){
   const id=domId(h.id),live=!!h.stream;
-  return `<article class="zh-creator-card" data-host-id="${esc(h.id)}">${homeCardCover(h)}${homeCardVideo(h)}<div class="zh-creator-shade"></div><button type="button" class="zh-creator-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button><span class="zh-creator-status ${live?'is-live':''}">${live?'<i></i>LIVE':h.on?'Online':'Offline'}</span><div class="zh-creator-bottom"><h3 class="zh-creator-name"><span>${esc(h.n)}</span>${homeCountryLabel(h)}</h3><button type="button" class="zh-creator-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',17)}</button></div></article>`;
+  return `<article class="zh-creator-card" data-host-id="${esc(h.id)}">${homeCardCover(h)}${homeCardVideo(h)}<div class="zh-creator-shade"></div><button type="button" class="zh-creator-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button><span class="zh-creator-status ${live?'is-live':''}">${live?'<i></i>LIVE':h.on?'<i></i>Online':'Offline'}</span><div class="zh-creator-bottom"><h3 class="zh-creator-name"><span>${esc(h.n)}</span>${homeCountryLabel(h)}</h3><button type="button" class="zh-creator-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',17)}</button></div></article>`;
 }
 function homeBonus(){if(!isApprovedHost())return '';if(homeContentPending())return contentSkeleton('rows','Loading creator rewards',1);if(homeContentError())return '';const b=Home.bonus;if(!b)return '';return `<aside class="zh-bonus"><span class="zh-bonus-icon">${hi('gift',20)}</span><div><h3>${esc(b.title)}</h3><p>${b.claimed?'Reward claimed':`+${n(b.rewardCoins)} coins · ${esc(b.description||`${Math.min(b.progress,b.target)} / ${b.target} completed`)}`}</p></div><button onclick="homeClaim()" ${b.claimed||Home.claiming?'disabled':''}>${b.claimed?'Claimed':Home.claiming?'…':b.progress>=b.target?'Claim':'View'}</button></aside>`}
 // Like the reference, campaign banners rotate after the first two rows of hosts; a sponsored

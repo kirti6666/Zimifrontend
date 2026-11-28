@@ -94,7 +94,7 @@ const tabs = ['Home', 'Chat', 'Profile', 'Settings'];
             assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: account === approved ? 'Search users' : 'Search creators', exact: true }).count(), 1);
             assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: 'Leaderboard', exact: true }).count(), 0, 'Home hides the creator leaderboard');
             assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: 'Notifications', exact: true }).count(), 1, 'The reference notification bell stays in Home');
-            assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: /^Wallet/ }).count(), 0, 'Home has no wallet action');
+            assert.equal(await layout.locator('#home-add-coins').count(), account === member ? 1 : 0, 'Home offers direct Coin recharge only to members');
             assert.equal(await layout.locator('.zh-host-status').count(), account === approved ? 1 : 0, 'Only a host account sees its availability control');
           }
           assert.equal(await layout.locator('.zh-dashboard-filters,.zh-explore .zh-filters').count(), 0, `${name} omits category filters`);

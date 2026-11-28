@@ -168,7 +168,7 @@ const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type=
    await go(page,'precall');assert.equal(await page.evaluate(()=>S.v),'wallet',`${status} cannot enter a member Coin-call checkout`);
    assert.equal(await page.evaluate(()=>zciIdle()),false,`${status} is excluded from member paid-call invitations`);
    const before=(await sent(page,'wallet.checkout')).length;
-   await page.evaluate(()=>{homeCheckout();coinConfirmCheckout();homeGiftTopup();homeGifts('507f1f77bcf86cd799439099');homeSendGift();coinRequireRecharge()});
+   await page.evaluate(()=>{homeCheckout();homeGiftTopup();homeGifts('507f1f77bcf86cd799439099');homeSendGift();coinRequireRecharge()});
    assert.equal((await sent(page,'wallet.checkout')).length,before,'Direct UI functions cannot start host Coin purchases');
    assert.equal(await page.locator('#zw-checkout-dialog,#zw-recharge-dialog,.zw-topup').count(),0);
    await receive(page,'data.loading',{resource:'wallet',loading:false,error:'Host wallet unavailable'});await go(page,'settings');

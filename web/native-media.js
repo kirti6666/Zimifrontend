@@ -7,7 +7,7 @@
   let state = { hasVideo: false, hasRemoteVideo: false, facing: 'user', playbackMuted: false, quality: 'good' };
   const pending = new Map(), shapes = {}, dimensions = {}, ancestors = new Set();
   const selector = 'video[data-zimi-local], video[data-zimi-remote]';
-  const mediaViews = new Set(['precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
+  const mediaViews = new Set(['precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'incoming', 'switch']);
   function request(action, data = {}) {
     const requestId = ++sequence;
     return new Promise((resolve, reject) => {

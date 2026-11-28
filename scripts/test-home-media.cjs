@@ -21,7 +21,7 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
     browser = await chromium.launch({ headless: true, args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', '--autoplay-policy=no-user-gesture-required'], ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
     const context = await browser.newContext();
     const pages = { host: await context.newPage(), viewer: await context.newPage() };
-    const errors = [], messages = [];
+    const errors = [], messages = [], firstSignalsToDrop = new Set(['offer', 'answer']);
     for (const [id, page] of Object.entries(pages)) {
       page.on('pageerror', error => errors.push(error.message));
       await page.exposeFunction('sendNative', async (type, data = {}) => {
@@ -29,6 +29,7 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
         if (type === 'rtc.config') return receive(page, type, { iceServers: [] });
         if (type === 'stream.ready' && id === 'viewer') return receive(pages.host, 'stream.peer', { streamId: data.streamId, userId: id });
         if (type === 'rtc.signal' || type === 'stream.signal') {
+          if (data.callId === 'retry-initial-call' && data.description && firstSignalsToDrop.delete(data.description.type)) return;
           // Deliver ICE before its description to exercise the candidate queue.
           if (data.description) await new Promise(resolve => setTimeout(resolve, 50));
           const destination = pages[type === 'stream.signal' && data.to ? data.to : id === 'host' ? 'viewer' : 'host'];
@@ -317,15 +318,39 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
 
     // The queue handoff can reach one user before the other grants camera
     // access. Their expected call offer must survive that capture delay.
-    await pages.viewer.evaluate(() => { S.v='call'; S.callId='queued-private-call'; document.getElementById('screen').innerHTML='<video data-zimi-local autoplay muted playsinline></video><video data-zimi-remote autoplay playsinline></video>'; });
+    await pages.viewer.evaluate(() => { S.v='home'; S.callId=null; document.getElementById('screen').innerHTML='<video data-zimi-local autoplay muted playsinline></video><video data-zimi-remote autoplay playsinline></video>'; });
+    await receive(pages.viewer, 'call.incoming', {callId:'queued-private-call'});
     await pages.host.evaluate(async () => { S.v='call'; S.callId='queued-private-call'; S.cam=1; S.mic=1; await ZimiMedia.prepare(true); });
     await receive(pages.host, 'call.connected', {callId:'queued-private-call',initiator:true,peerId:'viewer',voice:false});
     await pages.viewer.waitForFunction(() => window.lastCallOffer==='queued-private-call');
     assert.equal(await pages.viewer.evaluate(() => tracks.every(track=>track.readyState==='ended')),true,'The slower participant has no capture when the private-call offer arrives');
-    await pages.viewer.evaluate(async () => { await ZimiMedia.prepare(true); });
+    await pages.viewer.evaluate(async () => {
+      S.v='incoming'; document.dispatchEvent(new Event('aurora:navigate'));
+      await ZimiMedia.prepare(true); S.v='call';
+    });
     await receive(pages.viewer,'call.connected',{callId:'queued-private-call',initiator:false,peerId:'host',voice:false});
     await Promise.all(Object.values(pages).map(page=>page.waitForFunction(()=>document.querySelector('[data-zimi-remote]').readyState>=2,{timeout:15000})));
+    assert.equal(messages.filter(message=>message.data.callId==='queued-private-call'&&message.data.description?.type==='offer').length,1,'Opening the incoming screen preserves the first queued offer');
     await Promise.all(Object.values(pages).map(page=>receive(page,'call.ended',{callId:'queued-private-call'})));
+
+    await Promise.all(Object.values(pages).map(page=>page.evaluate(async()=>{S.v='precall';await ZimiMedia.prepare(true);S.v='call'})));
+    await receive(pages.viewer,'call.connected',{callId:'retry-initial-call',initiator:false,peerId:'host',voice:false});
+    await pages.viewer.waitForFunction(()=>peerConnections.at(-1)?.connectionState==='new');
+    await pages.viewer.evaluate(() => {
+      const peer=peerConnections.at(-1), setRemote=peer.setRemoteDescription.bind(peer);
+      window.retriedOfferApplications=0;
+      peer.setRemoteDescription=description=>{window.retriedOfferApplications++;return setRemote(description)};
+    });
+    await receive(pages.host,'call.connected',{callId:'retry-initial-call',initiator:true,peerId:'viewer',voice:false});
+    await Promise.all(Object.values(pages).map(page=>page.waitForFunction(()=>peerConnections.at(-1)?.connectionState==='connected',null,{timeout:15000})));
+    assert.equal(firstSignalsToDrop.size,0,'The test drops both the initial SDP offer and answer');
+    for (const type of ['offer','answer']) {
+      const signals=messages.filter(message=>message.type==='rtc.signal'&&message.data.callId==='retry-initial-call'&&message.data.description?.type===type);
+      assert.ok(signals.length>=2,`The missing ${type} is sent again`);
+      assert.deepEqual(signals[1].data.description,signals[0].data.description,'The retransmission keeps the original SDP snapshot');
+    }
+    assert.equal(await pages.viewer.evaluate(()=>retriedOfferApplications),1,'A repeated offer never reapplies the remote description');
+    await Promise.all(Object.values(pages).map(page=>receive(page,'call.ended',{callId:'retry-initial-call'})));
 
     await Promise.all(Object.values(pages).map(page => page.evaluate(async () => { S.v='precall'; S.mic=1;await ZimiMedia.prepare(false);S.v='voice';document.getElementById('screen').innerHTML='<audio data-zimi-remote autoplay></audio>'; })));
     await receive(pages.viewer,'call.connected',{callId:'voice-one',initiator:false,peerId:'host',voice:true});
@@ -393,8 +418,17 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
       try {await ZimiMedia.prepare(true);return ''} catch(error){return error.message}
     });
     assert.match(denied, /Allow access in your device settings/);
+
+    await pages.viewer.clock.install();
+    await pages.viewer.evaluate(async()=>{S.v='incoming';await ZimiMedia.prepare(false);S.v='voice'});
+    await receive(pages.viewer,'call.connected',{callId:'missing-offer',initiator:false,peerId:'host',voice:true});
+    await pages.viewer.waitForFunction(()=>peerConnections.at(-1)?.connectionState==='new');
+    await pages.viewer.clock.runFor(31000);
+    assert.equal(messages.filter(message=>message.type==='call.end'&&message.data.callId==='missing-offer').length,1,'An unanswered media negotiation ends instead of staying on Connecting');
+    assert.equal(await pages.viewer.evaluate(()=>tracks.every(track=>track.readyState==='ended')),true,'A timed-out negotiation releases the microphone');
+
     assert.deepEqual(errors, [], 'The browser has no uncaught errors');
-    console.log('Home media: real two-peer video/voice transport, continuous reduced-resolution playback, measured encoder/pacer adaptation and recovery, preference fallback, media-only attachments, ICE-only restart, handoff, camera flip/rollback, playback reuse, capture cleanup and permission errors passed.');
+    console.log('Home media: real two-peer video/voice transport, lost initial offer and answer recovery, continuous reduced-resolution playback, measured encoder/pacer adaptation and recovery, preference fallback, media-only attachments, ICE-only restart, handoff, camera flip/rollback, playback reuse, capture cleanup and permission errors passed.');
   } finally {
     if (browser) await browser.close();
     await new Promise(resolve => server.close(resolve));

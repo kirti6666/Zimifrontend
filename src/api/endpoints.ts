@@ -435,7 +435,7 @@ export const api = {
   async thread(withId: string, knownIds?: string[]) { const id = await selfId(); const known = knownIds?.filter(id => /^[a-f\d]{24}$/i.test(id)).slice(-200); return messagesFrom(await request("GET", `/chats/${encodeURIComponent(withId)}${known?.length ? `?knownIds=${encodeURIComponent(known.join(","))}` : ""}`), id); },
   async missedCalls() { const id = await selfId(); return missedFrom(await request("GET", "/calls?limit=100"), id); },
   async callHistory() { const id = await selfId(); return callsFrom(await request("GET", "/calls?limit=100"), id); },
-  async callState(callId: string): Promise<{ callId: string; status: "ringing" | "accepted" | "ended" | "declined" | "missed"; coins?: number; reason?: "out_of_coins" | "switch" | "host_unavailable" }> {
+  async callState(callId: string): Promise<{ callId: string; status: "ringing" | "accepted" | "ended" | "declined" | "missed"; connection?: { peerId: string; voice: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number }; coins?: number; reason?: "out_of_coins" | "switch" | "host_unavailable" }> {
     const version = getSessionVersion(), self = await selfId(); ensureSession(version);
     const call = record(await request("GET", `/calls/${encodeURIComponent(callId)}`)); ensureSession(version);
     const caller = idOf(call.callerId), callee = idOf(call.calleeId), status = call.status;
@@ -446,6 +446,8 @@ export const api = {
     const charged = typeof call.coinsCharged === "number" && Number.isSafeInteger(call.coinsCharged) && call.coinsCharged >= 0;
     const reason = call.endReason;
     return { callId, status: status as "ringing" | "accepted" | "ended" | "declined" | "missed",
+      ...(status === "accepted" && caller === self && (call.kind === "audio" || call.kind === "video")
+        ? { connection: { peerId: callee, voice: call.kind === "audio", ...callPrice(call) } } : {}),
       ...(paid && charged ? { coins: call.coinsCharged as number } : {}),
       ...(reason === "out_of_coins" || reason === "switch" || reason === "host_unavailable" ? { reason } : {}) };
   },

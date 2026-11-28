@@ -46,7 +46,7 @@ function coinPaymentView(){
  const p=Home.checkout;if(!p)return '';
  const status=p.status,pending=coinPendingPayment(),title=status==='SUCCESS'?'Payment confirmed':status==='FAILED'?'Payment not completed':status==='REVERTED'?'Payment reversed':'Your payment is pending';
  const copy=status==='SUCCESS'?'Your balance updates from your confirmed wallet.':status==='FAILED'?'No coins were added for this payment. You can try again.':status==='REVERTED'?'This payment was reversed. Your wallet reflects the reversal.':'Continue your existing payment, then check its status here.';
- return `<section class="zw-payment ${pending?'is-pending':''}" role="status"><span class="zw-payment-icon">${hi(status==='SUCCESS'?'check':pending?'clock':'info',20)}</span><div><h3>${title}</h3><p>${copy}</p>${p.coins?`<strong>${n(p.coins)} coins${p.payableAmountPaise!=null?' · '+coinPrice(p.payableAmountPaise):''}</strong>`:''}${pending?`<div class="zw-payment-actions">${Home.checkoutAttempt?`<button class="zh-soft" onclick="homeCheckout(true)" ${Home.checkoutBusy||CoinUI.verifyBusy?'disabled':''}>${Home.checkoutBusy?'Opening payment…':'Continue payment'}</button>`:''}<button class="zh-soft" onclick="homeVerifyPayment()" ${CoinUI.verifyBusy||Home.checkoutBusy||!p.merchantOrderId?'disabled':''}>${CoinUI.verifyBusy?'Checking payment…':'Check payment status'}</button></div>`:''}</div></section>`;
+ return `<section class="zw-payment ${pending?'is-pending':''}" role="status"><span class="zw-payment-icon">${hi(status==='SUCCESS'?'check':pending?'clock':'info',20)}</span><div><h3>${title}</h3><p>${copy}</p>${p.coins?`<strong>${n(p.coins)} coins${p.payableAmountPaise!=null?' · '+coinPrice(p.payableAmountPaise):''}</strong>`:''}${pending?`<div class="zw-payment-actions">${Home.checkoutAttempt?`<button class="zh-soft" onclick="homeCheckout(true)" ${Home.checkoutBusy||CoinUI.verifyBusy?'disabled':''}>${Home.checkoutBusy?'Preparing payment…':'Continue payment'}</button>`:''}<button class="zh-soft" onclick="homeVerifyPayment()" ${CoinUI.verifyBusy||Home.checkoutBusy||!p.merchantOrderId?'disabled':''}>${CoinUI.verifyBusy?'Checking payment…':'Check payment status'}</button></div>`:''}</div></section>`;
 }
 function coinWalletView(embedded){return `<div class="zw-wallet"><div class="zw-wallet-main" aria-label="Available coin balance"><h2>${coinIcon(19)} ${contentBalance()}</h2></div><span class="zw-currency" aria-label="Currency: Indian rupees">₹ INR<span aria-hidden="true"></span></span></div>`}
 function coinWalletError(){return !DEMO&&ContentLoading.wallet.error?'<div class="zw-error" data-coin-wallet-error role="alert">Balance unavailable. Refresh to try again.</div>':''}
@@ -54,31 +54,151 @@ function coinPackBonus(pack){return Number.isSafeInteger(pack.bonusPercent)&&pac
 function coinPackArtwork(){return `<svg class="zw-pack-art" width="76" height="66" viewBox="0 0 88 76" fill="none" aria-hidden="true">${[[25,49,21],[63,49,21],[44,28,23]].map(([x,y,r])=>`<g transform="translate(${x} ${y})"><circle cy="2" r="${r}" fill="#c48700"/><circle r="${r}" fill="#f6ae00"/><circle r="${r-3}" fill="#ffdb31" stroke="#ffe867" stroke-width="1.5"/><path d="M${-r+6} -4a${r-7} ${r-7} 0 0 1 ${r-8} ${-r+11}" stroke="#fff29b" stroke-width="2.5" stroke-linecap="round"/><path d="m0-10 3 6.5 7 .9-5.2 4.9 1.4 7L0 6l-6.2 3.3 1.4-7L-10-2.6l7-.9z" fill="#fff6ac"/></g>`).join('')}</svg>`}
 function coinPackView(pack,selected,pending){const bonus=coinPackBonus(pack),badge=['hot','popular'].includes(pack.badge)?pack.badge:'',subtitle=bonus?bonus+'% More':pack.name||'Coin pack';return `<button class="${selected?.id===pack.id?'selected':''}" aria-label="${esc((pack.name||'Coin pack')+', '+n(pack.coins)+' coins, '+coinPrice(pack.pricePaise)+(bonus?', '+bonus+'% more':''))}" aria-pressed="${selected?.id===pack.id}" onclick="coinSelectPack('${domId(pack.id)}')" ${Home.checkoutBusy||pending||Home.checkoutAttempt?'disabled':''}>${badge?`<span class="zw-pack-badge">${badge==='hot'?'🔥 Hot':'★ Popular'}</span>`:''}<span class="zw-pack-amount">${coinIcon(17)}<strong>${n(pack.coins)}</strong></span><span class="zw-pack-name">${esc(subtitle)}</span>${coinPackArtwork()}<b>${coinPrice(pack.pricePaise)}</b></button>`}
 function coinCheckoutOwner(){return DEMO?'preview':S.user?.id||''}
+const coinUPIApps=[
+ {method:'phonepe',label:'PhonePe'},
+ {method:'gpay',label:'Google Pay'},
+ {method:'paytm',label:'Paytm'},
+ {method:'other',label:'Other UPI'}
+];
+const coinHostedPayment={method:'hosted',label:'PayPlus checkout'};
+const coinPaymentIcons=__PAYMENT_ICONS__;
+function coinPaymentIcon(method){
+ const source=coinPaymentIcons[method];
+ const mark=source?`<img src="${source}" alt="" width="36" height="36">`:method==='manual'?'@':hi(method==='other'?'plus':'lock',16);
+ return `<span class="zpm-app-icon zpm-icon-${method}" aria-hidden="true">${mark}</span>`;
+}
+function coinLastUPIApp(owner,method){
+ if(DEMO||!owner)return '';
+ try{
+  const key=`binzo.coins.last-upi.${owner}`;
+  if(method&&coinUPIApps.some(app=>app.method===method))localStorage.setItem(key,method);
+  return localStorage.getItem(key)||'';
+ }catch{return ''}
+}
+function coinPaymentUpiId(payment){
+ if(payment?.status!=='PENDING'||!payment.upiIntent||coinPaymentExpired(payment)||payment.isIntentSupported===false)return '';
+ try{
+  const intent=new URL(payment.upiIntent),id=intent.searchParams.get('pa');
+  if(intent.protocol==='upi:'&&intent.hostname==='pay'&&/^[\w.+-]{1,128}@[\w.-]{1,64}$/.test(id||''))return id;
+ }catch{}
+ return '';
+}
+function coinToggleUpiId(){
+ const prompt=CoinUI.checkoutPrompt;
+ if(!prompt?.ready||!coinPaymentUpiId(Home.checkout))return;
+ prompt.manual=!prompt.manual;prompt.copyStatus='';coinPaintCheckoutPrompt();
+ if(prompt.manual)document.getElementById('zpm-manual-panel')?.scrollIntoView({block:'nearest'});
+}
+async function coinCopyUpiId(){
+ const prompt=CoinUI.checkoutPrompt,id=coinPaymentUpiId(Home.checkout);
+ if(!prompt?.manual||!id)return;
+ let copied=false;
+ try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(id);copied=true}}catch{}
+ if(!copied&&prompt===CoinUI.checkoutPrompt){
+  const field=document.getElementById('zpm-upi-id');
+  if(field){field.select();try{copied=document.execCommand('copy')}catch{}}
+ }
+ if(prompt!==CoinUI.checkoutPrompt)return;
+ prompt.copyStatus=copied?'UPI ID copied.':'Select and copy the UPI ID above.';
+ const status=document.getElementById('zpm-copy-status');if(status)status.textContent=prompt.copyStatus;
+}
+function coinPaymentExpired(payment){return Date.parse(payment?.expiresAt||'')<=Date.now()}
+function coinPaymentMethods(payment){
+ if(DEMO)return coinUPIApps.map(app=>({...app,action:'pay'}));
+ if(!payment||payment.status!=='PENDING'||coinPaymentExpired(payment))return [];
+ const routing=payment.upiIntentRouting,platform=payment.upiPlatform,hosted=!!payment.paymentUrl;
+ const native=['android','ios'].includes(platform),intents=native&&payment.isIntentSupported!==false;
+ const generic=intents&&!!(routing?.generic||payment.upiIntent);
+ const apps=coinUPIApps.filter(app=>app.method!=='other'||generic).map(app=>{
+  let action=null;
+  if(app.method==='other')action='pay';
+  else if(native&&payment.upiAppsInstalled?.[app.method]===false)action='install';
+  else if(intents&&routing?.apps?.[app.method]?.[platform])action='pay';
+  else if(generic)action='upi';
+  else if(hosted)action='checkout';
+  return {...app,action};
+ });
+ return hosted?[...apps,{...coinHostedPayment,action:'pay'}]:apps;
+}
+function coinPaymentAppRows(apps,owner,disabled,hasBranded,preferCheckout){
+ const last=coinLastUPIApp(owner),payable=apps.filter(app=>app.action==='pay'),
+  preferred=payable.some(app=>app.method===last)?last:payable[0]?.method;
+ return `<section class="zpm-methods" aria-labelledby="zpm-upi-heading">
+  <header class="zpm-methods-heading"><h3 id="zpm-upi-heading">Pay using UPI app</h3><span aria-hidden="true">UPI</span></header>
+  <div class="zpm-app-list">${apps.map(({method,label,action})=>{
+   const name=method==='other'&&!hasBranded?'Pay with UPI app':label;
+   const cta={pay:'Pay',upi:'Use UPI',checkout:'Use checkout',install:'Install'}[action]||'Unavailable';
+   const accessible=method==='other'?(hasBranded?'Pay with another UPI app':name):{
+    pay:'Pay with '+label,upi:'Use UPI for '+label,checkout:'Use PayPlus checkout for '+label,install:'Install '+label
+   }[action]||label+' unavailable';
+   return `<button id="zpm-pay-${method}" class="zpm-method zpm-upi${action==='install'?' is-install':''}${!preferCheckout&&method===preferred?' is-preferred':''}" type="button" onclick="coinOpenPayment('${method}')" aria-label="${accessible}" ${disabled||!action?'disabled':''}>
+    ${coinPaymentIcon(method)}<span class="zpm-method-name"><strong>${name}</strong>${action==='pay'&&method===last?'<small>Last used</small>':''}</span><span class="zpm-pay-label">${cta}</span>
+   </button>`;
+  }).join('')}</div>
+  ${apps.some(app=>app.action==='upi')?'<p class="zpm-app-note">Use UPI opens a compatible app on your phone.</p>':''}
+ </section>`;
+}
+function coinPaymentUpiIdRow(prompt,id,amount,hosted,disabled){
+ return `<section class="zpm-manual">
+  <button id="zpm-pay-manual" class="zpm-method" type="button" aria-label="Pay with UPI ID" aria-controls="zpm-manual-panel" aria-expanded="${!!prompt.manual}" onclick="coinToggleUpiId()" ${disabled?'disabled':''}>
+   ${coinPaymentIcon('manual')}<span class="zpm-method-name"><strong>Pay with UPI ID</strong></span><span class="zpm-pay-label">${prompt.manual?'Hide':'Enter'}</span>
+  </button>
+  ${prompt.manual?`<div id="zpm-manual-panel" class="zpm-manual-panel">
+   <p>In your UPI app, enter this UPI ID and pay exactly <strong>${coinCheckoutPrice(amount)}</strong>.</p>
+   <label for="zpm-upi-id">PayPlus receiving UPI ID</label>
+   <div class="zpm-upi-id"><input id="zpm-upi-id" readonly value="${esc(id)}"><button type="button" onclick="coinCopyUpiId()" aria-label="Copy PayPlus receiving UPI ID">${hi('copy',16)} Copy</button></div>
+   <p id="zpm-copy-status" role="status">${esc(prompt.copyStatus||'')}</p>
+   <div class="zpm-manual-actions"><button type="button" class="zpm-recheck" onclick="homeVerifyPayment()" ${disabled?'disabled':''}>${CoinUI.verifyBusy?'Checking payment…':'Check payment status'}</button>${hosted?`<button type="button" class="zpm-recheck" onclick="coinOpenPayment('hosted')" ${disabled?'disabled':''}>Open PayPlus checkout</button>`:''}</div>
+   ${prompt.manualStatus?`<p role="status">${esc(prompt.manualStatus)}</p>`:''}
+  </div>`:''}
+ </section>`;
+}
+function coinHostedRow(label,disabled,preferred){
+ return `<button id="zpm-pay-hosted" class="zpm-method zpm-hosted${preferred?' is-preferred':''}" type="button" aria-label="${label}" onclick="coinOpenPayment('hosted')" ${disabled?'disabled':''}>
+  ${coinPaymentIcon('hosted')}<span class="zpm-method-name"><strong>${label}</strong></span><span class="zpm-pay-label">Open</span>
+ </button>`;
+}
+function coinCheckoutPrice(paise){return '₹'+(Number(paise||0)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function coinCloseCheckoutPrompt(restore=true){
  const prompt=CoinUI.checkoutPrompt,dialog=document.getElementById('zw-checkout-dialog');CoinUI.checkoutPrompt=null;
+ clearTimeout(prompt?.expiryTimer);
  if(dialog){dialog.close();dialog.remove()}
- if(restore){const target=prompt?.focus?.isConnected?prompt.focus:document.querySelector(Home.giftTo?'.zw-sheet .zw-buy':'.zw-buy');target?.focus({preventScroll:true})}
+ if(restore&&prompt){
+  coinPaint();
+  const target=prompt.focus?.isConnected&&!prompt.focus.disabled?prompt.focus:document.querySelector('.zw-payment-actions>button:not(:disabled),.zw-buy:not(:disabled)');
+  target?.focus({preventScroll:true});
+ }
 }
-function coinOpenCheckoutPrompt(){
- if(isHostWallet())return;
- if(CoinUI.checkoutPrompt||Home.checkoutBusy||Home.checkoutAttempt||coinHasPendingPayment())return;
- const pack=Home.packs.find(item=>item.id===Home.packId)||Home.packs[0],owner=coinCheckoutOwner();if(!pack||!owner||!DEMO&&!S.loggedIn)return;
- CoinUI.checkoutPrompt={owner,pack:{...pack},choice:null,error:'',focus:document.activeElement};
- paymentRouteEnsure();coinPaintCheckoutPrompt();
+function coinChangeCheckoutPack(){
+ const prompt=CoinUI.checkoutPrompt;if(!prompt||Home.checkoutBusy||CoinUI.verifyBusy||prompt.action)return;
+ // A provisioned but unopened order stays tracked for late confirmation. An
+ // uncertain prepare has no order ID yet and must keep its original attempt.
+ if(Home.checkoutAttempt&&!Home.checkout?.merchantOrderId){coinCloseCheckoutPrompt();return}
+ if(coinPendingPayment())CoinUI.dismissedOrders.add(Home.checkout.merchantOrderId);
+ if(Home.checkoutAttempt)Native.send('payments.checkout.closed',{kind:'coins',idempotencyKey:Home.checkoutAttempt.idempotencyKey});
+ Home.checkout=null;Home.checkoutAttempt=null;CoinUI.packSnapshot=null;CoinUI.paymentError='';
+ coinCloseCheckoutPrompt(false);coinPaint();
+ document.querySelector('.zw-packs>button[aria-pressed="true"]')?.focus({preventScroll:true});
 }
-function coinChoosePayment(route){
- const prompt=CoinUI.checkoutPrompt;if(!prompt||!paymentCoinOptions().some(option=>option.route===route))return;
- prompt.choice=route;prompt.error='';coinPaintCheckoutPrompt();
+function coinOpenCheckoutPrompt(pack){
+ const owner=coinCheckoutOwner();if(isHostWallet()||CoinUI.checkoutPrompt||!pack||!owner||!DEMO&&!S.loggedIn)return;
+ CoinUI.checkoutPrompt={owner,pack:{...pack},focus:document.activeElement,method:null,checking:false,ready:DEMO};
+ coinPaint();
 }
 function coinPaintCheckoutPrompt(){
  const prompt=CoinUI.checkoutPrompt;if(!prompt)return;
- if(isHostWallet()){coinCloseCheckoutPrompt(false);return}
- if(prompt.owner!==coinCheckoutOwner()||!['coins'].includes(S.v)&&!(Home.giftTo&&CoinUI.topup)||Home.checkoutAttempt||coinHasPendingPayment()){coinCloseCheckoutPrompt(false);return}
- const current=Home.packs.find(pack=>pack.id===prompt.pack.id);
- if(!current){prompt.choice=null;prompt.error='This coin pack is no longer available. Close this window and choose another pack.'}
- else if(current.coins!==prompt.pack.coins||current.pricePaise!==prompt.pack.pricePaise){prompt.pack={...current};prompt.choice=null;prompt.error='This coin pack has changed. Review the new amount before continuing.'}
- const options=paymentCoinOptions(),loading=!DEMO&&(!PaymentRoutes.loaded&&!PaymentRoutes.error||PaymentRoutes.loading),error=!DEMO&&PaymentRoutes.error;
- if(prompt.choice!==null&&!options.some(option=>option.route===prompt.choice))prompt.choice=null;
+ if(isHostWallet()||prompt.owner!==coinCheckoutOwner()||S.v!=='coins'&&!(Home.giftTo&&CoinUI.topup)){coinCloseCheckoutPrompt(false);return}
+ const pack=prompt.pack,payment=coinPendingPayment()?Home.checkout:null;
+ const coins=payment?.coins??pack.coins,amount=payment?.payableAmountPaise??payment?.amountPaise??pack.pricePaise;
+ const quoted=Number.isSafeInteger(payment?.payableAmountPaise)&&payment.payableAmountPaise>0;
+ clearTimeout(prompt.expiryTimer);
+ const expiresIn=Date.parse(payment?.expiresAt||'')-Date.now();
+ if(expiresIn>0&&expiresIn<2147483647)prompt.expiryTimer=setTimeout(coinPaintCheckoutPrompt,expiresIn+1);
+ const methods=prompt.ready&&!Home.checkoutBusy?coinPaymentMethods(payment):[],upi=methods.filter(option=>option.method!=='hosted'),hosted=methods.some(option=>option.method==='hosted');
+ const manualId=prompt.ready&&quoted?coinPaymentUpiId(payment):'';
+ const hasBranded=upi.some(app=>app.method!=='other'&&app.action==='pay');
+ const preferCheckout=hosted&&!!prompt.upiLaunchFailed;
+ const showHosted=hosted&&(!manualId||!hasBranded||preferCheckout);
  let dialog=document.getElementById('zw-checkout-dialog');const creating=!dialog,focused=document.activeElement?.id;
  if(!dialog){
   dialog=document.createElement('dialog');dialog.id='zw-checkout-dialog';dialog.className='zpm-dialog';dialog.setAttribute('aria-labelledby','zpm-checkout-title');
@@ -87,38 +207,70 @@ function coinPaintCheckoutPrompt(){
   dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)coinCloseCheckoutPrompt()});
   document.body.append(dialog);
  }
- dialog.innerHTML=`<header class="zpm-dialog-heading"><h2 id="zpm-checkout-title">Select payment method</h2><button type="button" class="zpm-close" aria-label="Close payment methods" onclick="coinCloseCheckoutPrompt()">${hi('close',20)}</button></header><p class="zpm-order-summary">${coinIcon(20)}<strong>${n(prompt.pack.coins)} coins</strong><span>${coinPrice(prompt.pack.pricePaise)}</span></p>${loading?`<div class="zpm-loading" role="status" aria-label="Loading payment methods" aria-busy="true">${skeletonLine('90%',16)}${skeletonLine('72%',16)}</div>`:error?'<div class="zpm-method-error" role="alert"><p>Payment methods could not be loaded. Please try again.</p><button type="button" onclick="paymentRoutesLoad()">Retry payment methods</button></div>':options.length?`<fieldset class="zpm-methods"><legend>Choose a payment method</legend>${options.map((option,index)=>`<label class="zpm-method ${prompt.choice===option.route?'is-selected':''}" for="zpm-method-${index}"><input type="radio" name="coin-payment-method" id="zpm-method-${index}" value="${esc(option.route)}" onchange="coinChoosePayment('${domId(option.route)}')" ${prompt.choice===option.route?'checked':''}><span><strong>${esc(option.label)}</strong><small>${esc(option.detail)}</small></span></label>`).join('')}</fieldset>`:'<div class="zpm-method-error" role="alert"><p>No payment methods are available right now.</p><button type="button" onclick="paymentRoutesLoad()">Retry payment methods</button></div>'}${prompt.error?`<p class="zpm-method-error" role="alert">${esc(prompt.error)}</p>`:''}<button type="button" id="zpm-confirm-coins" class="zh-primary zpm-confirm" onclick="coinConfirmCheckout()" ${loading||error||!current||prompt.choice===null||!options.length?'disabled':''}>Continue to payment ${hi('arrow',17)}</button><p class="zpm-security">${hi('lock',13)} ${DEMO?'Preview only. No payment is taken.':'Coins are added only after payment is confirmed.'}</p>`;
+ dialog.classList.toggle('is-opening',!!prompt.method);
+ dialog.classList.toggle('has-upi-apps',!prompt.method&&upi.length>0);
+ if(prompt.method){
+  const app=[...coinUPIApps,coinHostedPayment].find(option=>option.method===prompt.method);
+  const detail=prompt.checking?'Waiting for confirmation from PayPlus.':quoted?`Approve ${coinCheckoutPrice(amount)} for ${n(coins)} coins.`:`Complete your payment for ${n(coins)} coins.`;
+  dialog.innerHTML=`<div class="zpm-opening" role="status"><span class="zpm-opening-icon">${coinPaymentIcon(app.method)}</span><h2 id="zpm-checkout-title">${prompt.checking?'Checking your payment…':`Opening ${app.method==='other'?'your UPI app':app.label}…`}</h2><p>${detail}</p></div><button class="zpm-change" type="button" onclick="coinCloseCheckoutPrompt()">Cancel</button>`;
+ }else{
+  const disabled=Home.checkoutBusy||CoinUI.verifyBusy||!!prompt.action||window.ZimiOffline?.isOffline(),error=CoinUI.paymentError;
+  dialog.innerHTML=`<span class="zpm-grabber" aria-hidden="true"></span><header class="zpm-dialog-heading"><h2 id="zpm-checkout-title">Payment summary</h2><button type="button" id="zpm-close-checkout" class="zpm-close" aria-label="Close payment summary" onclick="coinCloseCheckoutPrompt()"><span>${hi('close',16)}</span></button></header><div class="zpm-body">
+  <section class="zpm-order-summary" aria-label="Selected coin pack"><div class="zpm-summary-pack"><span class="zpm-pack-art">${coinPackArtwork()}</span><div class="zpm-pack-info"><strong>${n(coins)} coins</strong><small>${esc(pack.name||'Coin pack')}</small></div><button class="zpm-change" type="button" onclick="coinChangeCheckoutPack()" aria-label="Change coin pack" ${Home.checkoutBusy||CoinUI.verifyBusy||prompt.action||Home.checkoutAttempt&&!payment?'disabled':''}><span>Change</span></button></div>
+  <div class="zpm-summary-row"><span>Coins credited</span><strong>${coinIcon(19)} ${n(coins)}</strong></div><div class="zpm-summary-row zpm-total"><span>${quoted||DEMO?'Total payable':'Pack price'}</span><strong>${coinCheckoutPrice(amount)}</strong></div></section>
+  ${error?`<p class="zpm-method-error" role="alert">${esc(error)}</p>`:''}
+  ${Home.checkoutBusy?`<div class="zpm-loading" role="status" aria-label="Preparing payment" aria-busy="true">${skeletonLine('92%',38)}${skeletonLine('92%',38)}</div>`:!prompt.ready&&!DEMO?`<button type="button" class="zh-primary zpm-confirm" onclick="coinPrepareCheckout()" ${disabled?'disabled':''}>Retry payment setup</button>`:''}
+  ${upi.length?coinPaymentAppRows(upi,prompt.owner,disabled,hasBranded,preferCheckout):''}
+  ${showHosted?coinHostedRow(upi.some(app=>app.action==='pay'||app.action==='upi')?'Open PayPlus checkout':'Continue on secure checkout',disabled,preferCheckout):''}
+  ${manualId?coinPaymentUpiIdRow(prompt,manualId,amount,hosted&&!showHosted,disabled):''}
+  ${payment&&prompt.ready&&!Home.checkoutBusy&&!methods.some(option=>option.action&&option.action!=='install')?`<p class="zpm-method-error" role="status">${coinPaymentExpired(payment)?'This payment link expired. Check its status or change your pack.':'Payment options are unavailable for this order.'}</p><button type="button" class="zpm-recheck" onclick="homeVerifyPayment()" ${disabled?'disabled':''}>${CoinUI.verifyBusy?'Checking payment…':'Check payment status'}</button>`:''}
+  <p class="zpm-security">${hi('lock',12)} ${DEMO?'Preview only. No payment is taken.':'Secure UPI payment'}</p></div>`;
+ }
  if(creating)dialog.showModal();else if(focused&&dialog.querySelector('#'+CSS.escape(focused)))dialog.querySelector('#'+CSS.escape(focused)).focus({preventScroll:true});
 }
-function coinConfirmCheckout(){
- if(isHostWallet())return;
- const prompt=CoinUI.checkoutPrompt;if(!prompt||prompt.owner!==coinCheckoutOwner()||Home.checkoutBusy||CoinUI.verifyBusy||Home.checkoutAttempt||coinHasPendingPayment()||window.ZimiOffline?.isOffline())return;
- const pack=Home.packs.find(item=>item.id===prompt.pack.id),option=paymentCoinOptions().find(item=>item.route===prompt.choice);
- if(!pack||!option||pack.coins!==prompt.pack.coins||pack.pricePaise!==prompt.pack.pricePaise){coinPaintCheckoutPrompt();return}
- if(!DEMO&&(contentPending('catalog')||ContentLoading.catalog.error||!Home.paymentsAvailable))return;
- if(DEMO){coinCloseCheckoutPrompt(false);S.bal+=pack.coins;coinPaint();appNotice('Preview coins added');return}
- PaymentRoutes.choices.coins=option.route;Home.packId=pack.id;
- Home.checkoutAttempt={packId:pack.id,idempotencyKey:crypto.randomUUID(),...paymentRoutePayload('coins')};CoinUI.packSnapshot={...pack};Home.checkout=null;
- coinCloseCheckoutPrompt(false);homeCheckout();
+function coinPrepareCheckout(){
+ const prompt=CoinUI.checkoutPrompt;if(isHostWallet()||!prompt||prompt.owner!==coinCheckoutOwner()||Home.checkoutBusy||CoinUI.verifyBusy||window.ZimiOffline?.isOffline()||DEMO)return;
+ if(!Home.checkoutAttempt&&(contentPending('catalog')||ContentLoading.catalog.error||!Home.paymentsAvailable))return;
+ const pack=prompt.pack,resumeOrderId=coinPendingPayment()?Home.checkout.merchantOrderId:null;Home.packId=pack.id;
+ if(!Home.checkoutAttempt){Home.checkoutAttempt={packId:pack.id,idempotencyKey:crypto.randomUUID()};CoinUI.packSnapshot={...pack};Home.checkout=null}
+ const {packId,idempotencyKey}=Home.checkoutAttempt;
+ prompt.ready=false;Home.checkoutBusy=true;CoinUI.paymentError='';
+ Native.send('wallet.checkout',{packId,idempotencyKey,prepareOnly:true,...(resumeOrderId?{resumeOrderId}:{})});coinPaint();
+}
+function coinOpenPayment(method){
+ const prompt=CoinUI.checkoutPrompt,payment=Home.checkout;
+ if(isHostWallet()||!prompt||prompt.owner!==coinCheckoutOwner()||!prompt.ready||prompt.action||Home.checkoutBusy||CoinUI.verifyBusy||window.ZimiOffline?.isOffline())return;
+ const option=coinPaymentMethods(payment).find(item=>item.method===method);
+ if(!option?.action)return;
+ if(DEMO){const coins=prompt.pack.coins;coinCloseCheckoutPrompt(false);S.bal+=coins;coinPaint();appNotice('Preview coins added');return}
+ if(!payment?.merchantOrderId)return;
+ prompt.action=option;CoinUI.paymentError='';coinPaintCheckoutPrompt();
+ Native.send('wallet.payment.open',{merchantOrderId:payment.merchantOrderId,method});
 }
 function homeCoins(embedded=false){
  if(isHostWallet())return '<section class="zw-coins"><p>Your host account earns diamonds. View your balance in Wallet &amp; Activity.</p><button type="button" class="zh-primary" onclick="go(\'wallet\')">Open diamond wallet</button></section>';
  const selected=(Home.checkoutAttempt&&CoinUI.packSnapshot)||Home.packs.find(x=>x.id===(Home.checkoutAttempt?.packId||Home.packId))||Home.packs[0],surface=DEMO?null:contentSurface('catalog','packs','Loading coin packs'),pending=coinHasPendingPayment();
- return `<section class="zw-coins zw-compact zw-reference ${embedded?'zw-embedded':''}" aria-label="BinzoLive Coins">${!embedded?window.ZimiCallInvitations?.coinsContext()||'':''}${coinWalletView(embedded)}${coinWalletError()}${coinPaymentView()}${coinOtherPayments()}<div class="zw-section-heading"><h2>${DEMO||Home.packs.some(coinPackBonus)?'Welcome Bonus for You!':'Choose your coin pack'}</h2></div>${surface??(Home.packs.length?`<div class="zh-packs zw-packs" role="group" aria-label="Coin packs">${Home.packs.map(x=>coinPackView(x,selected,pending)).join('')}</div>`:'<div class="zw-empty">Coin packs are currently unavailable. Please check again later.</div>')}${CoinUI.paymentError?`<p class="zw-error" role="alert">${esc(CoinUI.paymentError)}</p>`:''}<p class="zw-note">${DEMO?'Design preview · sample coins only':'Coins are used for calls and gifts. Select a pack, then continue securely.'}</p>${!surface&&!Home.paymentsAvailable?'<p class="zw-empty">Payments are temporarily unavailable. Your existing coins are still safe.</p>':''}${!surface&&selected&&!pending?`<footer class="zw-checkout-footer"><button class="zh-primary zw-buy" aria-label="${Home.checkoutBusy?'Opening checkout':Home.paymentsAvailable?'Get '+n(selected.coins)+' coins':'Checkout unavailable'}" onclick="homeCheckout()" ${Home.checkoutBusy||!Home.paymentsAvailable?'disabled':''}>${coinIcon(19)} ${Home.checkoutBusy?'Opening checkout…':Home.paymentsAvailable?`Get ${n(selected.coins)} coins`:'Checkout unavailable'}${Home.paymentsAvailable&&!Home.checkoutBusy?`<span>${coinPrice(selected.pricePaise)}</span>`:''}</button></footer>`:''}</section>`;
+ return `<section class="zw-coins zw-compact zw-reference ${embedded?'zw-embedded':''}" aria-label="BinzoLive Coins">${!embedded?window.ZimiCallInvitations?.coinsContext()||'':''}${coinWalletView(embedded)}${coinWalletError()}${CoinUI.checkoutPrompt?'':coinPaymentView()+coinOtherPayments()}<div class="zw-section-heading"><h2>${DEMO||Home.packs.some(coinPackBonus)?'Welcome Bonus for You!':'Choose your coin pack'}</h2></div>${surface??(Home.packs.length?`<div class="zh-packs zw-packs" role="group" aria-label="Coin packs">${Home.packs.map(x=>coinPackView(x,selected,pending)).join('')}</div>`:'<div class="zw-empty">Coin packs are currently unavailable. Please check again later.</div>')}${CoinUI.paymentError&&!CoinUI.checkoutPrompt?`<p class="zw-error" role="alert">${esc(CoinUI.paymentError)}</p>`:''}<p class="zw-note">${DEMO?'Design preview · sample coins only':'Coins are used for calls and gifts. Select a pack, then continue securely.'}</p>${!surface&&!Home.paymentsAvailable?'<p class="zw-empty">Payments are temporarily unavailable. Your existing coins are still safe.</p>':''}${!surface&&selected&&(!pending||CoinUI.checkoutPrompt)?`<footer class="zw-checkout-footer"><button class="zh-primary zw-buy" aria-label="${Home.checkoutBusy?'Opening checkout':Home.paymentsAvailable?'Get '+n(selected.coins)+' coins':'Checkout unavailable'}" onclick="homeCheckout()" ${Home.checkoutBusy||!Home.paymentsAvailable||CoinUI.checkoutPrompt?'disabled':''}>${coinIcon(19)} ${Home.checkoutBusy?'Opening checkout…':Home.paymentsAvailable?`Get ${n(selected.coins)} coins`:'Checkout unavailable'}${Home.paymentsAvailable&&!Home.checkoutBusy?`<span>${coinPrice(selected.pricePaise)}</span>`:''}</button></footer>`:''}</section>`;
 }
 function homeCheckout(resume=false){
  if(isHostWallet())return;
  if(Home.checkoutBusy||CoinUI.verifyBusy||window.ZimiOffline?.isOffline())return;
  if(coinHasPendingPayment()&&!resume)return;
  if(!resume&&!DEMO&&(contentPending('catalog')||ContentLoading.catalog.error||!Home.paymentsAvailable))return;
- if(!Home.checkoutAttempt){if(!resume)coinOpenCheckoutPrompt();return}
- Home.checkoutBusy=true;CoinUI.paymentError='';Native.send('wallet.checkout',{...Home.checkoutAttempt});coinPaint();
+ if(resume&&!Home.checkoutAttempt)return;
+ const pack=(Home.checkoutAttempt&&CoinUI.packSnapshot)||Home.packs.find(item=>item.id===(Home.checkoutAttempt?.packId||Home.packId))||Home.packs[0];
+ coinOpenCheckoutPrompt(pack);coinPrepareCheckout();
 }
-function homeVerifyPayment(){if(!Home.checkout?.merchantOrderId||CoinUI.verifyBusy||Home.checkoutBusy||window.ZimiOffline?.isOffline())return;CoinUI.verifyBusy=true;CoinUI.paymentError='';Native.send('wallet.verify',{merchantOrderId:Home.checkout.merchantOrderId});coinPaint()}
+function homeVerifyPayment(){
+ if(!Home.checkout?.merchantOrderId||CoinUI.verifyBusy||Home.checkoutBusy||window.ZimiOffline?.isOffline())return;
+ if(CoinUI.checkoutPrompt)CoinUI.checkoutPrompt.manualStatus='';
+ CoinUI.verifyBusy=true;CoinUI.paymentError='';Native.send('wallet.verify',{merchantOrderId:Home.checkout.merchantOrderId});coinPaint();
+}
 function coinClosePurchase(){
  if(DEMO)return;
  if(Home.checkoutAttempt?.idempotencyKey)Native.send('payments.checkout.closed',{kind:'coins',idempotencyKey:Home.checkoutAttempt.idempotencyKey});
  for(const payment of [Home.checkout,...CoinUI.orders.values()])if(payment?.status==='PENDING'&&payment.merchantOrderId)Native.send('payments.checkout.closed',{kind:'coins',merchantOrderId:payment.merchantOrderId});
+ Home.checkoutBusy=false;
 }
 function coinLeaveTopup(){coinClosePurchase();CoinUI.topup=false;coinPaint()}
 function coinPaymentReturned(d){
@@ -132,7 +284,7 @@ function coinPaymentReturned(d){
  if(!active&&(Home.checkout||Home.checkoutAttempt||Home.checkoutBusy||CoinUI.checkoutPrompt)){coinPaint();return}
  Home.checkout=null;Home.checkoutAttempt=null;Home.checkoutBusy=false;
  CoinUI.verifyBusy=false;CoinUI.paymentError='';CoinUI.packSnapshot=null;
- coinCloseCheckoutPrompt(false);PaymentRoutes.choices.coins='';
+ coinCloseCheckoutPrompt(false);
  if(!DEMO){contentStart('wallet');contentStart('catalog');Native.send('wallet.load');Native.send('catalog.load')}
  coinPaint();if(S.v==='coins')window.zimiScrollTo?.(0);
  appNotice('Your payment failed. You can try again.');
@@ -143,7 +295,11 @@ function coinAcceptPayment(d,checkout=false){
  if(known&&['SUCCESS','FAILED','REVERTED'].includes(known.status)&&d.status==='PENDING')return;
  if(known?.status==='REVERTED'&&d.status!=='REVERTED')return;
  if(known?.status==='SUCCESS'&&d.status==='FAILED')return;
- if(d.merchantOrderId)CoinUI.orders.set(d.merchantOrderId,{...known,...d});
+ const snapshot={...known,...d};
+ // A status response may withdraw expired or unavailable payment directions.
+ // Keep the order and the device platform, but never reuse omitted links.
+ if(!checkout)for(const key of ['upiIntent','upiIntentRouting','isIntentSupported','paymentUrl'])if(!Object.hasOwn(d,key))delete snapshot[key];
+ if(d.merchantOrderId)CoinUI.orders.set(d.merchantOrderId,snapshot);
  // A restored order is history, not the checkout the user is starting now.
  // Keep it for reconciliation without interrupting a fresh package/method.
  if(d.status==='PENDING'&&Home.checkout?.merchantOrderId!==d.merchantOrderId&&(!d.idempotencyKey||Home.checkoutAttempt?.idempotencyKey!==d.idempotencyKey))CoinUI.dismissedOrders.add(d.merchantOrderId);
@@ -153,9 +309,23 @@ function coinAcceptPayment(d,checkout=false){
  if(checkout&&Home.checkoutAttempt&&d.idempotencyKey!==Home.checkoutAttempt.idempotencyKey)return;
  if(!checkout&&Home.checkout?.merchantOrderId&&d.merchantOrderId!==Home.checkout.merchantOrderId){if(coinPendingPayment()||Home.checkoutAttempt||d.status!=='PENDING'){coinPaint();return}}
  if(!checkout&&!Home.checkout&&Home.checkoutAttempt&&d.idempotencyKey!==Home.checkoutAttempt.idempotencyKey)return;
- Home.checkoutBusy=false;CoinUI.verifyBusy=false;CoinUI.paymentError='';Home.checkout={...Home.checkout,...d};
- if(['SUCCESS','FAILED','REVERTED'].includes(d.status))Home.checkoutAttempt=null;
- else if(d.idempotencyKey&&d.packId){Home.checkoutAttempt={packId:d.packId,idempotencyKey:d.idempotencyKey,...paymentRestoredRoute(d,Home.checkoutAttempt)};if(d.coins!=null)CoinUI.packSnapshot={id:d.packId,coins:d.coins,pricePaise:d.amountPaise??d.payableAmountPaise??0,name:'Pending coin pack'}}
+ if(d.status==='SUCCESS'&&d.merchantOrderId===Home.checkout?.merchantOrderId&&CoinUI.checkoutPrompt?.method){
+  const {owner,method}=CoinUI.checkoutPrompt;coinLastUPIApp(owner,method);
+ }
+ if(!checkout&&CoinUI.verifyBusy&&CoinUI.checkoutPrompt?.manual&&d.status==='PENDING'){
+  CoinUI.checkoutPrompt.manualStatus=d.paymentUrl?'Payment is awaiting confirmation. Open PayPlus checkout if asked for a UTR.':'Payment is awaiting confirmation. Check again shortly.';
+ }
+ if(checkout||d.status!=='PENDING'||!CoinUI.checkoutPrompt)Home.checkoutBusy=false;
+ CoinUI.verifyBusy=false;CoinUI.paymentError='';Home.checkout=snapshot;
+ if(['SUCCESS','FAILED','REVERTED'].includes(d.status)){Home.checkoutAttempt=null;coinCloseCheckoutPrompt(false)}
+ else if(d.idempotencyKey&&d.packId){
+  Home.checkoutAttempt={packId:d.packId,idempotencyKey:d.idempotencyKey,...paymentRestoredRoute(d,Home.checkoutAttempt)};
+  if(checkout&&CoinUI.checkoutPrompt?.pack.id===d.packId)CoinUI.checkoutPrompt.ready=true;
+  if(d.coins!=null){
+   const pack=CoinUI.packSnapshot?.id===d.packId?CoinUI.packSnapshot:Home.packs.find(item=>item.id===d.packId);
+   CoinUI.packSnapshot={id:d.packId,coins:d.coins,pricePaise:d.amountPaise??d.payableAmountPaise??pack?.pricePaise??0,name:pack?.name||'Pending coin pack'};
+  }
+ }
  coinPaint();
 }
 function homeGifts(id,selectedGiftId=''){
@@ -243,6 +413,28 @@ Native.on('gift.sent',d=>{
 Native.on('wallet.checkout',d=>coinAcceptPayment(d,true));
 Native.on('wallet.purchase',d=>coinAcceptPayment(d));
 Native.on('wallet.payment-returned',coinPaymentReturned);
+Native.on('wallet.payment.opening',d=>{
+ const prompt=CoinUI.checkoutPrompt;
+ if(prompt?.action?.method!==d.method||d.merchantOrderId!==Home.checkout?.merchantOrderId)return;
+ prompt.method=d.launchMethod||d.method;prompt.checking=false;coinPaintCheckoutPrompt();
+ document.querySelector('#zw-checkout-dialog.is-opening>button')?.focus({preventScroll:true});
+});
+Native.on('wallet.payment.store',d=>{
+ const prompt=CoinUI.checkoutPrompt;
+ if(prompt?.action?.method!==d.method||d.merchantOrderId!==Home.checkout?.merchantOrderId)return;
+ prompt.action=null;prompt.method=null;prompt.checking=false;coinPaintCheckoutPrompt();
+ document.getElementById('zpm-pay-'+d.method)?.focus({preventScroll:true});
+});
+Native.on('wallet.payment.apps',d=>{
+ const payment=Home.checkout;
+ if(d.merchantOrderId!==payment?.merchantOrderId||!coinPendingPayment())return;
+ const updated={...payment,upiAppsInstalled:{...payment.upiAppsInstalled,...d.upiAppsInstalled}};
+ Home.checkout=updated;CoinUI.orders.set(d.merchantOrderId,updated);
+ coinPaintCheckoutPrompt();
+});
+Native.on('app.foreground',()=>{
+ const prompt=CoinUI.checkoutPrompt;if(prompt?.method){prompt.checking=true;coinPaintCheckoutPrompt()}
+});
 Native.on('operation.error',d=>{
  if(d.action==='gift.send'&&coinGiftMatches(d)){
   const attempt=Home.giftAttempt,saved=CoinUI.receipts.get(attempt.idempotencyKey);
@@ -255,7 +447,22 @@ Native.on('operation.error',d=>{
   }
   r();
  }
- if(d.action==='wallet.checkout'&&Home.checkoutAttempt?.idempotencyKey===d.idempotencyKey){Home.checkoutBusy=false;CoinUI.paymentError=d.message;const routeRejected=['PAYMENT_ROUTE_CHOICE_DISABLED','PAYMENT_ROUTE_UNAVAILABLE'].includes(d.code),uncertainRoute=['PAYIN_ROUTE_UNAVAILABLE','PAYMENT_ROUTE_CONFLICT'].includes(d.code);if(routeRejected||d.code==='PAYIN_PROVISIONING_FAILED'||(!uncertainRoute&&[400,404].includes(d.status)&&!coinPendingPayment())){Home.checkoutAttempt=null;Home.checkout=null;CoinUI.packSnapshot=null}coinPaint();if(routeRejected)paymentRoutesLoad()}
+ if(d.action==='wallet.checkout'&&Home.checkoutAttempt?.idempotencyKey===d.idempotencyKey){
+  Home.checkoutBusy=false;CoinUI.paymentError=d.message;
+  const routeRejected=['PAYMENT_ROUTE_CHOICE_DISABLED','PAYMENT_ROUTE_UNAVAILABLE'].includes(d.code),uncertainRoute=['PAYIN_ROUTE_UNAVAILABLE','PAYMENT_ROUTE_CONFLICT'].includes(d.code);
+  if(routeRejected||d.code==='PAYIN_PROVISIONING_FAILED'||(!uncertainRoute&&[400,404].includes(d.status)&&!coinPendingPayment())){
+   Home.checkoutAttempt=null;Home.checkout=null;CoinUI.packSnapshot=null;coinCloseCheckoutPrompt(false)
+  }
+  coinPaint();
+ }
+ if(d.action==='wallet.payment.open'&&d.merchantOrderId===Home.checkout?.merchantOrderId){
+  const prompt=CoinUI.checkoutPrompt;
+  const genericFailed=(prompt?.method==='other'||prompt?.action?.method==='other'||prompt?.action?.action==='upi')&&d.code==='PAYMENT_OPEN_FAILED';
+  if(prompt){prompt.action=null;prompt.method=null;prompt.checking=false;if(genericFailed)prompt.upiLaunchFailed=true}
+  const canOpenCheckout=genericFailed&&coinPaymentMethods(Home.checkout).some(option=>option.method==='hosted');
+  CoinUI.paymentError=canOpenCheckout?"Your phone couldn't open a UPI app for this order. Continue with PayPlus checkout.":d.message||'Could not open this payment app. Try another option.';
+  coinPaint();if(canOpenCheckout)document.getElementById('zpm-pay-hosted')?.focus({preventScroll:true});
+ }
  if(d.action==='wallet.verify'&&Home.checkout?.merchantOrderId===d.merchantOrderId){CoinUI.verifyBusy=false;CoinUI.paymentError=d.message;coinPaint()}
 });
 Native.on('call.failed',d=>{if(d.code==='INSUFFICIENT_COINS'&&!isHost())coinRequireRecharge()});

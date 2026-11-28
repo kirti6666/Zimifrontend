@@ -10,7 +10,7 @@
   // Beauty supplies a separate track for both local preview and peer senders.
   let beauty = null, beautyRefresh = null, trackMutation = Promise.resolve();
   const peers = new Map(), earlySignals = [];
-  const mediaViews = new Set(['broadcast', 'live', 'precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
+  const mediaViews = new Set(['broadcast', 'live', 'precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'incoming', 'switch']);
   /* Cameras list their sizes in landscape and phones rotate the frames to portrait. Asking for a
      portrait size made the browser crop a narrow strip out of each frame (the zoomed preview);
      'none' keeps the camera's own framing so a full-screen video looks like a normal call. */
@@ -27,6 +27,7 @@
   ];
   const VIDEO_START_LEVEL = 1;
   const REMOTE_IMPAIRMENT_MS = 8000;
+  const CALL_RETRY_MS = 3000, CALL_RECOVERY_LIMIT_MS = 30000;
   const MEDIA_SELECTOR = 'video[data-zimi-local], video[data-zimi-remote], audio[data-zimi-remote]';
 
   // Connect the new layout before moving videos, so moveBefore can preserve their
@@ -442,6 +443,24 @@
       ? { streamId: session.id, to, ...signal }
       : { callId: session.id, ...signal });
   }
+  function rememberDescription(peer) {
+    const { type, sdp } = peer.pc.localDescription;
+    // localDescription.sdp can grow as ICE candidates arrive. Retries must
+    // carry the exact same SDP so the receiving peer can recognize the offer.
+    peer.description = { type, sdp };
+  }
+  function resendDescription(session, peer, withCandidates = false) {
+    if (!peer.description) return;
+    sendSignal(session, peer.id, { description: peer.description });
+    if (withCandidates) peer.candidates.forEach(candidate => sendSignal(session, peer.id, { candidate }));
+  }
+  async function addCandidate(session, peer, candidate) {
+    try { await peer.pc.addIceCandidate(candidate); }
+    catch (error) {
+      // Call retries can replay a candidate from a retired ICE generation.
+      if (session.kind !== 'call') throw error;
+    }
+  }
   /* Switching calls: the call being left closes its connection, but the camera and microphone stay for the next one. */
   function handoff(callId) { handoffCall = callId || null; }
   function releaseCall() { active = null; earlySignals.length = 0; clearPeers(); }
@@ -654,36 +673,40 @@
   }
   function connectedPeer(session, peer) {
     clearTimeout(peer.recoveryTimer); peer.recoveryTimer = null; peer.recoveryStarted = 0;
+    peer.wasConnected = true;
     setQuality('good');
     status(session.kind === 'stream' && session.hosting ? 'You are live.' : 'Connected');
     if (session.kind === 'call') void tuneVideo(peer, peer.videoLevel ?? VIDEO_START_LEVEL);
   }
-  function recoverPeer(session, id, peer) {
+  function recoverPeer(session, id, peer, initial = false) {
     if (active !== session || peers.get(id) !== peer || peer.recoveryTimer) return;
     if (!peer.recoveryStarted) peer.recoveryStarted = Date.now();
-    setQuality('reconnecting');
-    status('Connection interrupted. Reconnecting…');
+    if (!initial) {
+      setQuality('reconnecting');
+      status(peer.wasConnected ? 'Connection interrupted. Reconnecting…' : 'Still connecting your call…');
+    }
     peer.recoveryTimer = setTimeout(() => {
       peer.recoveryTimer = null;
       if (active !== session || peers.get(id) !== peer) return;
       if (peerConnected(peer.pc)) return connectedPeer(session, peer);
-      if (Date.now() - peer.recoveryStarted >= 30000) return fail(session, new Error('The media connection could not recover. Please reconnect.'));
+      const elapsed = Date.now() - peer.recoveryStarted;
+      if (elapsed >= CALL_RECOVERY_LIMIT_MS)
+        return fail(session, new Error(peer.wasConnected ? 'The media connection could not recover. Please reconnect.' : 'The call could not connect. Check your connection and try again.'));
       // Only the original offerer restarts ICE, avoiding competing offers.
       if (peer.offerer) enqueue(session, id, async current => {
-        if (current.pc.signalingState === 'stable') {
+        if (current.pc.signalingState === 'stable' && (current.wasConnected || current.pc.iceConnectionState === 'failed' || elapsed >= 3 * CALL_RETRY_MS)) {
           current.candidates.length = 0;
           const description = await current.pc.createOffer({ iceRestart: true });
           if (active !== session || peers.get(id) !== current) return;
           await current.pc.setLocalDescription(description);
+          if (active !== session || peers.get(id) !== current) return;
+          rememberDescription(current);
         }
-        const description = current.pc.localDescription;
-        if (description?.type === 'offer') {
-          sendSignal(session, id, { description: { type: description.type, sdp: description.sdp } });
-          current.candidates.forEach(candidate => sendSignal(session, id, { candidate }));
-        }
+        if (current.description?.type === 'offer') resendDescription(session, current, true);
       });
+      else if (peer.description?.type === 'answer') resendDescription(session, peer, true);
       recoverPeer(session, id, peer);
-    }, 3000);
+    }, CALL_RETRY_MS);
   }
   function newPeer(session, id, offerer) {
     if (peers.has(id)) return peers.get(id);
@@ -731,6 +754,8 @@
         else if (peer.recoveryStarted && peerConnected(pc)) connectedPeer(session, peer);
       };
       peer.monitor = setInterval(() => void sampleQuality(session, id, peer), 2000);
+      // A lost first offer or answer can leave ICE in "new" forever.
+      recoverPeer(session, id, peer, true);
     }
     return peer;
   }
@@ -751,11 +776,7 @@
       // A viewer may announce readiness after our first offer was sent. Replay
       // the outstanding negotiation rather than abandoning that viewer.
       if (existing.pc.connectionState !== 'connected') enqueue(session, id, async peer => {
-        const description = peer.pc.localDescription;
-        if (description && description.type === 'offer') {
-          sendSignal(session, id, { description: { type: description.type, sdp: description.sdp } });
-          peer.candidates.forEach(candidate => sendSignal(session, id, { candidate }));
-        }
+        if (peer.description?.type === 'offer') resendDescription(session, peer, true);
       });
       return;
     }
@@ -766,7 +787,8 @@
       await peer.pc.setLocalDescription(description);
       if (session.kind === 'call') await tuneVideo(peer, peer.videoLevel);
       if (active !== session || peers.get(id) !== peer) return;
-      sendSignal(session, id, { description: { type: peer.pc.localDescription.type, sdp: peer.pc.localDescription.sdp } });
+      rememberDescription(peer);
+      resendDescription(session, peer);
     });
   }
   function receive(kind, data) {
@@ -790,19 +812,29 @@
       if (data.description) {
         const description = data.description;
         if (description.type !== (peer.offerer ? 'answer' : 'offer')) return;
-        if (peer.offerer && peer.pc.signalingState !== 'have-local-offer') return;
+        if (peer.offerer && (peer.pc.signalingState !== 'have-local-offer' || peer.remoteAnswer === description.sdp)) return;
+        if (session.kind === 'call' && description.type === 'offer' && peer.remoteOffer === description.sdp) {
+          // The caller may have missed our answer. Replay it without applying
+          // the same offer to the peer again or disturbing established media.
+          if (peer.description?.type === 'answer') resendDescription(session, peer, true);
+          return;
+        }
         await peer.pc.setRemoteDescription(description);
-        while (peer.pending.length) await peer.pc.addIceCandidate(peer.pending.shift());
+        if (description.type === 'answer') peer.remoteAnswer = description.sdp;
+        while (peer.pending.length) await addCandidate(session, peer, peer.pending.shift());
         if (description.type === 'offer') {
+          peer.remoteOffer = description.sdp;
+          if (session.kind === 'call') peer.candidates.length = 0;
           const answer = await peer.pc.createAnswer();
           await peer.pc.setLocalDescription(answer);
           if (session.kind === 'call') await tuneVideo(peer, peer.videoLevel);
           if (active !== session || peers.get(from) !== peer) return;
-          sendSignal(session, from, { description: { type: peer.pc.localDescription.type, sdp: peer.pc.localDescription.sdp } });
+          rememberDescription(peer);
+          resendDescription(session, peer);
         }
       }
       if (data.candidate) {
-        if (peer.pc.remoteDescription) await peer.pc.addIceCandidate(data.candidate);
+        if (peer.pc.remoteDescription) await addCandidate(session, peer, data.candidate);
         else if (peer.pending.length < 100) peer.pending.push(data.candidate);
       }
     });
@@ -869,10 +901,9 @@
       }
       if (active !== session) return;
       if (!await initialize(session)) return;
-      if (session.initiator) {
-        if (!session.peerId) throw new Error('The call participant could not be identified. Please try again.');
-        offer(session, session.peerId);
-      }
+      if (!session.peerId) throw new Error('The call participant could not be identified. Please try again.');
+      if (session.initiator) offer(session, session.peerId);
+      else newPeer(session, session.peerId, false);
       earlySignals.splice(0).forEach(signal => receive(signal.kind, signal.data));
       status('Connecting your call…');
     } catch (error) { fail(session, error); }

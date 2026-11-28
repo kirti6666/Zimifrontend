@@ -18,13 +18,16 @@ async function audit(page,label){
     const nodes=[document.documentElement,...document.querySelectorAll('body,body *')].filter(el=>el.getClientRects().length&&!el.closest('.zw-coins,.zw-page-header,.zw-checkout-footer'));
     const wrong=nodes.flatMap(el=>{
       const c=getComputedStyle(el),name=el.id||el.classList?.value||el.tagName;
-      const radiusOK=c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round)||c.borderRadius==='0px'&&el.matches(straight);
+      const homeRadius=el.matches('.zh-home.zh-dashboard .zh-creator-card')?'14px'
+        :el.matches('.zh-home-toolbar>.zh-home-coins,.zh-home-toolbar .zh-home-coin-add')?'999px':null;
+      const radiusOK=homeRadius?c.borderRadius===homeRadius
+        :c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round)||c.borderRadius==='0px'&&el.matches(straight);
       return [c.boxShadow!=='none'&&`${name}: shadow`,c.textShadow!=='none'&&`${name}: text shadow`,c.filter.includes('drop-shadow')&&`${name}: filter shadow`,!radiusOK&&`${name}: radius ${c.borderRadius}`].filter(Boolean);
     });
     const reference=document.querySelector('.zw-coins.zw-reference');
     return {wrong,canvas:getComputedStyle(document.querySelector('.app')).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth+1,coinMode:document.documentElement.classList.contains('zw-app'),reference:reference?{card:getComputedStyle(reference.querySelector('.zw-packs>button')).borderRadius,price:getComputedStyle(reference.querySelector('.zw-packs>button>b')).borderRadius,cta:getComputedStyle(reference.querySelector('.zw-buy')).borderRadius}:null};
   },{round:ROUND,straight:STRAIGHT});
-  assert.deepEqual(state.wrong,[],`${label}: 10px corners except the round Back, call, avatar and switch controls, and no shadows`);
+  assert.deepEqual(state.wrong,[],`${label}: flat corners, scoped reference geometry, and no shadows`);
   assert.equal(state.coinMode,!!state.reference,`${label}: coin layout class belongs only to the coin page`);
   assert.equal(state.canvas,'rgb(255, 255, 255)',`${label}: active light theme is retained on every page`);
   if(state.reference)assert.deepEqual(state.reference,{card:'15px',price:'8px',cta:'999px'},`${label}: reference card, price and purchase-button geometry`);

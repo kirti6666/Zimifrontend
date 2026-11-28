@@ -421,17 +421,16 @@ broadcasts need a dedicated media relay/SFU. Call confirmation shows the
 server-configured rate. Paid calls use the locked server rate and server-side
 metering; zero-rate calls remain free.
 
-PayPlus checkout opens the provider's HTTPS payment page and checks the payment
-when the app becomes active again. The backend's signed webhook and payment
-verification remain authoritative. Configure the provider and confirm a real
-device checkout before using payments live.
+Coin recharge shows the PayPlus quote and UPI apps whose links PayPlus returns for
+the device. The summary shows the exact amount due and can open PayPlus hosted
+checkout for more options. The app checks the existing order when it returns to
+the foreground. The backend credits coins after authenticated payment verification
+or a signed webhook.
 
-Coin packs and lifetime premium use PayPlus's live payment-route catalog. Automatic
-checkout supports the merchant's single-route or rotation configuration; manual
-choices appear only when PayPlus enables `routeChoice`. Only available INR routes
-are offered because catalog prices are in paise. The original selection is retained
-with the pending order, including across app restarts. A retry never switches routes.
-API keys and webhook secrets stay on the backend. See [the payment contract](docs/API.md#payment-methods-and-recovery).
+Lifetime premium uses PayPlus's live INR route catalog. The merchant can enable
+manual choice through `routeChoice`. The original selection stays with the pending
+order across retries and app restarts. API keys and webhook secrets stay on the
+backend. See [the payment contract](docs/API.md#payment-methods-and-recovery).
 
 ## Live studio and private calls
 

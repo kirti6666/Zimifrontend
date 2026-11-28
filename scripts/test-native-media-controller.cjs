@@ -7,7 +7,7 @@ const test = require('node:test');
 const ts = require('typescript');
 const plain = value => JSON.parse(JSON.stringify(value));
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
-const flush = async () => { for (let count = 0; count < 30; count++) await Promise.resolve(); };
+const flush = () => new Promise(resolve => setImmediate(resolve));
 
 function fixture(options = {}) {
   const calls = [], events = [], states = [], peers = [], captures = [], timers = new Map();
@@ -420,6 +420,35 @@ test('only the initiator restarts ICE, recovery is bounded, and cleanup cancels 
     assert.equal(h.state().local, null); assert.equal(h.timers.size, 0);
     h.controller.close(); await flush();
   }
+});
+
+test('initial negotiation retries a lost offer and answer without reapplying SDP or reacquiring capture', async () => {
+  const caller = fixture(), callee = fixture();
+  const describe = (side, type) => side.events.filter(event => event.type === 'rtc.signal' && event.data.description?.type === type);
+  const callerPc = await caller.connect({ initiator: true }), calleePc = await callee.connect({ initiator: false });
+  assert.equal(describe(caller, 'offer').length, 1);
+  // Drop the initial offer, then drop the first answer from the retry.
+  await caller.tick(3000);
+  const offers = describe(caller, 'offer');
+  assert.equal(offers.length, 2);
+  assert.deepEqual(offers[0].data.description, offers[1].data.description);
+  callee.controller.event(offers[1]); await flush();
+  assert.equal(describe(callee, 'answer').length, 1);
+  await caller.tick(3000);
+  callee.controller.event(describe(caller, 'offer').at(-1)); await flush();
+  const answers = describe(callee, 'answer');
+  assert.equal(answers.length, 2);
+  assert.deepEqual(answers[0].data.description, answers[1].data.description);
+  assert.equal(callee.calls.filter(call => call[0] === 'answer').length, 1);
+  caller.controller.event(answers[1]); await flush();
+  assert.equal(callerPc.remoteDescription.sdp, 'native-answer');
+  markConnected(callerPc); markConnected(calleePc);
+  assert.equal(caller.state().status, 'Connected'); assert.equal(callee.state().status, 'Connected');
+  assert.deepEqual([caller.captures.length, callee.captures.length], [1, 1]);
+  await caller.tick(3000); await callee.tick(3000);
+  assert.equal(describe(caller, 'offer').length, 3);
+  assert.equal(describe(callee, 'answer').length, 2);
+  caller.controller.close(); callee.controller.close(); await flush();
 });
 
 function qualityStats({ sample, feedback = sample, loss = 0, rtt = .1, jitter = 0, available = 4000000, delay = sample, frames = sample * 60, encode = sample * .18, reason = 'none', received = feedback * 1000, lost = 0, incoming, markers = true } = {}) {

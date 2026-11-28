@@ -82,14 +82,11 @@ function assertLegacyViewportFallbacks() {
       await page.evaluate(() => go('coins'));
       await receive(page, 'data.catalog', { packs: [{ id: 'pack-1', name: 'Starter', coins: 100, pricePaise: 4900 }], gifts: [], paymentsAvailable: true });
       await page.getByRole('button', { name: 'Get 100 coins', exact: true }).click();
-      await page.waitForFunction(() => __sent.some(message => message.type === 'payments.routes.load'));
-      await receive(page, 'payments.routes', { ...await last(page, 'payments.routes.load'), mode: 'ROTATION', routeChoice: false, routes: [] });
-      const dialog = page.getByRole('dialog', { name: 'Select payment method', exact: true });
-      await dialog.getByRole('radio', { name: /^Secure checkout/ }).check();
-      await dialog.getByRole('button', { name: 'Continue to payment', exact: true }).click();
+      await page.getByRole('dialog', { name: 'Payment summary', exact: true }).waitFor();
       const checkout = await last(page, 'wallet.checkout');
       assert.match(checkout.idempotencyKey, uuid, 'Checkout reaches native transport with a stable valid retry ID');
       assert.equal(checkout.packId, 'pack-1');
+      assert.equal(checkout.prepareOnly, true);
       assert.equal(await page.evaluate(() => S.bal), 500, 'Creating a checkout never credits coins locally');
 
       await page.evaluate(id => zcOpen(id), host.id);

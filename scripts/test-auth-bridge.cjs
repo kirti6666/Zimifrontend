@@ -26,7 +26,7 @@ const directoryHost = { id: '507f1f77bcf86cd799439082', name: 'Active directory 
 const activeHostsPage = (hosts = [directoryHost], page = 1) => ({ hosts, total: hosts.length, page, limit: 20 });
 const profileDirectoryPage = (profiles = [directoryMember, directoryHost], page = 1, filter = 'all') => ({ profiles, total: profiles.length, page, limit: 20, filter });
 
-function harness(initialAppState = 'active', initialLink = null, liveStreaming = false, initialIncoming = null) {
+function harness(initialAppState = 'active', initialLink = null, liveStreaming = false, initialIncoming = null, platform) {
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], keyboards = [], links = [], shares = [], backs = [], alerts = [], exits = [];
   const overrides = {};
   const incomingActions={current:initialIncoming,listeners:new Set(),cleared:[],verified:new Map(),cacheReads:[],emit(action){this.current=action;for(const listener of [...this.listeners])listener(action)}};
@@ -132,7 +132,8 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
       } };
       if (id === 'react') return react;
       if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-      if (id === 'react-native') return { Alert: { alert: (...args) => alerts.push(args) }, Keyboard: { addListener: (name, fn) => { const entry = [name, fn]; keyboards.push(entry); return { remove: () => { keyboards.splice(keyboards.indexOf(entry), 1); } }; } }, BackHandler: { exitApp: () => exits.push(true), addEventListener: (_name, fn) => { backs.push(fn); return { remove: () => { backs.splice(backs.indexOf(fn), 1); } }; } }, AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
+      if (id === 'expo') return { requireOptionalNativeModule: name => name === 'BinzoUpi' && overrides.installedUpiApps ? { installedApps: overrides.installedUpiApps } : null };
+      if (id === 'react-native') return { Platform: platform ? { OS: platform } : undefined, Alert: { alert: (...args) => alerts.push(args) }, Keyboard: { addListener: (name, fn) => { const entry = [name, fn]; keyboards.push(entry); return { remove: () => { keyboards.splice(keyboards.indexOf(entry), 1); } }; } }, BackHandler: { exitApp: () => exits.push(true), addEventListener: (_name, fn) => { backs.push(fn); return { remove: () => { backs.splice(backs.indexOf(fn), 1); } }; } }, AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { canOpenURL: async url => overrides.canOpenURL?.(url), openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
       if (id === 'react-native-webview') return { WebView: 'WebView' };
       if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({ top: 28, right: 0, bottom: 24, left: 0 }) };
       if (id === 'expo-status-bar') return { StatusBar: 'StatusBar' };
@@ -2415,6 +2416,104 @@ test('failed external coin launch releases its UI after verification while prese
   h.bridge.close();
 });
 
+test('PayPlus coin summary only opens owned quoted intents on an explicit second tap', async () => {
+  const h = harness('active', null, false, null, 'android');
+  const id = 'binzolive_intent_order', upiIntent = 'upi://pay?pa=merchant%40upi&am=99.37&cu=INR&tr=940221062886';
+  const phonepeLink = 'phonepe://native?id=p2ppayment&data=Zml4dHVyZQ%3D%3D';
+  const pay = { type: 'wallet.payment.open', data: { merchantOrderId: id, method: 'phonepe' } };
+  const prepare = { type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-json-1', prepareOnly: true } };
+  try {
+    await h.session.setSessionTokens(tokenPair());
+    h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+    h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+    h.overrides.checkout = () => ({ purchaseId:'purchase', merchantOrderId:id, status:'PENDING', payableAmountPaise:9937, upiIntent,
+      upiIntentRouting:{ generic:upiIntent, apps:{ phonepe:{ android:phonepeLink }, paytm:{ ios:'paytmmp://cash_wallet' } } } });
+    h.bridge.handle({ ...prepare, data: { ...prepare.data, route: 'LOCAL_UPI' } });
+    h.bridge.handle(prepare); await settle();
+    assert.deepEqual(h.calls.filter(call => call.name === 'checkout').map(call => call.args), [['pack-id', 'payment-json-1', undefined]]);
+    assert.equal(h.find('wallet.checkout').at(-1).data.upiPlatform, 'android');
+    assert.equal(h.opened.length, 0, 'Preparing a summary never opens a payment app');
+    h.bridge.handle({ ...pay, data: { ...pay.data, url: 'https://not-payplus.example' } });
+    h.bridge.handle({ ...pay, data: { merchantOrderId: 'unowned_order', method: 'phonepe' } });
+    await settle();
+    assert.equal(h.opened.length, 0);
+    assert.equal(h.find('operation.error').at(-1).data.code, 'PAYMENT_NOT_READY');
+
+    h.overrides.openURL = () => { throw new Error('No activity handler'); };
+    h.bridge.handle(pay); await settle();
+    assert.equal(h.find('operation.error').at(-1).data.code, 'PAYMENT_OPEN_FAILED');
+    assert.equal(h.count('verifyPurchase'), 0, 'Opening a missing app never implies a payment was made');
+    h.overrides.openURL = undefined;
+
+    const resume = { ...prepare, data: { ...prepare.data, resumeOrderId: id } };
+    h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'coins', merchantOrderId: id } }); await settle();
+    h.bridge.handle(pay); await settle();
+    assert.equal(h.find('operation.error').at(-1).data.code, 'PAYMENT_NOT_READY');
+    h.overrides.verifyPurchase = () => ({ ...h.overrides.checkout(), packId: 'other-pack', idempotencyKey: prepare.data.idempotencyKey });
+    h.bridge.handle(resume); await settle();
+    assert.equal(h.find('operation.error').at(-1).data.code, 'PAYMENT_ORDER_MISMATCH');
+    h.overrides.verifyPurchase = () => ({ ...h.overrides.checkout(), packId: prepare.data.packId, idempotencyKey: prepare.data.idempotencyKey, requestedRoute: 'legacy_upi' });
+    h.bridge.handle(resume); await settle();
+    assert.equal(h.count('checkout'), 1, 'Resume looks up the existing order rather than creating a new payment');
+    assert.equal(h.find('wallet.checkout').at(-1).data.requestedRoute, 'legacy_upi');
+    assert.equal(h.opened.length, 0, 'Restoring the checkout summary still requires an explicit tap');
+
+    h.bridge.handle({ ...pay, data: { ...pay.data, method: 'other' } }); await settle();
+    assert.deepEqual(h.opened, [upiIntent], 'Fallback uses the same provider-issued quote and order');
+    h.bridge.handle(pay); await settle();
+    assert.equal(h.opened.length, 1, 'Repeated taps cannot launch another app for the active handoff');
+    h.overrides.verifyPurchase = () => ({ purchaseId:'purchase', merchantOrderId:id, status:'SUCCESS' });
+    for (const listener of [...h.activities]) listener('background');
+    for (const listener of [...h.activities]) listener('active');
+    await settle();
+    assert.equal(h.find('wallet.payment-returned').at(-1).data.status, 'SUCCESS');
+    h.bridge.handle(pay); await settle();
+    assert.equal(h.opened.length, 1, 'A confirmed order cannot be reopened');
+  } finally { h.bridge.close(); }
+});
+
+for (const platform of ['android', 'ios']) {
+  test(`PayPlus opens the ${platform} store for a missing UPI app and resumes the same order on return`, async () => {
+    const h = harness('active', null, false, null, platform);
+    const installed = { phonepe: false, gpay: false, paytm: true };
+    const app = platform === 'android' ? 'phonepe' : 'gpay';
+    const merchantOrderId = 'store_install_order';
+    const generic = 'upi://pay?pa=recipient%40upi&am=9.00&cu=INR&tr=test-ref';
+    const phonepe = 'phonepe://native?data=dGVzdA%3D%3D&id=p2ppayment';
+    const pay = { type: 'wallet.payment.open', data: { merchantOrderId, method: app } };
+    try {
+      h.overrides.installedUpiApps = async () => ({ ...installed });
+      h.overrides.canOpenURL = url => ({ 'phonepe://': installed.phonepe, 'gpay://': false, 'tez://': installed.gpay, 'paytmmp://': installed.paytm })[url];
+      await h.session.setSessionTokens(tokenPair());
+      h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+      h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+      h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId, status: 'PENDING', upiIntent: generic,
+        upiIntentRouting: { generic, apps: { phonepe: { android: phonepe } } } });
+      h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-store-1', prepareOnly: true } }); await settle();
+      assert.deepEqual(plain(h.find('wallet.checkout').at(-1).data.upiAppsInstalled), installed);
+      h.overrides.openURL = url => { if (url.startsWith('market://')) throw new Error('Store link handler missing'); };
+      h.bridge.handle(pay); h.bridge.handle(pay); await settle();
+      const listing = platform === 'android' ? 'https://play.google.com/store/apps/details?id=com.phonepe.app' : 'itms-apps://apps.apple.com/in/app/id1193357041';
+      assert.deepEqual(h.opened, [listing]);
+      assert.deepEqual(plain(h.find('wallet.payment.store').map(message => message.data)), [{ merchantOrderId, method: app }]);
+      assert.equal(h.find('wallet.payment.opening').length, 0, 'A store visit is never presented as a payment launch');
+
+      h.activities.forEach(listener => listener('background'));
+      installed[app] = true;
+      h.activities.forEach(listener => listener('active')); await settle();
+      assert.deepEqual(plain(h.find('wallet.payment.apps').at(-1).data), { merchantOrderId, upiAppsInstalled: installed });
+      assert.equal(h.count('verifyPurchase'), 0, 'Returning from the store does not confirm or abandon payment');
+      assert.equal(h.find('wallet.payment-returned').length, 0);
+      assert.deepEqual(h.opened, [listing], 'Returning from the store never auto-launches a payment');
+
+      h.bridge.handle(pay); await settle();
+      assert.equal(h.opened.at(-1), platform === 'android' ? phonepe : generic);
+      assert.deepEqual(plain(h.find('wallet.payment.opening').at(-1).data), { merchantOrderId, method: app, ...(platform === 'ios' ? { launchMethod: 'other' } : {}) });
+      assert.equal(h.count('checkout'), 1);
+    } finally { h.bridge.close(); }
+  });
+}
+
 test('coin payment return notices require an externally launched checkout that actually left the app', async () => {
   const h = harness(), cache = h.load('src/payment-cache.ts');
   await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
@@ -2497,14 +2596,16 @@ test('restored pending coins release their UI after verification without changin
   const h = harness(), cache = h.load('src/payment-cache.ts');
   await h.session.setSessionTokens(tokenPair());
   await cache.rememberPendingPayment('alice', { orderId: 'restored_coins', kind: 'coins', packId: 'old-pack', idempotencyKey: 'restored-attempt-1' });
+  await cache.rememberPendingPayment('alice', { orderId: 'unopened_coins', kind: 'coins', packId: 'pack-id', idempotencyKey: 'unopened-attempt-1', awaitingHandoff: true });
   await cache.rememberPendingPayment('alice', { orderId: 'restored_premium', kind: 'premium', idempotencyKey: 'premium-attempt-1' });
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
-  h.overrides.verifyPurchase = () => ({ purchaseId: 'coin-purchase', merchantOrderId: 'restored_coins', status: 'PENDING' });
+  h.overrides.verifyPurchase = (orderId) => ({ purchaseId: 'coin-purchase', merchantOrderId: orderId, status: 'PENDING' });
   h.overrides.verifyPremium = () => ({ purchaseId: 'premium-purchase', merchantOrderId: 'restored_premium', kind: 'premium', status: 'PENDING' });
   h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
   assert.deepEqual(plain(h.find('wallet.payment-returned').map(message => message.data)), [{ merchantOrderId: 'restored_coins', status: 'PENDING', packId: 'old-pack', idempotencyKey: 'restored-attempt-1' }]);
+  assert.ok(h.find('wallet.purchase').some(message => message.data.merchantOrderId === 'unopened_coins'), 'Unopened quotes reconcile without being reported as failed payments');
   assert.equal(h.find('themes.premium.purchase').at(-1).data.status, 'PENDING', 'Premium retains its original pending verification flow');
-  assert.equal((await cache.readPendingPayments('alice')).length, 2, 'Neither UI dismissal nor verification invents terminal payment status');
+  assert.equal((await cache.readPendingPayments('alice')).length, 3, 'Neither UI dismissal nor verification invents terminal payment status');
   assert.equal(h.opened.length, 0); assert.equal(h.count('checkout'), 0, 'Restoration never launches or creates payment');
   h.bridge.close();
 });
@@ -4294,6 +4395,25 @@ test('call recovery checks a background call on foreground without waiting for a
     assert.deepEqual(plain(h.find('call.ended').map(event=>event.data)),[{callId}]);
     assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(),false);
     assert.equal(h.count('endCall'),0,'Recovering a server hangup does not issue a second hangup mutation');
+  } finally {h.bridge.close();}
+});
+
+test('call recovery connects an outgoing call when the realtime answer was lost', async () => {
+  const h = harness(), callId = 'missed-accept-event', peerId = 'host-id';
+  try {
+    h.overrides.me = () => ({...account(),requiresOnboarding:false});
+    h.overrides.startCall = () => ({callId});
+    await h.session.setSessionTokens(tokenPair());
+    h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+    h.bridge.handle({type:'call.start',data:{to:peerId,voice:true}});await settle();
+    h.overrides.callState = () => ({callId,status:'accepted',connection:{peerId:'different-host',voice:true}});
+    h.live[0].onEvent({type:'realtime.status',data:{connected:true}});await settle();
+    assert.equal(h.find('call.connected').length,0,'A different peer cannot start media');
+    h.overrides.callState = () => ({callId,status:'accepted',connection:{peerId,voice:true,rate:35}});
+    h.live[0].onEvent({type:'realtime.status',data:{connected:true}});await settle();
+    assert.deepEqual(plain(h.find('call.connected').map(event=>event.data)),[{callId,initiator:true,peerId,voice:true,rate:35}]);
+    h.live[0].onEvent({type:'realtime.status',data:{connected:true}});await settle();
+    assert.equal(h.find('call.connected').length,1,'More status reads do not restart media');
   } finally {h.bridge.close();}
 });
 

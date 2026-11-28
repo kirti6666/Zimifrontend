@@ -52,6 +52,7 @@ function shell() {
       if (name === './src/native-media/view') return { NATIVE_MEDIA_ENABLED: true, NativeMediaLayer: 'NativeMediaLayer' };
       if (name === './src/native-media/camera-test') return { NATIVE_CAMERA_TEST: false, NativeCameraTest: 'NativeCameraTest' };
       if (name === './src/launch-screen') return { LaunchScreen: 'LaunchScreen' };
+      if (name === './src/first-launch-permissions') return { requestFirstLaunchPermissions: async () => {} };
       if (name === './src/theme-cache') return { readThemeCache: () => ({ default: { colors: { primary: '#123456' } } }) };
       if (name === './src/config') return { API_URL: 'https://api.example.test/api/v1' };
       if (name === './src/app-update') return { useAppUpdates: () => ({ state: { status: 'allowed' } }) };

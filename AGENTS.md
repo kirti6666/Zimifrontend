@@ -83,12 +83,14 @@ keeps it identical to the original Next.js version.
   and New tabs in place of the app name (the selected one larger and bold),
   then Search and the notification inbox bell with its unread dot. The creator
   leaderboard and Home trophy are temporarily hidden by
-  `ZIMI_CREATOR_LEADERBOARD_ENABLED`. There is no wallet on Home. The
+  `ZIMI_CREATOR_LEADERBOARD_ENABLED`. The
   feeds map to the server's `mode`: Following
   = `following`, Explore = `popular` (default), For You = `foryou` (hosts not
   followed yet), New = `new` (latest hosts first). Under the header, country
   chips: Popular and India only for now (`country=India`), hidden on
-  Following. Then one square-card two-column grid that loads the next page
+  Following. The right-aligned coin pill shows the authenticated member's
+  balance and opens Add coins directly via its plus button. Show the exact
+  number through 99,999, then use K on Home. The square-card two-column grid loads the next page
   automatically near the bottom, without a Load more button. Keep loaded cards
   stable, one page request in flight, and an explicit retry after errors; stop
   at the server's final page or an empty/non-growing page. There is
@@ -129,12 +131,12 @@ keeps it identical to the original Next.js version.
 - Explore normally includes only hosts who explicitly choose Online; the server
   filters before pagination and keeps Online hosts reachable through background
   push. Approved staff-created dummy hosts are the deliberate exception: include
-  them in both member and approved-host Explore before their first OTP sign-in,
-  even while Offline and unverified, without marking them Online or call-available.
-  Their private fixture classification remains server-only, and calls retain the
-  existing short-ring unavailable behavior. Render the server's `onlineForCalls`
-  choice, falling back to reported online presence, rather than marking every host
-  Online. Following and existing chats can include Offline hosts. Members may still
+  them in both member and approved-host Explore before their first OTP sign-in.
+  The server reports these hosts as Online while their activity is public. Their
+  classification remains server-only, and calls retain the existing short-ring
+  unavailable behavior. Render the server's `onlineForCalls` choice when supplied
+  and use reported online presence when it is absent. Following and existing
+  chats can include Offline hosts. Members may still
   manually call an approved Offline host from a profile or chat. Approval, blocks
   and Coins remain server checks. New screens read `h.on` for presence and
   `h.available` for call permission; those two values have different meanings.
@@ -143,7 +145,7 @@ keeps it identical to the original Next.js version.
   (from the Home empty state) is a detail page with Back and no bottom tabs.
   While the creator leaderboard is hidden, `board` resolves to Home.
   Profile and Settings are separate screens;
-  Settings owns the total coin balance card and Add coins action.
+  Settings owns the full wallet card and also links to Add coins.
 - Shared tab geometry lives in `web/navigation.css`: 58px content bar, 44px
   button targets and zero outer margins. Native `SafeAreaView` owns system
   insets; `data-native-safe-area` prevents a second web bottom inset. Standalone
@@ -296,7 +298,13 @@ keeps it identical to the original Next.js version.
   and empty activity states visible.
 - The host go-live flow (`web/host-calls.js`, `web/host-studio.js`, the host
   call in `web/live-room.js`) follows the host reference layout but always
-  uses the selected theme's colors, never a fixed palette. The host's camera
+  uses the selected theme's colors, never a fixed palette. The Mission and
+  Gift target sheets (`.hs-ref` in `web/host-studio.css`, setup and in-call)
+  are a scoped exception like the gift picker: the user's dark reference sheet
+  (grip, glow, three-column gift cards with tinted circles, a HOW MANY stepper
+  of 1-999 with 5/10/20/50 chips, a summary card; goal chips 5K-1M plus an
+  exact amount from 1,000 to 9,99,99,999 that − / + move by 10,000). Selection,
+  progress and Done use the theme accent, and corners stay 10px. The host's camera
   retains its full source image: native Android requests 1920x1440 at 30 fps;
   the browser fallback captures 1280x720 with `resizeMode: 'none'`. Use
   `cover` on the visible video call's main stage and video dial preview so they

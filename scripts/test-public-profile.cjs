@@ -482,6 +482,12 @@ async function run() {
     assert.equal(await sentCount(page,'call.start'),beforeOfflineSetup,'Manual call setup does not charge or ring before confirmation');
     await navigate(page,other); await acceptProfile(page,other); await acceptPosts(page,other);
     assert.equal(await publicDiamonds.innerText(), '—', 'An older server without the stat leaves the public value unavailable');
+    await receive(page, 'data.home', { hosts: [{ id: other.id, online: true }], total: 1, page: 1 });
+    assert.equal(await page.locator('.zu-presence').innerText(), 'Online', 'A new discovery presence snapshot clears the old availability toggle when the server omits it');
+    assert.equal(await publicDiamonds.innerText(), '—', 'A presence update preserves profile statistics');
+    assert.equal(await page.getByRole('heading', { name: other.name, exact: true }).count(), 1, 'A presence update preserves profile identity');
+    await receive(page, 'data.home', { hosts: [{ id: other.id, online: true, onlineForCalls: false }], total: 1, page: 1 });
+    assert.equal(await page.locator('.zu-presence').innerText(), 'Currently offline', 'A fresh availability toggle still takes precedence');
     console.log('PASS public profile: stale response isolation, truthful offline presence and preserved manual call access');
 
     const blocksBefore = await sentCount(page, 'block.set');

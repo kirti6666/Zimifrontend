@@ -121,13 +121,29 @@ const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 
     // Choosing a mission target updates the open sheet in place instead of redrawing the screen.
     await button('Mission').click();
     await page.locator('.hs-sheet').waitFor();
-    assert.match(await page.locator('.hs-sheet').innerText(), /Track user gift spending\. Your earnings are diamonds/);
+    assert.match(await page.locator('.hs-sheet').innerText(), /Track user gift spending in coins\. You earn diamonds/);
+    assert.deepEqual(await page.locator('.hs-goals button').allInnerTexts(), ['5K', '10K', '20K', '50K', '100K', '200K', '500K', '1M'], 'Mission offers the reference goals');
     assert.equal(await page.locator('.hs-task,.hs-claim').count(), 0, 'Hosts receive no legacy Coin task offers, even from cached Home rewards');
     await page.evaluate(() => { window.__missionSheet = document.querySelector('.hs-sheet'); window.__setupVideo = document.querySelector('.hc-stage video'); });
-    await button('500K').click();
+    await button('Goal 5,00,000 coins').click();
     assert.equal(await page.evaluate(() => document.querySelector('.hs-sheet') === __missionSheet && document.querySelector('.hc-stage video') === __setupVideo), true, 'A mission choice keeps the sheet and camera mounted');
-    assert.equal(await button('500K').getAttribute('aria-pressed'), 'true');
+    assert.equal(await button('Goal 5,00,000 coins').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.evaluate(() => document.activeElement?.dataset.hsFocus), 'goal-500000', 'Focus stays on the chosen target');
+    // An exact amount: a short one warns and keeps the last goal; − / + move it by 10,000.
+    const goalField = page.getByRole('textbox', { name: 'Goal in coins', exact: true });
+    assert.equal(await goalField.inputValue(), '5,00,000');
+    await goalField.fill('750');
+    assert.equal(await page.locator('.hs-goal-hint').innerText(), 'Enter at least 1,000 coins');
+    assert.equal(await goalField.getAttribute('aria-invalid'), 'true');
+    assert.equal(await page.evaluate(() => HostStudio.goal), 500000, 'A goal below 1,000 is never used');
+    await goalField.fill('125000');
+    await goalField.press('Enter');
+    assert.equal(await goalField.inputValue(), '1,25,000', 'Enter shows the goal in full');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Goal in coins', 'Typing keeps focus in the field');
+    await button('Increase by 10,000').click();
+    assert.equal(await page.evaluate(() => HostStudio.goal), 135000);
+    assert.match(await page.locator('.hs-mission-card').innerText(), /of 1,35,000[\s\S]*1,35,000 to go\s+Goal 1,35,000/);
+    await button('Goal 5,00,000 coins').click();
     await page.evaluate(() => r());
     assert.match(await page.evaluate(() => document.querySelector('.hs-sheet').style.getPropertyValue('--hs-enter-age')), /^-\d+ms$/, 'A redraw resumes the sheet entrance instead of replaying it');
     await page.keyboard.press('Escape');

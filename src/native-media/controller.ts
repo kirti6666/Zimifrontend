@@ -56,8 +56,10 @@ type Signal = { callId: string; from?: string; description?: { type: "offer" | "
 type Session = {
   id: string; peerId: string; initiator: boolean; voice: boolean; version: number;
   pc: RTCPeerConnection | null; pending: Signal[]; candidates: Record<string, unknown>[];
+  sentDescription?: NonNullable<Signal["description"]>; remoteOffer?: string; remoteAnswer?: string;
   queue: Promise<void>; started: Promise<void> | null;
   monitor?: ReturnType<typeof setInterval>; recovery?: ReturnType<typeof setTimeout>;
+  wasConnected?: boolean;
   recoveryStarted: number; sampling: boolean; level: number; tuned: number; target: number;
   poorSamples: number; goodSamples: number; downSamples: number; upSamples: number; changedAt: number; healthySince: number;
   stats: Map<string, QualitySnapshot>;
@@ -336,6 +338,14 @@ export function createNativeMedia(
   function enqueue(current: Session, work: () => Promise<void>) {
     current.queue = current.queue.then(async () => { if (valid(current)) await work(); }).catch(error => failed(current, error));
   }
+  function resend(current: Session) {
+    if (current.sentDescription) signal(current, { description: current.sentDescription });
+    current.candidates.forEach(candidate => signal(current, { candidate }));
+  }
+  async function addCandidate(pc: RTCPeerConnection, candidate: Record<string, unknown>) {
+    try { await pc.addIceCandidate(candidate); }
+    catch { /* A late candidate can belong to the previous ICE generation. */ }
+  }
   async function offer(current: Session, restart = false) {
     const pc = current.pc;
     if (!pc || !valid(current)) return;
@@ -345,31 +355,38 @@ export function createNativeMedia(
       if (!valid(current)) return;
       await pc.setLocalDescription(description);
       await tune(current, current.level);
+      if (valid(current) && pc.localDescription?.type === "offer") {
+        current.sentDescription = { type: "offer", sdp: pc.localDescription.sdp };
+      }
     }
-    if (valid(current) && pc.localDescription?.type === "offer") {
-      signal(current, { description: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } });
-      current.candidates.forEach(candidate => signal(current, { candidate }));
-    }
+    if (valid(current)) resend(current);
   }
   function recovered(current: Session) {
     const restarting = current.recoveryStarted > 0 || state.quality === "reconnecting";
     clearTimeout(current.recovery); current.recovery = undefined; current.recoveryStarted = 0;
+    current.wasConnected = true;
     if (restarting) {
       current.stats.clear(); current.poorSamples = current.goodSamples = current.upSamples = current.downSamples = 0;
       current.healthySince = 0;
     }
     publish({ status: "Connected", quality: restarting ? "good" : state.quality });
   }
-  function recover(current: Session) {
+  function recover(current: Session, initial = false) {
     if (!valid(current) || current.recovery) return;
     current.recoveryStarted ||= Date.now();
-    publish({ status: "Connection interrupted. Reconnecting…", quality: "reconnecting" });
+    if (!initial) publish({ status: current.wasConnected ? "Connection interrupted. Reconnecting…" : "Still connecting your call…", quality: "reconnecting" });
     current.recovery = setTimeout(() => {
       current.recovery = undefined;
       if (!valid(current) || !current.pc) return;
       if (connected(current.pc)) return recovered(current);
-      if (Date.now() - current.recoveryStarted >= 30000) return failed(current, new Error("The media connection could not recover. Please reconnect."));
-      if (current.initiator) enqueue(current, () => offer(current, true));
+      if (Date.now() - current.recoveryStarted >= 30000) return failed(current, new Error(current.wasConnected
+        ? "The media connection could not recover. Please reconnect."
+        : "The call could not connect. Check your connection and try again."));
+      const pc = current.pc;
+      const iceFailed = [pc.connectionState, pc.iceConnectionState].some(value => value === "failed" || value === "disconnected");
+      const restart = current.initiator && pc.signalingState === "stable" && (current.wasConnected || iceFailed || Date.now() - current.recoveryStarted >= 9000);
+      if (restart) enqueue(current, () => offer(current, true));
+      else enqueue(current, async () => resend(current));
       recover(current);
     }, 3000);
   }
@@ -524,21 +541,31 @@ export function createNativeMedia(
       const pc = current.pc!;
       if (data.description) {
         if (data.description.type !== (current.initiator ? "answer" : "offer")) return;
-        if (current.initiator && pc.signalingState !== "have-local-offer") return;
+        if (current.initiator && (pc.signalingState !== "have-local-offer" || current.remoteAnswer === data.description.sdp)) return;
+        if (data.description.type === "offer" && current.remoteOffer === data.description.sdp) {
+          resend(current);
+          return;
+        }
         await pc.setRemoteDescription(data.description);
         if (!valid(current)) return;
+        if (data.description.type === "answer") current.remoteAnswer = data.description.sdp;
         const waiting = current.pending.splice(0);
-        for (const pending of waiting) if (pending.candidate) { await pc.addIceCandidate(pending.candidate); if (!valid(current)) return; }
+        for (const pending of waiting) if (pending.candidate) { await addCandidate(pc, pending.candidate); if (!valid(current)) return; }
         if (data.description.type === "offer") {
+          current.remoteOffer = data.description.sdp;
+          current.candidates = [];
           const answer = await pc.createAnswer();
           if (!valid(current)) return;
           await pc.setLocalDescription(answer);
           await tune(current, current.level);
-          if (valid(current)) signal(current, { description: { type: pc.localDescription!.type, sdp: pc.localDescription!.sdp } });
+          if (valid(current) && pc.localDescription?.type === "answer") {
+            current.sentDescription = { type: "answer", sdp: pc.localDescription.sdp };
+            resend(current);
+          }
         }
       }
       if (data.candidate && valid(current)) {
-        if (pc.remoteDescription) await pc.addIceCandidate(data.candidate);
+        if (pc.remoteDescription) await addCandidate(pc, data.candidate);
         else if (current.pending.length < 100) current.pending.push(data);
       }
     });
@@ -603,6 +630,7 @@ export function createNativeMedia(
         if (current.initiator) enqueue(current, () => offer(current));
         const pending = current.pending.splice(0);
         pending.forEach(receive);
+        recover(current, true);
       } catch (error) { failed(current, error); throw error; }
     })();
     return current.started;

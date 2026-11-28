@@ -320,7 +320,7 @@ for it (login, call failed).
 | Post comments | `GET /posts/:id/comments?page=1`, `POST /posts/:id/comments` `{text}` | Newest first, with the author; text is moderated like chat |
 | Delete a comment | `DELETE /posts/:id/comments/:commentId` (its author or the post owner) | `{_id}` |
 | Payment methods | `GET /payments/routes` | `{mode,routeChoice,routes:[{route,pageStyle,upiIntent,takingPayments,currency}]}`; available INR routes only |
-| Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey, route?}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
+| Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey}` prepares the PayPlus quote. `POST /coins/purchase/verify` `{merchantOrderId}` resumes or checks an existing order. | `Purchase` |
 | Unlock lifetime premium | `POST /themes/premium/purchase` `{idempotencyKey, route?}`; `POST /themes/premium/verify` `{merchantOrderId}` | `Purchase` with `kind: "premium"` |
 | Payout verification | `GET /wallet/payout-kyc`, `POST /wallet/payout-kyc` | Current masked verification status; submit PAN and the selected UPI or bank destination using a new idempotency key |
 | Review a withdrawal | `GET /wallet/withdrawal-quote?amountPaise=...` | Own gross, TDS and net amounts, Diamonds, payout destination and immutable settings/KYC identifiers |
@@ -532,7 +532,25 @@ member calls do not apply to an applicant answering staff.
 
 ## Payment methods and recovery
 
-The backend discovers methods through [PayPlus's v2 routes API](https://new.payplus.live/docs/api-reference#payment-routes).
+Coin recharge uses one PayPlus order. `wallet.checkout` with `prepareOnly: true`
+prepares the selected pack and returns the exact `payableAmountPaise` and any
+available `upiIntent` and `upiIntentRouting` JSON fields. The summary shows app
+choices for the device's platform. `wallet.payment.open` accepts only the order
+reference and selected method. Native opens the PayPlus link for that prepared
+order. `Pay with UPI app` or `Other UPI` uses the returned generic intent.
+If PayPlus only supplies the generic intent, the summary offers that action and
+the same order's PayPlus checkout. `Pay with UPI ID` displays
+the receiving UPI ID from that validated intent and the exact payable amount
+for a manual transfer. PayPlus hosted checkout remains available for payment
+options and UTR submission when PayPlus requests it.
+PhonePe, Google Pay, and Paytm stay visible. Native includes its device checks
+in `upiAppsInstalled` and opens the official store listing for a missing app.
+The store handoff keeps the order open. `wallet.payment.apps` refreshes
+installation status when the user returns, and payment still requires a tap.
+`resumeOrderId` verifies the owned order and matches its pack and idempotency key
+before restoring the summary. See [PayPlus's mobile checkout contract](https://new.payplus.live/docs/mobile-apps).
+
+Premium checkout discovers methods through [PayPlus's v2 routes API](https://new.payplus.live/docs/api-reference#payment-routes).
 `mode` is `SINGLE` or `ROTATION`; omitting `route` always leaves routing to PayPlus.
 Manual selection is permitted only when `routeChoice` is true, in either mode.
 The backend validates new selections against the current available INR routes.
@@ -543,7 +561,7 @@ The WebView requests `payments.routes.load {requestId}` and receives a correlate
 skeleton and retry control. Route discovery failure leaves Automatic checkout
 available; it does not imply payment creation will succeed.
 
-`wallet.checkout` and `themes.premium.checkout` accept the optional `route`.
+`themes.premium.checkout` and older coin clients accept the optional `route`.
 The backend snapshots it as `requestedRoute`, separately from the actual provider
 `route` and `pageStyle`. Retries reuse the same idempotency key, price, and original
 selection. Automatic retries continue to omit `route`, even after PayPlus reports
@@ -604,7 +622,13 @@ daily cap per member and optional impression or click budgets.
 - Each card is labelled “Sponsored” and has an **About this ad** dialog that names
   the advertiser and destination and links to Premium.
 
-## Post-registration device access
+## Device access on Android
+
+A fresh installation requests missing camera, microphone and notification
+permissions once when the first screen opens. An incoming call or mandatory
+update has priority over the startup prompts. Permission choices do not block
+access to the app, and the startup flow does not register an FCM token or
+capture media.
 
 After the server confirms the two-step account setup is complete, Android may
 offer a separate device-access screen for camera, microphone and notifications.
