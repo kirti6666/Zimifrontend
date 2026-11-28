@@ -81,9 +81,9 @@ keeps it identical to the original Next.js version.
   queues, and route creator availability through the 1:1 call setup.
 - The Home header follows the user's reference: Following, Explore, For You
   and New tabs in place of the app name (the selected one larger and bold),
-  then Search, a gold trophy that opens the creator leaderboard (`board`,
-  `web/leaderboard.js`, real `GET /leaderboard/creators` data), and the
-  notification inbox bell with its unread dot. There is no wallet on Home. The
+  then Search and the notification inbox bell with its unread dot. The creator
+  leaderboard and Home trophy are temporarily hidden by
+  `ZIMI_CREATOR_LEADERBOARD_ENABLED`. There is no wallet on Home. The
   feeds map to the server's `mode`: Following
   = `following`, Explore = `popular` (default), For You = `foryou` (hosts not
   followed yet), New = `new` (latest hosts first). Under the header, country
@@ -140,8 +140,8 @@ keeps it identical to the original Next.js version.
   `h.available` for call permission; those two values have different meanings.
 - The bottom tabs are Home, Chat, Profile and Settings (the chat route remains
   `chats`). Explore is removed; old Explore routes resolve to Home. `all-creators`
-  (from the Home empty state) and the `board` leaderboard are detail pages
-  with Back and no bottom tabs.
+  (from the Home empty state) is a detail page with Back and no bottom tabs.
+  While the creator leaderboard is hidden, `board` resolves to Home.
   Profile and Settings are separate screens;
   Settings owns the total coin balance card and Add coins action.
 - Shared tab geometry lives in `web/navigation.css`: 58px content bar, 44px
@@ -261,7 +261,7 @@ keeps it identical to the original Next.js version.
   the explicit Send action; never invent gifts, prices or wallet balances.
 - Show the Following/Explore/For You/New Home header only on Home. Chat, Profile and
   Settings use their existing page headings and actions. Keep primary tabs
-  the same size across those main screens; All Creators, Leaderboard, Notifications and Themes
+  the same size across those main screens; All Creators, Notifications and Themes
   have their own Back headers and no bottom tabs. Themes opens as a page, not
   a settings modal. Animate only page content on tab changes and
   respect reduced-motion preferences.

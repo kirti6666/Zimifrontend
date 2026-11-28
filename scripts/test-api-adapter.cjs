@@ -311,48 +311,74 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
 
   reset();
   const progress = [];
-  for (let index = 0; index < 3; index++) expect('POST', '/auth/profile/avatar/upload-url', { uploadUrl: `https://storage.example.test/photo${index}?signature=short-lived`, key: `avatars/member-id/${index}.png` }, body => assert.deepEqual(plain(body), { contentType: 'image/png', contentLength: 9 }));
   expect('PATCH', '/auth/profile', { user: { ...user, onboardingStatus: 'completed' } }, body => {
-    assert.deepEqual(plain(body), { name: 'Asha', onboarding: { email: 'asha@example.test', photoKeys: ['avatars/member-id/0.png','avatars/member-id/1.png','avatars/member-id/2.png'], languages: [], interests: ['Music'], preferredRole: 'member', adultConfirmed: true } });
+    assert.deepEqual(plain(body), { name: 'Asha', onboarding: { email: 'asha@example.test', preferredRole: 'member', gender: 'female', adultConfirmed: true } });
     assert.ok(!JSON.stringify(body).includes('base64'));
   });
-  const profile = { name: ' Asha ', email: 'asha@example.test', photos: [png,png,png], langs: [], interests: ['Music'], adultConfirmed: true, preferredRole: 'member', role: 'host' };
+  const profile = { onboarding: true, name: ' Asha ', email: 'asha@example.test', gender: 'female', adultConfirmed: true, preferredRole: 'member' };
   assert.equal((await api.saveProfile(profile, (done,total) => progress.push([done,total]))).requiresOnboarding, false);
-  assert.deepEqual(progress, [[0,3],[1,3],[2,3],[3,3]]);
+  assert.deepEqual(progress, [], 'Basic-details onboarding has no upload progress');
+  assert.equal(uploads.length, 0, 'Completing signup does not upload profile photos');
+  finished();
+
+  reset();
+  await assert.rejects(api.saveProfile({ ...profile, adultConfirmed: false }), /18 or older/);
+  assert.equal(requests.length, 0);
+
+  expect('PATCH', '/auth/profile', { user: { ...user, onboardingStatus: 'completed', onboardingPreference: 'creator' } }, body => {
+    assert.deepEqual(plain(body), { name: 'Asha', onboarding: { email: 'asha@example.test', preferredRole: 'creator', gender: 'female', adultConfirmed: true } });
+  });
+  await api.saveProfile({ ...profile, preferredRole: 'creator' });
+  assert.equal(uploads.length, 0, 'Creator intent does not add category, language or photo work to signup');
+  finished();
+
+  // Already-installed clients can still finish a photo draft created before
+  // the registration flow was shortened. Keep that compatibility isolated
+  // from the new no-upload contract above.
+  reset();
+  const legacyProgress = [];
+  for (let index = 0; index < 3; index++) expect('POST', '/auth/profile/avatar/upload-url', { uploadUrl: `https://storage.example.test/photo${index}?signature=short-lived`, key: `avatars/member-id/${index}.png` }, body => assert.deepEqual(plain(body), { contentType: 'image/png', contentLength: 9 }));
+  expect('PATCH', '/auth/profile', { user: { ...user, onboardingStatus: 'completed' } }, body => {
+    assert.deepEqual(plain(body), { name: 'Asha', onboarding: { email: 'asha@example.test', gender: 'female', adultConfirmed: true, preferredRole: 'member', photoKeys: ['avatars/member-id/0.png','avatars/member-id/1.png','avatars/member-id/2.png'], languages: [], interests: ['Music'] } });
+    assert.ok(!JSON.stringify(body).includes('base64'));
+  });
+  const legacyProfile = { name: ' Asha ', email: 'asha@example.test', gender: 'female', photos: [png,png,png], langs: [], interests: ['Music'], adultConfirmed: true, preferredRole: 'member' };
+  await api.saveProfile(legacyProfile, (done,total) => legacyProgress.push([done,total]));
+  assert.deepEqual(legacyProgress, [[0,3],[1,3],[2,3],[3,3]]);
   assert.equal(uploads.length, 3);
   for (const upload of uploads) {
     assert.equal(upload.options.method, 'PUT'); assert.equal(upload.options.credentials, 'omit'); assert.equal(upload.options.headers.Authorization, undefined);
     assert.equal(upload.options.body.byteLength, 9);
   }
   finished();
+
   reset();
-  await assert.rejects(api.saveProfile({ ...profile, adultConfirmed: false }), /18 or older/);
-  await assert.rejects(api.saveProfile({ ...profile, photos: ['data:image/svg+xml;base64,PGh0bWw+',png,png] }), /JPEG/);
-  await assert.rejects(api.saveProfile({ ...profile, preferredRole: 'creator' }), /languages/);
+  await assert.rejects(api.saveProfile({ ...legacyProfile, photos: ['data:image/svg+xml;base64,PGh0bWw+',png,png] }), /JPEG/);
+  await assert.rejects(api.saveProfile({ ...legacyProfile, preferredRole: 'creator' }), /languages/);
   assert.equal(requests.length, 0);
 
   expect('POST', '/auth/profile/avatar/upload-url', { uploadUrl: 'https://storage.example.test/first', key: 'avatars/member-id/first.png' });
   uploadError = new Error('offline');
-  await assert.rejects(api.saveProfile(profile), /Check your connection/);
-  assert.equal(requests.length, 1, 'Failed upload never saves a profile'); finished();
+  await assert.rejects(api.saveProfile(legacyProfile), /Check your connection/);
+  assert.equal(requests.length, 1, 'Failed legacy upload never saves a profile'); finished();
   reset();
   expect('POST', '/auth/profile/avatar/upload-url', { uploadUrl: 'https://storage.example.test/first', key: 'avatars/member-id/first.png' }, undefined, { run: () => version++ });
-  await assert.rejects(api.saveProfile(profile), /sign-in changed/);
-  assert.equal(uploads.length, 0, 'Logout during signing cancels the old upload'); finished();
+  await assert.rejects(api.saveProfile(legacyProfile), /sign-in changed/);
+  assert.equal(uploads.length, 0, 'Logout during a legacy signup upload cancels the old upload'); finished();
   reset();
   expect('POST', '/auth/profile/avatar/upload-url', { uploadUrl: 'http://public.example.test/first', key: 'avatars/member-id/first.png' });
-  await assert.rejects(api.saveProfile(profile), /secure connection/);
+  await assert.rejects(api.saveProfile(legacyProfile), /secure connection/);
   assert.equal(uploads.length, 0); finished();
 
   reset();
   const existingPhotos = [0,1,2].map(index => ({ key: `avatars/member-id/saved-${index}.png`, url: `https://cdn.example.test/saved-${index}.png` }));
   expect('GET', '/auth/me', { user: { ...user, photos: existingPhotos } });
   expect('PATCH', '/auth/profile', { user: { ...user, photos: existingPhotos, onboardingStatus: 'completed' } }, body => assert.deepEqual(plain(body.onboarding.photoKeys), existingPhotos.map(photo => photo.key)));
-  await api.saveProfile({ ...profile, photos: existingPhotos.map(photo => photo.url) });
+  await api.saveProfile({ ...legacyProfile, photos: existingPhotos.map(photo => photo.url) });
   assert.equal(uploads.length, 0, 'Authenticated existing gallery keys are reused without downloading or reuploading images'); finished();
   reset();
   expect('GET', '/auth/me', { user: { ...user, photos: existingPhotos } });
-  await assert.rejects(api.saveProfile({ ...profile, photos: [existingPhotos[0].url, existingPhotos[1].url, 'https://cdn.example.test/another-user.png'] }), /saved photo/);
+  await assert.rejects(api.saveProfile({ ...legacyProfile, photos: [existingPhotos[0].url, existingPhotos[1].url, 'https://cdn.example.test/another-user.png'] }), /saved photo/);
   assert.equal(requests.length, 1, 'An arbitrary gallery URL is rejected before any profile change'); assert.equal(uploads.length, 0); finished();
 
   reset();
@@ -825,25 +851,43 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     bio: 'Live music and conversation', avatar: { url: 'https://cdn.example.test/avatar.jpg' }, coverUrl: 'https://cdn.example.test/cover.jpg',
     city: 'Pune', followers: 42, following: 3, isFollowing: true, level: 4, crown: false, createdAt: '2026-01-01T00:00:00.000Z',
     languages: ['English', 'Hindi'], interests: ['Music'], category: 'Music', callRateCoinsPerMinute: 35, isOnline: true, availableForCall: true, stream: null };
-  expect('GET', '/users/host-id', publicHost);
+  expect('GET', '/users/host-id', { ...publicHost, lifetimeGiftDiamondUnits: 12_345_625_000 });
   const publicProfile = await api.publicProfile('host-id');
   assert.equal(publicProfile.id, 'host-id'); assert.equal(publicProfile.followingCount, 3); assert.equal(publicProfile.followers, 42); assert.equal(publicProfile.following, true);
   assert.equal(publicProfile.role, 'host'); assert.equal(publicProfile.serverRole, 'host'); assert.equal(publicProfile.verified, true);
+  assert.equal(publicProfile.lifetimeGiftDiamondUnits, 12_345_625_000, 'Public gift Diamond units survive the native adapter exactly');
   assert.equal(publicProfile.joined, publicHost.createdAt); assert.equal(publicProfile.ratePerMin, 35); assert.equal(publicProfile.availableForCall, true);
   assert.deepEqual(plain(publicProfile.interests), ['Music']);
   assert.equal(adapters.publicProfileFrom({ ...publicHost, isVerifiedHost: false }).verified, false, 'Explicit server approval overrides legacy verification');
   assert.equal(adapters.publicProfileFrom({ ...publicHost, role: 'user', isVerifiedHost: true }).verified, false, 'A member never gains creator authority');
+  assert.equal(adapters.publicProfileFrom({ ...publicHost, isVerifiedHost: true, isPhoneVerified: false, lifetimeGiftDiamondUnits: 0 }).lifetimeGiftDiamondUnits, 0);
+  for (const profile of [
+    publicHost,
+    { ...publicHost, role: 'user', lifetimeGiftDiamondUnits: 12_000_000 },
+    { ...publicHost, isVerifiedHost: false, lifetimeGiftDiamondUnits: 12_000_000 },
+    ...[-1, 1.5, '12000000', Number.MAX_SAFE_INTEGER + 1].map(lifetimeGiftDiamondUnits => ({ ...publicHost, lifetimeGiftDiamondUnits })),
+  ]) assert.equal(adapters.publicProfileFrom(profile).lifetimeGiftDiamondUnits, undefined, 'Missing, invalid or non-host totals are omitted');
   for (const invalid of [{ ...publicHost, followers: undefined }, { ...publicHost, following: -1 }, { ...publicHost, isFollowing: undefined }]) assert.throws(() => adapters.publicProfileFrom(invalid), /could not be loaded/, 'Missing counts never become invented zeroes');
 
   const rankedHost = { _id: '507f1f77bcf86cd799439011', name: 'Aster', avatar: publicHost.avatar, coins: 7250, rank: 1 };
   for (const period of ['daily', 'weekly', 'monthly']) {
-    expect('GET', `/leaderboard/creators?period=${period}&limit=50`, { period, items: [rankedHost], total: 1 });
-    assert.deepEqual(plain(await api.leaderboard(period)), { period, total: 1,
-      items: [{ id: rankedHost._id, name: rankedHost.name, avatarUrl: rankedHost.avatar.url, coins: 7250, rank: 1 }] });
+    expect('GET', `/leaderboard/creators?period=${period}&limit=50&includeSamples=true`, { period, items: [rankedHost], total: 1 });
+    assert.deepEqual(plain(await api.leaderboard(period)), { period, page: 1, total: 1,
+      items: [{ id: rankedHost._id, name: rankedHost.name, avatarUrl: rankedHost.avatar.url, coins: 7250, rank: 1 }],
+      sampleItems: [], sampleTotal: 0 });
   }
-  for (const row of [{ ...rankedHost, coins: undefined }, { ...rankedHost, coins: 0 }, { ...rankedHost, rank: undefined }, { ...rankedHost, _id: 'synthetic' }])
+  const sampleHost = { _id: '507f1f77bcf86cd799439012', name: 'Aarti', avatar: { url: null }, coins: 850000, rank: 51, sample: true };
+  const samplePage = { period: 'monthly', page: 2, items: [], total: 1, sampleItems: [sampleHost], sampleTotal: 51 };
+  expect('GET', '/leaderboard/creators?period=monthly&limit=50&includeSamples=true&page=2', samplePage);
+  assert.deepEqual(plain(await api.leaderboard('monthly', 2)), { period: 'monthly', page: 2, items: [], total: 1,
+    sampleItems: [{ id: sampleHost._id, name: sampleHost.name, avatarUrl: '', coins: 850000, rank: 51, sample: true }], sampleTotal: 51 });
+  await assert.rejects(api.leaderboard('monthly', 1001), /valid leaderboard page/);
+  for (const row of [{ ...rankedHost, coins: undefined }, { ...rankedHost, coins: 0 }, { ...rankedHost, rank: undefined }, { ...rankedHost, _id: 'synthetic' }, sampleHost])
     assert.throws(() => adapters.leaderboardFrom({ period: 'daily', items: [row], total: 1 }, 'daily'), /leaderboard could not be loaded/);
   assert.throws(() => adapters.leaderboardFrom({ period: 'weekly', items: [], total: 0 }, 'daily'), /leaderboard could not be loaded/);
+  for (const invalid of [{ ...samplePage, page: 1 }, { ...samplePage, page: undefined }, { ...samplePage, sampleTotal: 0 },
+    { ...samplePage, sampleItems: undefined }, { ...samplePage, sampleItems: [{ ...sampleHost, sample: false }] }])
+    assert.throws(() => adapters.leaderboardFrom(invalid, 'monthly', 2), /leaderboard could not be loaded/);
   expect('GET', '/users/different-id', publicHost); await assert.rejects(api.publicProfile('different-id'), /could not be loaded/, 'A mismatched target profile is refused');
   expect('GET', '/users/host-id/posts?page=2&limit=12', { items: [{ _id: 'post-id', kind: 'photo', mediaUrl: 'https://cdn.example.test/post.jpg', caption: 'A song for today' }], total: 13, page: 2, limit: 12 });
   const publicPosts = await api.publicPosts('host-id', 2);

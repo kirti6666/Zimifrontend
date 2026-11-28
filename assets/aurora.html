@@ -4653,7 +4653,7 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 .zh-user-person:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 @media(max-width:359px){.zh-user-person{gap:9px}.zh-profile-filters>button{min-width:42px;padding-inline:8px}}
 /* Home header, after the reference: Following, Explore, For You and New in place of the app
-   name, the selected feed larger and bolder; then Search, leaderboard and Notifications. */
+   name, the selected feed larger and bolder, followed by Search and Notifications. */
 .zh-header.zh-home-header{gap:6px;padding-left:14px;padding-right:6px}
 :is(.zh-feed-tabs,.zh-host-tabs){display:flex;align-items:center;align-self:stretch;gap:12px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
 :is(.zh-feed-tabs,.zh-host-tabs)::-webkit-scrollbar{display:none}
@@ -5581,7 +5581,10 @@ button.zlb-row:active{background:var(--raised)}
 .zlb-avatar{position:relative;display:grid;place-items:center;flex:none;width:44px;height:44px;overflow:hidden;background:var(--accent);color:var(--cta-ink);font-size:17px;font-weight:600}
 .zlb-avatar>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%}
 .zlb-name{flex:1;min-width:0;overflow:hidden;font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.zlb-score{display:grid;justify-items:end;flex:none;gap:1px}
 .zlb-coins{display:inline-flex;align-items:center;gap:5px;flex:none;color:var(--ink);font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;font-variant-numeric:tabular-nums}
+.zlb-samples h2{margin:8px 0 4px;font-size:calc(16px * var(--theme-font-scale,1));font-weight:600}
+.zlb-samples+.zlb-note{margin-top:16px;border-top:1px solid var(--line);padding-top:8px}
 .zlb-empty{padding:46px 16px;text-align:center;color:var(--muted)}
 .zlb-empty>svg{color:var(--gold)}
 .zlb-empty h2{margin:14px 0 8px;color:var(--ink);font-size:calc(18px * var(--theme-font-scale,1));font-weight:600}
@@ -5978,7 +5981,7 @@ html video[data-zimi-native-video] { color: transparent; object-fit: contain !im
 <!-- Loaded as a classic script so its inline onclick handlers keep resolving globals. -->
 <script>
 window.ZIMI_DEMO = false;
-window.ZIMI_APP_VERSION = "1.2.6";
+window.ZIMI_APP_VERSION = "1.2.7";
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -8436,12 +8439,6 @@ const PREVIEW_HOSTS = MODEL_PHOTOS.map((src, i) => src || OB_MEDIA[i]);
 // Stock licences ask for this line wherever model photos stand in for real people.
 const MODEL_NOTE = MODEL_PHOTOS.some(Boolean) ? " &middot; photos posed by models" : "";
 const OB_HEART = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 20.6s-7.4-4.4-9.3-8.9C1.3 8.5 3.3 5 6.8 5c2.1 0 3.6 1.1 4.5 2.5C12.2 6.1 13.7 5 15.8 5c3.5 0 5.5 3.5 4.1 6.7-1.9 4.5-7.9 8.9-7.9 8.9z"/></svg>';
-const OB_INTERESTS = [
-  ["🎵", "Music"], ["💃", "Dance"], ["💬", "Conversations"], ["🎬", "Movies"],
-  ["✈️", "Travel"], ["🎤", "Singing"], ["🎮", "Gaming"], ["😂", "Comedy"],
-  ["✨", "Astrology"], ["💪", "Fitness"], ["🤝", "New friends"], ["🏏", "Cricket"],
-  ["👗", "Style"], ["🍳", "Cooking"], ["📚", "Books"], ["🌿", "Wellness"]
-];
 let obRenderKey = "", obRequestTimer, obDialogTrigger, obSwipe, obSequence = 0, obRateTimer, obCountryList = [], obCountrySearchTimer = 0;
 let obEmailTimer = 0, obEmailSequence = 0, obEmailWaiting = null, obEmailGateTimer = 0;
 const OB_EMAIL_TAKEN = "This email is already used by another account. Try a different one.";
@@ -8603,7 +8600,7 @@ function obResetProfileDraft() {
 function obResumeOnboarding(account, desiredCreator) {
   const u = account.user || {};
   obRememberPermissionIntro(account);
-  S.auth = { step: "profile", mode: "signup", verified: true, creatorIntent: !!desiredCreator || u.onboardingPreference === "creator", name: u.name || "", email: u.email || "", langs: u.languages || [], interests: u.interests || [], photos: (u.photos || []).map(p => obPhotoUrl(p.url)).filter(Boolean), featured: 0, adult: !!u.adultConfirmed, cat: u.category || "", gender: u.gender || "" };
+  S.auth = { step: "profile", mode: "signup", verified: true, creatorIntent: !!desiredCreator || u.onboardingPreference === "creator", name: u.name || "", email: u.email || "", gender: u.gender || "" };
   S.loggedIn = 0; go("login");
 }
 function obResetSession(message = "") {
@@ -8659,7 +8656,7 @@ function obStart(mode = "signup") {
   if (mode === "signup" && S.auth.mode === "signup" && S.auth.verified) return go("login");
   S.role = "sender";
   S.notice = "";
-  S.auth = { step: "phone", mode, creatorIntent: false, phone: "", code: "", langs: [], interests: [], photos: [], featured: 0 };
+  S.auth = { step: "phone", mode, creatorIntent: false, phone: "", code: "" };
   go("login");
 }
 function obDeckMarkup() {
@@ -8718,9 +8715,7 @@ function obStep(step, backward = false) {
 function obBack() {
   const a = S.auth;
   if (a.step === "permissions") return obFinishPermissions();
-  if (a.busy || a.uploading) return;
-  if (a.step === "interests") return obStep("photos", true);
-  if (a.step === "photos") return obStep("profile", true);
+  if (a.busy) return;
   if (a.step === "profile" || a.step === "sprofile") {
     // Verification remains valid while editing this in-memory draft.
     return go("welcome");
@@ -8823,7 +8818,7 @@ function obVerifyOtp() {
 function obSignedIn() {
   clearInterval(S.otpT); clearTimeout(obRequestTimer); obHaptic("success");
   if (S.auth.mode === "signup") {
-    Object.assign(S.auth, { step: "profile", busy: false, err: "", verified: true, cat: S.auth.cat || "", langs: S.auth.langs || [], photos: S.auth.photos || [], interests: S.auth.interests || [] });
+    Object.assign(S.auth, { step: "profile", busy: false, err: "", verified: true });
     return r();
   }
   const creator = S.creatorSetup || S.auth.creatorIntent;
@@ -8835,11 +8830,6 @@ function obPickGender(value, button) {
   S.auth.gender = value;
   button.parentElement.removeAttribute("aria-invalid");
   button.parentElement.querySelectorAll("button").forEach(b => { const on = b === button; b.classList.toggle("selected", on); b.setAttribute("aria-pressed", String(on)); });
-}
-function obToggleLanguage(value, button) {
-  const list = S.auth.langs;
-  list.includes(value) ? list.splice(list.indexOf(value), 1) : list.push(value);
-  button.classList.toggle("selected", list.includes(value)); button.setAttribute("aria-pressed", String(list.includes(value)));
 }
 const obEmailKey = value => String(value || "").trim().toLowerCase();
 /** The server's answer for the address now in the field: checking, available, taken, invalid, unknown or "". */
@@ -8896,25 +8886,16 @@ function obEmailSettled(a) {
 function obNextProfile() {
   const a = S.auth;
   if (a.busy) return;
-  a.name = document.getElementById("pn").value.trim(); a.email = document.getElementById("pe").value.trim(); a.adult = document.getElementById("p18").checked;
+  a.name = document.getElementById("pn").value.trim(); a.email = document.getElementById("pe").value.trim();
   if (a.name.length < 2) return obSetError("Use at least two characters for your name.", "pn");
   if (!okEmail(a.email)) return obSetError(OB_EMAIL_INVALID, "pe");
   const email = obEmailState();
   if (email === "taken") return obSetError(OB_EMAIL_TAKEN, "pe");
   if (email === "invalid") return obSetError(OB_EMAIL_INVALID, "pe");
   if (!a.gender) return obSetError("Choose Female, Male or Prefer not to say.", "pg");
-  if (obIsCreator() && !a.cat) return obSetError("Pick a category for your creator profile.", "pc");
-  if (obIsCreator() && !a.langs.length) return obSetError("Select at least one language for your calls.");
-  if (!a.adult) return obSetError("You need to be 18 or older to join BinzoLive.", "p18");
   if (!DEMO && (!email || email === "checking")) return obAwaitEmail();
-  obStep("photos");
+  obFinish();
 }
-function obNextPhotos() {
-  if (S.auth.uploading) return;
-  if (S.auth.photos.length < MIN_PHOTOS) return obSetError(`Add ${MIN_PHOTOS - S.auth.photos.length} more ${S.auth.photos.length === 2 ? "photo" : "photos"} to continue.`);
-  obStep("interests");
-}
-function obChoosePhotos(camera = false) { const input = document.getElementById(camera ? "ob-camera" : "ob-photos"); if (input) input.click(); }
 function obReadPhoto(file) {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) return reject(new Error("Choose an image file (JPG, PNG or WebP)."));
@@ -8935,55 +8916,21 @@ function obReadPhoto(file) {
     img.src = url;
   });
 }
-async function obUpload(event) {
-  const a = S.auth;
-  if (a.uploading) return;
-  const files = Array.from(event.target.files || []); event.target.value = "";
-  if (!files.length) return;
-  const space = MAX_PHOTOS - a.photos.length;
-  a.uploading = true; a.err = ""; r();
-  let error = "";
-  // Decode one at a time to keep peak memory low on mobile devices.
-  for (const file of files.slice(0, space)) {
-    try { const image = await obReadPhoto(file); if (a !== S.auth) return; a.photos.push(image); }
-    catch (e) { error = e.message; }
-  }
-  if (a !== S.auth) return;
-  a.uploading = false; a.err = error || (files.length > space ? "You can keep up to six photos. The first available photos were added." : "");
-  a.featured = Math.min(a.featured || 0, Math.max(0, a.photos.length - 1));
-  obHaptic(error ? "error" : "success"); r();
-}
-function obFeature(index) { if (S.auth.uploading) return; S.auth.featured = index; r(); }
-function obRemovePhoto(index) {
-  const a = S.auth; if (a.uploading) return;
-  a.photos.splice(index, 1);
-  a.featured = index < a.featured ? a.featured - 1 : index === a.featured ? 0 : a.featured;
-  a.err = ""; r();
-}
-function obToggleInterest(index, button) {
-  const value = OB_INTERESTS[index][1], list = S.auth.interests;
-  list.includes(value) ? list.splice(list.indexOf(value), 1) : list.push(value);
-  button.classList.toggle("selected", list.includes(value)); button.setAttribute("aria-pressed", String(list.includes(value)));
-  const count = document.getElementById("ob-interest-count");
-  if (count) count.textContent = obInterestCount();
-}
-function obInterestCount() { const n = S.auth.interests.length; return n ? `${n} picked. Add as many as you like.` : "Pick as many as you like."; }
-function obFinish(skip = false) {
+function obFinish() {
   const a = S.auth; if (a.busy) return;
-  if (!a.verified || !a.name || !okEmail(a.email) || !a.gender || !a.adult) return obStep("profile");
-  if (a.photos.length < MIN_PHOTOS) return obStep("photos");
-  if (skip) a.interests = [];
-  const photos = [a.photos[a.featured || 0], ...a.photos.filter((_, i) => i !== (a.featured || 0))];
-  const profile = { onboarding: true, role: S.role, name: a.name, email: a.email, photos, category: a.cat || undefined, langs: a.langs, interests: a.interests, gender: a.gender, adultConfirmed: !!a.adult, preferredRole: obIsCreator() ? "creator" : "member" };
+  if (!a.verified || !a.name || !okEmail(a.email) || !a.gender) return obStep("profile");
+  // The final action is the 18+ attestation shown beside the button; it is not
+  // another field or registration step.
+  const profile = { onboarding: true, role: S.role, name: a.name, email: a.email, gender: a.gender, adultConfirmed: true, preferredRole: obIsCreator() ? "creator" : "member" };
   if (DEMO) { Native.send("profile.save", profile); return obComplete(); }
   obRequest("profile.save", profile);
 }
 function obComplete(account) {
   const a = S.auth; clearTimeout(obRequestTimer); obHaptic("success");
   const creator = obIsCreator();
-  me.n = a.name; S.editName = a.name; me.gender = a.gender; S.editGender = a.gender; S.avatarData = a.photos[a.featured || 0]; S.interests = a.interests.slice();
+  me.n = a.name; S.editName = a.name; me.gender = a.gender; S.editGender = a.gender;
   if (account) obApplyAccount(account);
-  if (creator) { me.tag = a.cat; S.creatorSetup = true; S.fromSignup = 1; S.kf = { ...S.kf, name: a.name, email: a.email, langs: a.langs, category: a.cat, bio: "", photos: account ? (account.user.photos || []).map(p => p.url) : a.photos }; }
+  if (creator) { S.creatorSetup = true; S.fromSignup = 1; S.kf = { ...S.kf, name: a.name, email: a.email, bio: "", photos: account ? (account.user.photos || []).map(p => p.url) : [] }; }
   if (account?.requiresOnboarding) return obResumeOnboarding(account, creator);
   if (obStartPermissionSetup(account, creator)) return;
   S.loggedIn = 1; S.auth = { step: "phone" }; go(creator ? "kyc" : "home");
@@ -8992,27 +8939,15 @@ function obErrorMarkup() { return `<p class="ob-error" id="ob-error" role="alert
 function obButton(text, handler, disabled = false) {
   const kind = handler === "obSendOtp()" ? "auth.sendOtp" : handler === "obVerifyOtp()" ? "auth.verifyOtp" : "";
   const left = kind ? obWait(kind) : 0, idle = kind === "auth.sendOtp" ? "Send my code" : "Verify & continue";
-  return `<button ${kind ? `id="ob-auth-submit" data-idle-label="${idle}"` : ""} class="ob-primary" aria-busy="${!!(S.auth.busy || S.auth.uploading)}" ${disabled || left ? "disabled" : ""} onclick="${handler}">${S.auth.busy || S.auth.uploading ? '<span class="ob-spinner" aria-hidden="true"></span>' : ""}${left && !S.auth.busy ? `Try again in ${obDuration(left)}` : text}${S.auth.busy || S.auth.uploading || left ? "" : obArrow()}</button>`;
-}
-function obLanguages() { return `<div class="ob-options">${LANGS.map(value => { const selected = S.auth.langs.includes(value); return `<button type="button" class="${selected ? "selected" : ""}" aria-pressed="${selected}" onclick="obToggleLanguage('${value}',this)" ${S.auth.busy ? "disabled" : ""}>${value}</button>`; }).join("")}</div>`; }
-function obPhotoContent() {
-  const a = S.auth, count = a.photos.length, index = a.featured || 0;
-  return `<input hidden id="ob-photos" type="file" accept="image/*" multiple onchange="obUpload(event)"><input hidden id="ob-camera" type="file" accept="image/*" capture="user" onchange="obUpload(event)">
-    <div class="ob-photo-layout"><div class="ob-upload"><span class="ob-upload-camera">${I("flip", 23)}</span>
-      <button class="ob-add-photo" onclick="obChoosePhotos()" ${a.uploading || count >= MAX_PHOTOS ? "disabled" : ""}><span class="ob-add-plus">${I("plus", 28)}</span><b>${a.uploading ? "Adding…" : "Add photos"}</b><small>From your gallery</small></button>
-      <button class="ob-camera-button" onclick="obChoosePhotos(true)" ${a.uploading || count >= MAX_PHOTOS ? "disabled" : ""}>${I("flip", 15)} Take a photo</button></div>
-    <div class="ob-featured">${count ? `<img src="${a.photos[index]}" alt="Your featured profile photo"><span class="ob-feature-badge">${I("star", 14)} FEATURED</span><button class="ob-photo-remove ob-icon" aria-label="Remove featured photo" onclick="obRemovePhoto(${index})" ${a.uploading ? "disabled" : ""}>×</button><div class="ob-photo-caption"><div><b>Your first hello</b><p>The photo people see first</p></div><span>${I("check", 19)}</span></div>` : `<div class="ob-photo-empty">${I("user", 45)}<b>A face to your name</b><p>Your favorite photo<br>goes right here.</p></div>`}</div></div>
-    <div class="ob-preview-heading"><b>Your lineup</b><span>Tap a photo to feature it</span></div>
-    <div class="ob-photo-strip">${Array.from({ length: MAX_PHOTOS }, (_, i) => `<button class="ob-thumb ${count && index === i ? "selected" : ""}" aria-label="${i < count ? `Feature photo ${i + 1}` : "Add photo"}" ${i < count ? `aria-pressed="${index === i}"` : ""} onclick="${i < count ? `obFeature(${i})` : "obChoosePhotos()"}" ${a.uploading ? "disabled" : ""}>${i < count ? `<img src="${a.photos[i]}" alt="Photo ${i + 1}">${index === i ? `<span>${I("star", 12)}</span>` : ""}` : I("plus", 22)}</button>`).join("")}</div>
-    <div class="ob-photo-status" aria-live="polite"><span>${count} of ${MAX_PHOTOS} photos</span><span class="${count >= MIN_PHOTOS ? "ready" : ""}">${count >= MIN_PHOTOS ? "● Looking good" : `${MIN_PHOTOS - count} more to get started`}</span></div>`;
+  return `<button ${kind ? `id="ob-auth-submit" data-idle-label="${idle}"` : ""} class="ob-primary" aria-busy="${!!S.auth.busy}" ${disabled || left ? "disabled" : ""} onclick="${handler}">${S.auth.busy ? '<span class="ob-spinner" aria-hidden="true"></span>' : ""}${left && !S.auth.busy ? `Try again in ${obDuration(left)}` : text}${S.auth.busy || left ? "" : obArrow()}</button>`;
 }
 function obLogin() {
   if (S.auth.step === "permissions") return obPermissionsView();
-  const a = S.auth, signup = a.mode === "signup", host = obIsCreator();
+  const a = S.auth, signup = a.mode === "signup";
   if (a.step === "choose") a.step = "phone";
-  if (a.step === "sprofile") a.step = "profile";
-  const step = a.step, number = ({ phone: 1, otp: 1, profile: 2, photos: 3, interests: 4 })[step] || 1;
-  const stepLabel = ({ phone: "Verify your phone", otp: "Verify your phone", profile: "Your profile", photos: "Your photos", interests: "Your interests" })[step] || "Account setup";
+  if (["sprofile", "photos", "interests"].includes(a.step)) a.step = "profile";
+  const step = a.step, number = step === "profile" ? 2 : 1;
+  const stepLabel = step === "profile" ? "Basic details" : "Verify your phone";
   let title, description = "", content, actions;
   if (step === "phone") {
     title = !signup ? "Welcome <em>back</em>." : "Let’s get you <em>connected</em>.";
@@ -9027,25 +8962,17 @@ function obLogin() {
     content = `<div class="ob-otp" style="--otp-length:${length}" onpaste="obOtpPaste(event)">${Array.from({ length }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="${length}" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? `<p class="ob-field-hint ob-demo-note">Preview mode &middot; Enter any ${length} digits to explore.</p>` : ""}`;
     actions = obButton(a.busy ? "Checking your code…" : "Verify & continue", "obVerifyOtp()", !!a.busy);
   } else if (step === "profile") {
-    title = "Make it <em>yours</em>.";
-    content = `<form class="ob-form" onsubmit="event.preventDefault();obNextProfile()"><div class="ob-field"><label for="pn">${host ? "Creator name" : "Your name"}</label><input id="pn" autocomplete="nickname" maxlength="32" placeholder="Your name" value="${esc(a.name || "")}" oninput="S.auth.name=this.value" aria-describedby="ob-error" ${a.busy ? "disabled" : ""}></div>
+    title = "Tell us about <em>you</em>.";
+    description = "Add your basic details to finish creating your account.";
+    content = `<form class="ob-form" onsubmit="event.preventDefault();obNextProfile()"><div class="ob-field"><label for="pn">Your name</label><input id="pn" autocomplete="name" maxlength="32" placeholder="Your name" value="${esc(a.name || "")}" oninput="S.auth.name=this.value" aria-describedby="ob-error" ${a.busy ? "disabled" : ""}></div>
       <div class="ob-field"><label for="pe">Email address</label><input id="pe" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" maxlength="100" placeholder="you@example.com" value="${esc(a.email || "")}" oninput="obEmailInput(this)" onblur="obCheckEmail(obEmailKey(this.value))" aria-describedby="ob-email-status ob-error" ${["taken", "invalid"].includes(obEmailState()) ? 'aria-invalid="true"' : ""} ${a.busy ? "disabled" : ""}><p class="ob-email-status ${obEmailState()}" id="ob-email-status" aria-live="polite">${obEmailStatusText(obEmailState())}</p></div>
       <div class="ob-field ob-inline"><span class="ob-label" id="pg-label">Gender</span><div class="ob-segment" id="pg" role="group" aria-labelledby="pg-label" aria-describedby="ob-error" tabindex="-1">${GENDERS.map(([value, label]) => `<button type="button" class="${a.gender === value ? "selected" : ""}" aria-pressed="${a.gender === value}" onclick="obPickGender('${value}',this)" ${a.busy ? "disabled" : ""}>${label}</button>`).join("")}</div></div>
-      ${host ? `<div class="ob-field"><label for="pc">Creator category</label><select id="pc" onchange="S.auth.cat=this.value" aria-describedby="ob-error" ${a.busy ? "disabled" : ""}><option value="" disabled ${a.cat ? "" : "selected"}>Choose a category</option>${CATS.map(c => `<option value="${c}" ${a.cat === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>` : ""}
-      <div><span class="ob-label">Languages you speak ${host ? "" : '<small>Optional</small>'}</span>${obLanguages()}</div>
-      <label class="ob-check"><input id="p18" type="checkbox" ${a.adult ? "checked" : ""} onchange="S.auth.adult=this.checked" aria-describedby="ob-error" ${a.busy ? "disabled" : ""}><span>I’m 18 or older.</span></label><button hidden type="submit" tabindex="-1">Continue</button></form>`;
-    actions = obButton(a.busy === "auth.emailCheck" ? "Checking your email…" : "Next, your photos", "obNextProfile()", !!a.busy);
-  } else if (step === "photos") {
-    title = "Add your <em>photos</em>."; description = "Choose at least three clear photos. Your featured photo appears first.";
-    content = obPhotoContent(); actions = obButton(a.uploading ? "Preparing your photos…" : "Looking good. Continue", "obNextPhotos()", a.uploading || a.photos.length < MIN_PHOTOS);
-  } else {
-    title = "Share your <em>interests</em>."; description = `<span id="ob-interest-count" aria-live="polite">${obInterestCount()}</span>`;
-    content = `<div class="ob-interests" aria-label="Your interests">${OB_INTERESTS.map(([emoji, label], i) => `<button class="ob-interest ${a.interests.includes(label) ? "selected" : ""}" aria-pressed="${a.interests.includes(label)}" onclick="obToggleInterest(${i},this)" ${a.busy ? "disabled" : ""}><span aria-hidden="true">${emoji}</span>${label}<span class="ob-chip-check" aria-hidden="true">${I("check", 13)}</span></button>`).join("")}</div>`;
-    actions = obButton(a.busy ? "Making it yours…" : host ? "Finish my creator profile" : "Let’s meet your people", "obFinish()", !!a.busy) + `<button class="ob-secondary" onclick="obFinish(true)" ${a.busy ? "disabled" : ""}>Skip for now</button>`;
+      <p class="ob-field-hint">By creating your account, you confirm you’re 18 or older.</p><button hidden type="submit" tabindex="-1">Create account</button></form>`;
+    actions = obButton(a.busy === "auth.emailCheck" ? "Checking your email…" : a.busy ? "Creating your account…" : "Create my account", "obNextProfile()", !!a.busy);
   }
   return `<section class="ob-shell" data-ob-step="${step}" aria-label="${signup ? "Create your BinzoLive account" : "Log in to BinzoLive"}">
-    <header class="ob-header">${backButton("obBack()", {attrs: a.busy || a.uploading ? "disabled" : ""})}
-      ${signup ? `<div class="ob-progress" data-label="${stepLabel} · ${number} of 4" role="progressbar" aria-label="Account setup" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${number}" aria-valuetext="${stepLabel}, step ${number} of 4">${[1, 2, 3, 4].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : `<span class="ob-login-label"><img class="ob-login-logo" src="${BRAND_LOGO}" alt="BinzoLive" width="66" height="26" decoding="async"></span>`}
+    <header class="ob-header">${backButton("obBack()", {attrs: a.busy ? "disabled" : ""})}
+      ${signup ? `<div class="ob-progress" data-label="${stepLabel} · ${number} of 2" role="progressbar" aria-label="Account setup" aria-valuemin="1" aria-valuemax="2" aria-valuenow="${number}" aria-valuetext="${stepLabel}, step ${number} of 2">${[1, 2].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : `<span class="ob-login-label"><img class="ob-login-logo" src="${BRAND_LOGO}" alt="BinzoLive" width="66" height="26" decoding="async"></span>`}
       <button class="ob-support" onclick="obShowHelp()">Help</button></header>
     <div class="ob-main">
       <h1 class="ob-heading" tabindex="-1">${title}</h1>${description ? `<p class="ob-description">${description}</p>` : ""}
@@ -9056,7 +8983,7 @@ function obLogin() {
 function obShowHelp() {
   if (document.getElementById("ob-help")) return;
   const dialog = document.createElement("dialog"); dialog.id = "ob-help"; dialog.className = "ob-dialog"; dialog.setAttribute("aria-labelledby", "ob-help-title");
-  dialog.innerHTML = `<div class="ob-dialog-head"><span class="ob-eyebrow">WE’RE HERE TO HELP</span><button class="ob-dialog-close ob-icon" aria-label="Close help" onclick="obCloseHelp()">×</button></div><div class="ob-dialog-body"><h2 id="ob-help-title">A little help getting in.</h2><p>Choose your country, then enter your mobile number. You can also paste a full number that starts with + and its country code. Double-check it before requesting your code.</p><p>No message yet? Check your mobile signal and wait for the resend timer. Use the newest code if you requested more than one.</p><p>For photos, choose clear JPG, PNG or WebP images under 20 MB each. You can add up to six.</p><button class="ob-primary" onclick="obCloseHelp()">Got it ${I("check", 18)}</button></div>`;
+  dialog.innerHTML = `<div class="ob-dialog-head"><span class="ob-eyebrow">WE’RE HERE TO HELP</span><button class="ob-dialog-close ob-icon" aria-label="Close help" onclick="obCloseHelp()">×</button></div><div class="ob-dialog-body"><h2 id="ob-help-title">A little help getting in.</h2><p>Choose your country, then enter your mobile number. You can also paste a full number that starts with + and its country code. Double-check it before requesting your code.</p><p>No message yet? Check your mobile signal and wait for the resend timer. Use the newest code if you requested more than one.</p><p>After verification, add your name, email and gender to finish creating your account.</p><button class="ob-primary" onclick="obCloseHelp()">Got it ${I("check", 18)}</button></div>`;
   obModal(dialog);
 }
 function obCloseHelp() { const dialog = document.getElementById("ob-help"); if (dialog) dialog.close(); }
@@ -9167,12 +9094,12 @@ Native.on("profile.saved", d => { if (obMatches(d) && d.onboarding && S.v === "l
 Native.on("profile.progress", d => {
   if (!obMatches(d) || S.v !== "login" || S.auth.busy !== "profile.save") return;
   const button = document.querySelector(".ob-actions .ob-primary");
-  if (button) button.textContent = d.done < d.total ? `Saving photo ${d.done + 1} of ${d.total}…` : "Saving your profile…";
+  if (button) button.textContent = "Saving your profile…";
 });
 Native.on("profile.error", d => {
   if (!obMatches(d) || !d.onboarding || S.v !== "login") return;
   clearTimeout(obRequestTimer); S.auth.busy = false;
-  // Someone else took the address since it was checked; photos stay in the draft.
+  // Someone else took the address since it was checked; keep the basic-details draft.
   if (d.code === "EMAIL_IN_USE") {
     S.auth.emailStatus = { email: obEmailKey(S.auth.email), state: "taken" };
     obStep("profile", true); return obSetError(OB_EMAIL_TAKEN, "pe");
@@ -9188,6 +9115,7 @@ Native.on("auth.emailChecked", d => {
 });
 /* Live broadcasting is paused for this release; private calls stay available. */
 window.ZIMI_LIVE_STREAMING_ENABLED = false;
+window.ZIMI_CREATOR_LEADERBOARD_ENABLED = false;
 const H=[
  {id:"aanya",n:"Aanya Kapoor",c:"Mumbai",cat:"Dance",tag:"Dancing",age:26,rate:34,fee:60,on:1,live:1,seed:12,v:"2.4K",pk:1,top:0,fol:1,nw:0},
  {id:"ishaan",n:"Ishaan Verma",c:"Bengaluru",cat:"Gaming",tag:"Esports",age:24,rate:22,fee:40,on:1,live:1,seed:47,v:"1.1K",pk:0,top:1,fol:1,nw:0},
@@ -9361,12 +9289,12 @@ const th=()=>"";
 function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
-function go(v,id){
+function go(v,id,{returnRoute}={}){
  if(v==='thread'&&id==='bingo-live-official'&&window.ZimiOfficialChat)return window.ZimiOfficialChat.open('chats');
  /* A minimized call stays the only call until it ends (web/ongoing-call.js). */
  if(S.bgCall&&["dial","dialback","call","voice","hcall"].includes(v)){appNotice("Finish your current call first.");return}
  if(v==='kyc'&&window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
- if(v==='explore')v='home';
+ if(v==='explore'||(v==='board'&&!window.ZIMI_CREATOR_LEADERBOARD_ENABLED))v='home';
  if(window.ZimiHostAccess?.financialHost()&&['precall','dial'].includes(v)){if(!isApprovedHost())window.ZimiHostAccess.guard();else appNotice('Use your host calling tools to contact users.');return}
  if(window.ZimiHostAccess?.financialHost()&&['coins','refer'].includes(v)){appNotice('Your host account earns diamonds. Open your wallet to view them.');v='wallet'}
  if(v==='payout-history'&&window.ZimiHostAccess&&!window.ZimiHostAccess.financialHost()){appNotice('Withdrawals are available to host accounts.');return}
@@ -9393,10 +9321,10 @@ function go(v,id){
  if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
  if(v==="hcall")S.cel=S.hcel;
  S.more=0;
- window.ZimiPublicProfile?.beforeNavigate(v,id);
+ window.ZimiPublicProfile?.beforeNavigate(v,id,returnRoute);
  if(v==='host'&&id!==S.h)S.ht='posts';
  if(v==='user'){S.back='host';S.backId=S.h;S.u=id;id=null}
- if(v==='search')S.sq='';
+ if(v==='search')S.sq=returnRoute?.query??'';
  if(S.v==='editprofile'&&v!=='editprofile'){mediaSequence++;obResetProfileDraft()}
  if(S.v!==v&&S.mediaPreparing){mediaSequence++;S.mediaPreparing=false}
  if(v==='editprofile'){S.editBack=['settings','settings-detail'].includes(S.v)?'settings':'profile';obResetProfileDraft()}
@@ -9405,7 +9333,7 @@ function go(v,id){
  const navigationChange=window.ZimiNavigation?.before(v);
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);
- window.ZimiPublicProfile?.afterNavigate(v);
+ window.ZimiPublicProfile?.afterNavigate(v,returnRoute);
  if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;S.swap=0;
   S.rmsgs=[["sys","",DEMO&&!window.ZimiHome?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:S.callRate?`Connected · ${n(S.callRate)} coins a minute, billed by the second`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO&&!window.ZimiHome?g(S.h).fee:0;
   if(DEMO&&!window.ZimiHome)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&!window.ZimiHome&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
@@ -9414,7 +9342,7 @@ function go(v,id){
  if(v==="dialback"){S.caller.voice=!!S.nextCallVoice;if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id,voice:!!S.nextCallVoice})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
   if(!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
-  if(DEMO)S.wt=setTimeout(()=>{S.ringBack="waiting";S.caller=nextCaller();go("ring")},3200)}
+  if(DEMO)S.wt=setTimeout(()=>{S.ringBack={view:"waiting"};S.caller=nextCaller();go("ring")},3200)}
  if(v==="hcall"){S.sec=0;S.earned=0;S.recvN=0;S.callersN=1;S.tray=0;S.gifted=0;S.favGot=0;S.swap=0;
   S.cstart=0;S.feeOk=0;S.feeHide=0;S.confirm=0;S.feeLog=[];
   /* The preview has no server: it shows the default terms. */
@@ -10313,7 +10241,7 @@ function toggleVis(){S.vis=S.vis?0:1;Native.send("presence.set",{online:!!S.onli
 /* Preview only: while online and not in a call, a caller rings wherever the host is in the app. */
 if(DEMO)setInterval(()=>{
  if(!isHost()||!S.online||["ring","hcall","dialback","waiting"].includes(S.v)){S.idle=0;return}
- if((S.idle=(S.idle||0)+1)>=25){S.idle=0;S.ringBack=S.v;S.caller=nextCaller();go("ring")}},1000);
+ if((S.idle=(S.idle||0)+1)>=25){S.idle=0;S.ringBack=ringOrigin();S.caller=nextCaller();go("ring")}},1000);
 
 function nextCaller(){
  const nm=SENDERS[(S.ci=(S.ci||0)+1)%SENDERS.length];
@@ -10344,8 +10272,13 @@ function memberIncoming(d){
  if(busy&&S.memberRing?.callId!==d.callId){Native.send("call.decline",{callId:d.callId});return}
  const from=d.from||{},h=knowHost({id:from.id,name:from.name,avatarUrl:from.avatarUrl,city:from.city,gender:from.gender,verified:true,role:"host",serverRole:"host"});
  S.memberRing={callId:d.callId,id:h.id,voice:!!d.voice,rate:d.rate||0,error:""};
- S.acceptingCall=false;if(S.v!=="incoming")S.ringBack={view:S.v,id:S.v==="thread"||S.v==="host"?S.h:undefined};go("incoming")}
-function ringReturn(){const back=S.ringBack||{};S.ringBack=null;go(back.view&&back.view!=="incoming"?back.view:"home",back.id)}
+ S.acceptingCall=false;if(S.v!=="incoming")S.ringBack=ringOrigin();go("incoming")}
+function ringOrigin(){return window.ZimiPublicProfile?.returnRoute()??{view:S.v}}
+function ringReturn(fallback="home"){
+ const back=S.ringBack;S.ringBack=null;
+ if(!back?.view||["incoming","ring"].includes(back.view))return go(fallback);
+ go(back.view,back.id,{returnRoute:back});
+}
 function vMemberRing(){const m=S.memberRing,h=m&&g(m.id);if(!h)return "";
  const name=first(h.n),short=!!m.topupRequired||m.rate>0&&S.bal<m.rate;
  return `<div class="ringscr host ring ${S.acceptingCall?'is-connecting':''}" role="region" aria-label="Incoming ${m.voice?'voice':'video'} call from ${esc(h.n)}">
@@ -10406,7 +10339,7 @@ function incBanner(){const c=S.inc;
   <button class="no" aria-label="Decline" onclick="declineInc()">${I("ph",17)}</button>
   <button class="yes" aria-label="Switch to this call" onclick="hostEnd('switch')">${I("vid",17)}</button></div>`}
 
-function declineRing(){S.acceptingCall=false;Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting");ringQueued()}
+function declineRing(){S.acceptingCall=false;Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);ringReturn("waiting");ringQueued()}
 function acceptRing(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;if(!DEMO&&window.ZimiHome)return homeAcceptCall();Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
 /* A second caller while the host is in a call: a banner, never a busy signal. */
 function ringIncoming(c){
@@ -10534,7 +10467,7 @@ function endCall(remote){
  }
  S.callFee=0;
  go("summary");
- if(waiting){S.ringBack="summary";S.caller=waiting;go("ring")}}
+ if(waiting){S.ringBack={view:"summary"};S.caller=waiting;go("ring")}}
 
 /* Where this session's spend sits among the host's recent callers. */
 function supportPct(h,spent){
@@ -10773,7 +10706,7 @@ function topFor(){
    ${T.map(([k,l])=>`<button class="stab ${S.tab===k?"on":""}" onclick="setTab('${k}')">${l}</button>`).join("")}
    <span class="sicons">
     <button class="ibtn" aria-label="Search creators" onclick="go('search')">${I("srch",19)}</button>
-    <button class="tbadge" aria-label="Leaderboard" onclick="go('board')">${I("cup",19)}</button></span></div>`}
+    ${window.ZIMI_CREATOR_LEADERBOARD_ENABLED?`<button class="tbadge" aria-label="Leaderboard" onclick="go('board')">${I("cup",19)}</button>`:""}</span></div>`}
  if(S.v==="search")return `<div class="hdr" style="gap:8px">
    ${backButton("go('home')")}
    <span class="sfield">${I("srch",17)}
@@ -10806,7 +10739,7 @@ function appNotice(message){
 let zimiSecured=null;
 function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread","support-chat","official-chat","payout-kyc"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
- if(S.v==='explore')S.v='home';
+ if(S.v==='explore'||(S.v==='board'&&!window.ZIMI_CREATOR_LEADERBOARD_ENABLED))S.v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout","host-statistics"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
@@ -10957,11 +10890,11 @@ Native.on("call.incoming",d=>{if(d.fromHost&&!isHost())return memberIncoming(d);
  /* One ring screen at a time: a caller arriving meanwhile rings once that one is answered or declined. */
  if(S.v==="ring"){if(S.caller?.callId!==c.callId)S.queuedInc=c;return}
  if(["dial","dialback","call","voice"].includes(S.v))return;
- S.acceptingCall=false;S.ringBack=S.v;S.caller=c;go("ring")});
+ S.acceptingCall=false;S.ringBack=ringOrigin();S.caller=c;go("ring")});
 /* The caller who arrived while another call was ringing: a banner on the call, or the next ring. */
 function ringQueued(){const q=S.queuedInc;if(!q)return;S.queuedInc=null;
  if(S.v==="hcall")return ringIncoming(q);
- S.acceptingCall=false;S.caller=q;go("ring")}
+ S.acceptingCall=false;S.ringBack=ringOrigin();S.caller=q;go("ring")}
 /* the other side hung up, or a ringing call was given up */
 Native.on("call.ended",d=>{const id=d.callId;
  /* A minimized call ends as it would on screen: a summary, or the unanswered notice. */
@@ -10978,7 +10911,7 @@ Native.on("call.ended",d=>{const id=d.callId;
  if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr=d.reason==='host_unavailable'?'Host can’t accept the call.':'The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
  if(S.queuedInc?.callId===id){addMissed(S.queuedInc);S.queuedInc=null;return}
- if(S.v==="ring"&&S.caller.callId===id){S.acceptingCall=false;addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}
+ if(S.v==="ring"&&S.caller.callId===id){S.acceptingCall=false;addMissed(S.caller);ringReturn("waiting");return ringQueued()}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
  if((S.v==="call"||S.v==="voice")&&(!S.callId||S.callId===id))endCall(true)});
 /* A balance update can let the member answer: show it on the ring screen at once. */
@@ -11506,6 +11439,7 @@ Native.on('data.loading',d=>{
   if(d.background&&d.resource!=='home'&&ContentLoading[d.resource].loaded)return;
   if(d.resource==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(d.resource==='search'&&d.q!==(S.sq||'').trim())return;
+  if(d.resource==='leaderboard'&&!window.ZimiLeaderboard?.accepts(d))return;
   Object.assign(ContentLoading[d.resource],{loading:d.loading,error:d.error||'',page:d.page||1});
   if(d.resource==='home'){ContentLoading.home.background=!!d.background&&Home.loaded&&Home.queryKey===homeFeedKey();Home.loading=d.loading;Home.loadingMore=d.loading&&d.page>1;if(!d.loading){Home.error=d.error||''}}
   if(d.resource==='search'){Home.searchLoading=d.loading;Home.searchMore=d.loading&&d.page>1;Home.searchError=d.error||''}
@@ -11516,7 +11450,7 @@ for(const [event,key] of Object.entries({'data.home':'home','data.search':'searc
   if(key==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(key==='search'&&d.q!==(S.sq||'').trim())return;
   if(key==='thread'&&d.with!==S.h)return;
-  if(key==='leaderboard'&&d.period!==Board.period)return;
+  if(key==='leaderboard'&&!window.ZimiLeaderboard?.accepts(d))return;
   Object.assign(ContentLoading[key],{loading:false,error:'',loaded:true});
   if(!['home','search','catalog','notifications'].includes(key))contentRender(key);
 });
@@ -11982,8 +11916,21 @@ function homeFeedTabKey(event){
   const next=event.key==='Home'?keys[0]:event.key==='End'?keys.at(-1):keys[(at+(event.key==='ArrowRight'?1:-1)+keys.length)%keys.length];
   homeDashboardFilter(next);document.getElementById('home-tab-'+next)?.focus();
 }
-// Like the reference: the feed tabs, then Search, the creator leaderboard and Notifications.
-function homeHeader(){return `<header class="zh-header zh-home-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${HOME_FEEDS.map(([key,label])=>{const on=Home.dashboardFilter===key;return `<button type="button" id="home-tab-${key}" role="tab" aria-selected="${on}" aria-controls="home-feed-panel" tabindex="${on?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`}).join('')}</div><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="go('search')" aria-label="${isApprovedHost()?'Search users':'Search creators'}">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button><button type="button" class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications">${hi('bell',25)}${Home.unreadCount?'<i aria-hidden="true"></i>':''}</button></div></header>`}
+function homeHeader(){
+  const tabs=HOME_FEEDS.map(([key,label])=>{
+    const on=Home.dashboardFilter===key;
+    return `<button type="button" id="home-tab-${key}" role="tab" aria-selected="${on}" aria-controls="home-feed-panel" tabindex="${on?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`;
+  }).join('');
+  const trophy=window.ZIMI_CREATOR_LEADERBOARD_ENABLED
+    ? `<button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button>` : '';
+  return `<header class="zh-header zh-home-header">
+    <div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${tabs}</div>
+    <div class="zh-header-actions">
+      <button type="button" class="zh-icon" onclick="go('search')" aria-label="${isApprovedHost()?'Search users':'Search creators'}">${hi('srch',25)}</button>
+      ${trophy}<button type="button" class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications">${hi('bell',25)}${Home.unreadCount?'<i aria-hidden="true"></i>':''}</button>
+    </div>
+  </header>`;
+}
 function homeRegionChips(){if(!homeRegionShown())return '';return `<div class="zh-region-chips" role="group" aria-label="Country">${HOME_REGIONS.map(([key,label])=>`<button type="button" aria-pressed="${Home.region===key}" onclick="homeRegion('${key}')">${key?homeFlag(key,'zh-flag-chip',true):''}<span>${label}</span></button>`).join('')}</div>`}
 function homeNav(){
   const el=document.getElementById('nav');
@@ -12424,17 +12371,49 @@ function allCreatorsView(){
 window.ZimiAllCreators={render:allCreatorsView};
 ZimiHome.views['all-creators']=allCreatorsView;
 
-/* The Home trophy opens the server-ranked creator gift leaderboard. */
-const Board = { period:'daily', rows:[] };
+/* The Home trophy opens gift rankings and server-supplied sample scores. */
+const Board = { period:'daily', rows:[], sampleRows:[], hasMoreSamples:false, samplePage:1, requestedPage:1, day:0 };
 const BOARD_PERIODS = [['daily','Daily','today'],['weekly','Weekly','this week'],['monthly','Monthly','this month']];
-function lbLoad(){
-  if(DEMO){
-    const now=new Date();
-    Board.rows=lbPreviewRows(Board.period,now);lbPreviewSchedule(now);r();return;
-  }
-  contentStart('leaderboard');Native.send('leaderboard.load',{period:Board.period});r();
+const BOARD_DAY = 86_400_000;
+const boardThousands = new Intl.NumberFormat('en-US',{maximumFractionDigits:1});
+const boardMillions = new Intl.NumberFormat('en-US',{maximumFractionDigits:3});
+let boardDayTimer;
+function lbSampleCoinText(coins){
+  if(coins>=999_950)return boardMillions.format(coins/1_000_000)+'M';
+  if(coins>=1_000)return boardThousands.format(coins/1_000)+'K';
+  return n(coins);
 }
-function lbPeriod(value){if(!BOARD_PERIODS.some(([key])=>key===value)||value===Board.period)return;Board.period=value;Board.rows=[];lbLoad()}
+function lbSchedule(){
+  clearTimeout(boardDayTimer);
+  const now=Date.now();
+  Board.day=Math.floor(now/BOARD_DAY);
+  boardDayTimer=setTimeout(()=>{if(S.v==='board')lbLoad()},BOARD_DAY-now%BOARD_DAY);
+}
+function lbLoad(page=1){
+  if(page===1)lbSchedule();
+  if(DEMO){
+    Board.sampleRows=lbPreviewRows(Board.period);r();return;
+  }
+  Board.requestedPage=page;
+  contentStart('leaderboard',{page});
+  Native.send('leaderboard.load',page===1?{period:Board.period}:{period:Board.period,page});
+  r();
+}
+function lbReset(period){
+  Object.assign(Board,{period,rows:[],sampleRows:[],hasMoreSamples:false,samplePage:1,requestedPage:1});
+}
+function lbPeriod(value){
+  if(!BOARD_PERIODS.some(([key])=>key===value)||value===Board.period)return;
+  lbReset(value);lbLoad();
+}
+function lbAccepts(data){
+  return (data.period===undefined||data.period===Board.period)&&(data.page??1)===Board.requestedPage;
+}
+function lbMore(){
+  if(contentPending('leaderboard')||!Board.hasMoreSamples)return;
+  if(Math.floor(Date.now()/BOARD_DAY)!==Board.day)return lbLoad();
+  lbLoad(Board.samplePage+1);
+}
 function lbPeriodKey(event){
   if(!['ArrowLeft','ArrowRight'].includes(event.key))return;
   event.preventDefault();
@@ -12444,21 +12423,55 @@ function lbPeriodKey(event){
 function lbHeader(){return `<header class="zh-subheader zlb-header">${backButton("go('home')",{label:"Back to home"})}<h1>Leaderboard</h1></header>`}
 function lbAvatar(row){const src=imageSrc(row.avatarUrl);return `<span class="av zlb-avatar" aria-hidden="true">${esc((first(row.name||'')||'?').charAt(0).toUpperCase())}${src?`<img src="${src}" alt="" loading="lazy" decoding="async">`:''}</span>`}
 // A row opens the creator's profile; the creator is remembered so the profile has a name at once.
-function lbOpen(id){const row=Board.rows.find(x=>x.id===id);if(!row)return;if(!g(id))homeRemember({id:row.id,name:row.name,avatarUrl:row.avatarUrl,role:'host'});go('host',domId(id))}
-function lbView(){
-  const pending=!DEMO&&contentPending('leaderboard'),error=!pending&&!DEMO&&ContentLoading.leaderboard.error;
-  const tabs=`<div class="zlb-periods" role="tablist" aria-label="Leaderboard period" onkeydown="lbPeriodKey(event)">${BOARD_PERIODS.map(([key,label])=>{const on=Board.period===key;return `<button type="button" id="board-period-${key}" role="tab" aria-selected="${on}" aria-controls="board-panel" tabindex="${on?'0':'-1'}" onclick="lbPeriod('${key}')">${label}</button>`}).join('')}</div>`;
-  const rows=Board.rows,periodText=BOARD_PERIODS.find(([key])=>key===Board.period)[2];
-  const list=rows.length?`<ol class="zlb-list">${rows.map(row=>`<li><button type="button" class="zlb-row ${row.rank<=3?'is-top':''}" onclick="lbOpen('${domId(row.id)}')" aria-label="${DEMO?'Sample rank':'Rank'} ${row.rank}, ${esc(row.name)}, ${n(row.coins)} coins"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-coins">${hi('rings',15)}${DEMO?lbPreviewCoinText(row.coins):n(row.coins)}</span></button></li>`).join('')}</ol>`:`<div class="zlb-empty">${hi('trophy',30)}<h2>No rankings yet</h2><p>Creators appear here after receiving paid gifts ${periodText}.</p></div>`;
-  const body=pending?contentSkeleton('rows','Loading leaderboard',6):error?contentError('leaderboard'):list;
-  const note=DEMO?'Design preview &middot; sample hosts and Coin totals'+MODEL_NOTE:'Creators ranked by gift coins received';
-  return `<section class="zlb-page" aria-label="Leaderboard">${tabs}<div id="board-panel" role="tabpanel" aria-labelledby="board-period-${Board.period}"><p class="zlb-note">${note}</p>${body}</div></section>`;
+function lbOpen(id){const row=Board.rows.find(x=>x.id===id)||Board.sampleRows.find(x=>x.id===id);if(!row)return;if(!g(id))homeRemember({id:row.id,name:row.name,avatarUrl:row.avatarUrl,role:'host'});go('host',domId(id))}
+function lbRows(rows,compact=false){
+  return `<ol class="zlb-list">${rows.map(row=>{
+    const label=`Rank ${row.rank}, ${row.name}, ${n(row.coins)} coins`;
+    const amount=compact?lbSampleCoinText(row.coins):n(row.coins);
+    return `<li><button type="button" class="zlb-row ${row.rank<=3?'is-top':''}" onclick="lbOpen('${domId(row.id)}')" aria-label="${esc(label)}"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-score"><span class="zlb-coins">${hi('rings',15)}${amount}</span></span></button></li>`;
+  }).join('')}</ol>`;
 }
-Native.on('data.leaderboard',d=>{if(DEMO||d.period!==Board.period)return;Board.rows=d.items;if(S.v==='board')r()});
-document.addEventListener('aurora:navigate',()=>{if(S.v==='board')lbLoad()});
+function lbSamples(pending,error){
+  if(!Board.sampleRows.length)return '';
+  const footer=error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="lbMore()">Retry</button></div>`:
+    pending?contentSkeleton('rows','Loading more creators',2):
+    Board.hasMoreSamples?'<button type="button" class="zh-load-more" onclick="lbMore()">Load more creators</button>':'';
+  return `<section class="zlb-samples" aria-labelledby="zlb-samples-title"><h2 id="zlb-samples-title">Top creators</h2>${lbRows(Board.sampleRows,true)}${footer}</section>`;
+}
+function lbView(){
+  const pending=contentPending('leaderboard'),error=!pending&&ContentLoading.leaderboard.error;
+  const firstPage=Board.requestedPage===1;
+  const tabs=`<div class="zlb-periods" role="tablist" aria-label="Leaderboard period" onkeydown="lbPeriodKey(event)">${BOARD_PERIODS.map(([key,label])=>{const on=Board.period===key;return `<button type="button" id="board-period-${key}" role="tab" aria-selected="${on}" aria-controls="board-panel" tabindex="${on?'0':'-1'}" onclick="lbPeriod('${key}')">${label}</button>`}).join('')}</div>`;
+  let body;
+  if(DEMO)body=`<p class="zlb-note">Top creators by Coins received</p>${lbRows(Board.sampleRows,true)}`;
+  else if(firstPage&&pending)body=contentSkeleton('rows','Loading leaderboard',6);
+  else if(firstPage&&error)body=contentError('leaderboard');
+  else if(Board.rows.length||Board.sampleRows.length){
+    const giftRankings=Board.rows.length?`<p class="zlb-note">Creators ranked by gift coins received</p>${lbRows(Board.rows)}`:'';
+    body=lbSamples(pending,error)+giftRankings;
+  }else{
+    const periodText=BOARD_PERIODS.find(([key])=>key===Board.period)[2];
+    body=`<div class="zlb-empty">${hi('trophy',30)}<h2>No rankings yet</h2><p>Creators appear here after receiving paid gifts ${periodText}.</p></div>`;
+  }
+  return `<section class="zlb-page" aria-label="Leaderboard">${tabs}<div id="board-panel" role="tabpanel" aria-labelledby="board-period-${Board.period}">${body}</div></section>`;
+}
+Native.on('data.leaderboard',data=>{
+  if(DEMO||!lbAccepts(data))return;
+  const page=data.page??1,rows=data.sampleItems??[];
+  if(page===1){Board.rows=data.items;Board.sampleRows=rows}
+  else{
+    const known=new Set(Board.sampleRows.map(row=>row.id));
+    Board.sampleRows.push(...rows.filter(row=>!known.has(row.id)));
+  }
+  Board.samplePage=page;
+  Board.hasMoreSamples=rows.length>0&&Board.sampleRows.length<(data.sampleTotal??0);
+  if(S.v==='board')r();
+});
+document.addEventListener('aurora:navigate',()=>{if(S.v==='board')lbLoad();else clearTimeout(boardDayTimer)});
+Native.on('app.foreground',()=>{if(S.v==='board'&&Board.day!==Math.floor(Date.now()/BOARD_DAY))lbLoad()});
 ZimiPullRefresh.register('board',{refresh:()=>lbLoad(),busy:()=>contentPending('leaderboard')});
-['session.none','session.expired'].forEach(type=>Native.on(type,()=>{Board.period='daily';Board.rows=[]}));
-window.ZimiLeaderboard={load:lbLoad,header:lbHeader,render:lbView};
+['session.none','session.expired'].forEach(type=>Native.on(type,()=>{clearTimeout(boardDayTimer);lbReset('daily')}));
+window.ZimiLeaderboard={load:lbLoad,header:lbHeader,render:lbView,accepts:lbAccepts};
 ZimiHome.views.board=lbView;
 
 /* Refer a Friend & Earn: the Settings page, a Home pop-up at most once a day and a small
@@ -21612,7 +21625,9 @@ const zuPendingFollows=new Map(),zuPendingBlocks=new Map();
 let zuAvatarPressTimer=0,zuAvatarPressConsumed=false;
 const ZuRelationships={owner:'',kind:'followers',users:[],total:0,page:0,limit:20,loading:false,error:'',requestId:0,requestedPage:1};
 const ZuCover={owner:'',photo:'',preparing:false,saving:false,error:'',run:0,requestId:0};
-const zuActive = () => ['host','user','profile'].includes(S.v);
+const zuProfileView = view => ['host','user','profile'].includes(view);
+const zuOwnerDetail = view => ['editprofile','create-post','themes','settings-detail','agency'].includes(view);
+const zuActive = () => zuProfileView(S.v);
 const zuSelfId = () => S.user?.id || (DEMO?ZProfile.data?.profile?.id:'');
 const zuId = () => S.v === 'profile' ? zuSelfId() : S.v === 'user' ? S.u : S.h;
 const zuKnown = id => g(id) || PEOPLE[id] || (DEMO ? sender(id) : null);
@@ -21664,9 +21679,9 @@ function zuRemember(profile){
   S.following[profile.id]=!!profile.following;
   if(!zuApproved(profile))PEOPLE[profile.id]={...raw,host:0};
 }
-function zuLoad(){
+function zuLoad({tab='posts',mvpPeriod='week'}={}){
   const id=zuId();if(!id)return;
-  Object.assign(Zu,{id,profile:null,loading:!DEMO,error:'',requestId:++Zu.sequence,tab:'posts',mvpPeriod:'week',
+  Object.assign(Zu,{id,profile:null,loading:!DEMO,error:'',requestId:++Zu.sequence,tab,mvpPeriod,
     posts:[],total:0,page:0,limit:20,postsLoading:false,postsError:'',postsRequestId:++Zu.sequence,
     mvpSupporters:[],mvpLoading:false,mvpLoaded:false,mvpError:'',mvpRequestId:++Zu.sequence,mvpRequestPeriod:'',
     followBusy:zuPendingFollows.has(id),followRequestId:zuPendingFollows.get(id)||0,followError:'',
@@ -21689,7 +21704,7 @@ function zuLoad(){
     zuRemember(Zu.profile);
   }else Native.send('profile.load',{id,requestId:Zu.requestId});
 }
-function zuRetry(){zuLoad();zuPaint()}
+function zuRetry(){zuLoad(Zu);zuPaint()}
 ZimiPullRefresh.register(['profile','host','user'],{refresh:()=>zuRetry(),busy:()=>Zu.loading});
 function zuLoadPosts(more=false){
   if(DEMO||Zu.postsLoading||!zuGalleryAllowed(Zu.profile))return;
@@ -21710,7 +21725,33 @@ function zuRefreshMvpsAfterGift(affected){
   Zu.mvpLoaded=false;Zu.mvpError='';Zu.mvpRequestPeriod='';
   if(Zu.tab==='mvp')zuLoadMvps(true);
 }
-function zuBack(){if(Zu.dialog==='avatar'){zuCloseDialog();return}if(S.v==='profile'){go('home');return}const back=Zu.back;go(back.view||'home',back.id)}
+function zuBack(){
+  if(Zu.dialog){zuCloseDialog();return}
+  const returnRoute=Zu.back;
+  go(returnRoute.view,returnRoute.id,{returnRoute});
+}
+function zuReturnRoute(){
+  const from=S.v;
+  const origin={view:from};
+  if(from==='user')origin.id=S.u;
+  if(from==='host'||from==='thread')origin.id=S.h;
+  if(from==='search')origin.query=S.sq;
+  if(zuActive()||zuOwnerDetail(from))origin.parent=Zu.back;
+  if(zuActive())Object.assign(origin,{tab:Zu.tab,mvpPeriod:Zu.mvpPeriod});
+  return origin;
+}
+function zuSaveReturn(view,id,returnRoute){
+  if(returnRoute){Zu.back=returnRoute.parent||{view:'home'};return}
+  const from=S.v;
+  if(!zuProfileView(view)){
+    // Keep the owner's origin while moving through their profile tools.
+    if(!zuOwnerDetail(view)||!(zuOwnerDetail(from)||zuActive()&&zuSelf()))Zu.back={view:'home'};
+    return;
+  }
+  if(zuActive()&&(view==='profile'?zuSelfId():id)===zuId())return;
+  if(view==='profile'&&!zuActive()&&from!=='settings')return;
+  Zu.back=zuReturnRoute();
+}
 function zuEditMedia(kind){
   if(kind==='cover')return zuChooseCover();
   if(!zuSelf()||zuOffline())return;
@@ -21810,10 +21851,11 @@ function zuIdentity(p){
   const memberOwner=owner&&!isHostWallet();
   const followLabel=Zu.followBusy?'Updating…':p.following?'Following':followBack&&p.followsYou?'Follow back':'Follow';
   const bio=`<p class="zu-bio">${esc(p.about||(owner?'':'A new face. A new connection. Say hello when you’re ready.'))}</p>`;
+  const publicDiamonds=diamondFormat(DEMO?0:p.lifetimeGiftDiamondUnits);
   const leadStat=owner
     ?`<div><strong>${isHostWallet()?diamondProfileValue():contentBalance()}</strong><span>${isHostWallet()?'Diamonds':'Coins'}</span></div>`
     :host
-      ?`<div><strong${DEMO?'':' aria-label="Diamond total unavailable"'}>${DEMO?'0':'—'}</strong><span>Diamonds</span></div>`
+      ?`<div role="group" aria-label="Lifetime Diamonds earned from gifts" title="Lifetime Diamonds earned from gifts"><strong${publicDiamonds==='—'?' aria-label="Diamond total unavailable"':''}>${publicDiamonds}</strong><span>Diamonds</span></div>`
       :`<div><strong>${Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)}</strong><span>Posts</span></div>`;
   const relationshipStats=['followers','following'].map(kind=>{const count=kind==='followers'?p.followers:p.followingCount,title=kind==='followers'?'Followers':'Following';return `<div>${owner?`<button type="button" class="zu-stat-button" aria-label="View your ${kind}" onclick="zuOpenRelationships('${kind}')"><strong>${n(count||0)}</strong><span>${title}</span></button>`:`<strong>${n(count||0)}</strong><span>${title}</span>`}</div>`}).join('');
   const stats=`<div class="zu-stats" aria-label="Profile statistics">${leadStat}${relationshipStats}</div>`;
@@ -22102,6 +22144,7 @@ function zuShownPresence(p){if(p&&isHostPayload(p))Object.assign(p,{online:hostS
 Native.on('data.publicProfile',d=>{
   if(!zuMatches(d))return;
   Zu.profile=zuShownPresence(d.profile);Zu.loading=false;Zu.error='';zuRemember(d.profile);
+  if(Zu.tab==='mvp')zuLoadMvps();
   if(zuGalleryAllowed(d.profile)&&!Zu.page&&!Zu.postsLoading)zuLoadPosts();
   zuPaint();
 });
@@ -22169,15 +22212,16 @@ Native.on('connection.status',d=>{if(!zuActive())return;if(d.connected&&!d.check
 Native.on('app.background',zuAvatarPressEnd);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)zuAvatarPressEnd()});
 for(const type of ['offline','online'])window.addEventListener(type,()=>{if(zuActive())zuPaint()});
-for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog(true);Object.assign(ZuCover,{owner:'',photo:'',preparing:false,saving:false,error:'',run:ZuCover.run+1,requestId:++Zu.sequence});Object.assign(ZuRelationships,{owner:'',users:[],total:0,page:0,loading:false,error:'',requestId:++Zu.sequence});zuPendingFollows.clear();zuPendingBlocks.clear();Zu.deleting=null;Zu.deleteCandidate=null;Zu.id='';Zu.profile=null;Zu.posts=[];Zu.mvpSupporters=[];Zu.mvpLoading=false;Zu.mvpLoaded=false;Zu.mvpError='';Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence;Zu.mvpRequestId=++Zu.sequence;Zu.mvpRequestPeriod=''});
+for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog(true);Object.assign(ZuCover,{owner:'',photo:'',preparing:false,saving:false,error:'',run:ZuCover.run+1,requestId:++Zu.sequence});Object.assign(ZuRelationships,{owner:'',users:[],total:0,page:0,loading:false,error:'',requestId:++Zu.sequence});zuPendingFollows.clear();zuPendingBlocks.clear();Zu.deleting=null;Zu.deleteCandidate=null;Zu.id='';Zu.profile=null;Zu.posts=[];Zu.mvpSupporters=[];Zu.mvpLoading=false;Zu.mvpLoaded=false;Zu.mvpError='';Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence;Zu.mvpRequestId=++Zu.sequence;Zu.mvpRequestPeriod='';Zu.back={view:'home'}});
 window.ZimiPublicProfile={
   render:zuScreen,
-  beforeNavigate(view,id){
+  returnRoute:zuReturnRoute,
+  beforeNavigate(view,id,returnRoute){
     if(ZuCover.preparing){ZuCover.run++;Object.assign(ZuCover,{photo:'',error:'',preparing:false})}
     zuCloseDialog(true);
-    if(['host','user'].includes(view)&&!(zuActive()&&id===zuId()))Zu.back={view:S.v,id:S.v==='user'?S.u:S.v==='host'?S.h:undefined};
+    zuSaveReturn(view,id,returnRoute);
   },
-  afterNavigate(view){if(['host','user','profile'].includes(view))zuLoad()},
+  afterNavigate(view,returnRoute){if(zuProfileView(view))zuLoad(returnRoute)},
 };
 ZimiHome.views.profile=zuScreen;
 if(DEMO&&previewMode==='profile'){S.v='host';S.h='aanya';S.loggedIn=1;zuLoad()}

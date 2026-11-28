@@ -192,25 +192,34 @@ export const api = {
     const version = getSessionVersion();
     return queueProfileWrite(version, async () => {
     if (typeof profile.name !== "string" || profile.name.trim().length < 2 || profile.name.trim().length > 100) throw new ApiError("Your name must be between 2 and 100 characters.", 400);
+    const onboarding = profile.onboarding === true || Array.isArray(profile.photos);
     if (profile.photos !== undefined && (!Array.isArray(profile.photos) || profile.photos.some(photo => typeof photo !== "string"))) throw new ApiError("Choose valid photos to continue.", 400);
-    if (Array.isArray(profile.photos)) {
-      const languages = boundedStrings(profile.langs ?? profile.languages ?? [], "languages", profile.preferredRole === "creator" ? 1 : 0, 8);
-      const interests = boundedStrings(profile.interests ?? [], "interests", 0, 20);
+    if (onboarding) {
       if (profile.adultConfirmed !== true) throw new ApiError("Confirm that you are 18 or older to continue.", 400);
       const email = typeof profile.email === "string" ? profile.email.trim() : "";
-      if (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw new ApiError("Enter a valid email address.", 400);
-      const sources = profile.photos as string[];
-      const existingPhotos = sources.some(source => !source.startsWith("data:")) ? (await api.me()).user.photos ?? [] : [];
-      ensureSession(version);
-      const photoKeys = await uploadPhotos(sources, version, onProgress, existingPhotos);
+      if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError("Enter a valid email address.", 400);
+      const gender = genderOf(profile.gender).gender;
+      if (!gender) throw new ApiError("Choose Female, Male or Prefer not to say.", 400);
+      const details: Record<string, unknown> = {
+        email, gender, adultConfirmed: true,
+        ...(profile.preferredRole === "creator" || profile.preferredRole === "member" ? { preferredRole: profile.preferredRole } : {}),
+      };
+      // Legacy clients may still finish a draft that already includes gallery
+      // photos and preferences. The two-step flow omits these keys entirely.
+      if (Array.isArray(profile.photos)) {
+        const languages = boundedStrings(profile.langs ?? profile.languages ?? [], "languages", profile.preferredRole === "creator" ? 1 : 0, 8);
+        const interests = boundedStrings(profile.interests ?? [], "interests", 0, 20);
+        const sources = profile.photos as string[];
+        const existingPhotos = sources.some(source => !source.startsWith("data:")) ? (await api.me()).user.photos ?? [] : [];
+        ensureSession(version);
+        details.photoKeys = await uploadPhotos(sources, version, onProgress, existingPhotos);
+        details.languages = languages;
+        details.interests = interests;
+        if (typeof profile.category === "string" && profile.category) details.category = profile.category;
+      }
       ensureSession(version);
       const response = await request("PATCH", "/auth/profile", {
-        name: profile.name.trim(), onboarding: {
-          ...(email ? { email } : {}), photoKeys, languages, interests,
-          ...(typeof profile.category === "string" && profile.category ? { category: profile.category } : {}),
-          ...(profile.preferredRole === "creator" || profile.preferredRole === "member" ? { preferredRole: profile.preferredRole } : {}),
-          ...genderOf(profile.gender), adultConfirmed: true,
-        },
+        name: profile.name.trim(), onboarding: details,
       });
       ensureSession(version);
       return remember(accountFrom(response));
@@ -457,7 +466,12 @@ export const api = {
   async transactions() { return transactionsFrom(await request("GET", "/wallet/transactions")); },
   async referral() { return referralFrom(await request("GET", "/referrals/me")); },
   async applyReferral(code: string) { return referralFrom(await request("POST", "/referrals/apply", { code })); },
-  async leaderboard(period: LeaderboardPeriod) { return leaderboardFrom(await request("GET", `/leaderboard/creators?${queryString({ period, limit: 50 })}`), period); },
+  async leaderboard(period: LeaderboardPeriod, page = 1) {
+    if (!Number.isSafeInteger(page) || page < 1 || page > 1000)
+      throw new ApiError("Choose a valid leaderboard page.", 400);
+    const query = queryString({ period, limit: 50, includeSamples: "true", page: page === 1 ? undefined : page });
+    return leaderboardFrom(await request("GET", `/leaderboard/creators?${query}`), period, page);
+  },
   async wallet(): Promise<Wallet> { return walletFrom(await request("GET", "/wallet")); },
   async diamondStatistics(period: DiamondStatisticsPeriod, date?: string) {
     if (!["daily", "weekly", "monthly"].includes(period) || (date !== undefined && !validStatisticsDate(date)))

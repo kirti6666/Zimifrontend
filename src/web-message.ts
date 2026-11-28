@@ -95,7 +95,9 @@ export function parseWebMessage(raw: string): WebMessage | null {
       (d.userAgent === undefined || (typeof d.userAgent === "string" && d.userAgent.trim().length > 0 && d.userAgent.length <= 1024 && !/[\x00-\x1f\x7f-\x9f]/.test(d.userAgent))) &&
       Object.keys(d).every(key => ["requestId", "userAgent"].includes(key)); break;
     case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant", "online", "following", "foryou", "new"].includes(String(d.mode))) && (d.country === undefined || (typeof d.country === "string" && d.country.trim().length > 0 && d.country.length <= 100)) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
-    case "leaderboard.load": valid = typeof d.period === "string" && ["daily", "weekly", "monthly"].includes(d.period) && Object.keys(d).every(key => key === "period"); break;
+    case "leaderboard.load": valid = typeof d.period === "string" && ["daily", "weekly", "monthly"].includes(d.period) &&
+      (d.page === undefined || (Number.isSafeInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 1000)) &&
+      Object.keys(d).every(key => key === "period" || key === "page"); break;
     case "referral.load": case "referral.share": valid = Object.keys(d).length === 0; break;
     case "referral.apply": valid = typeof d.code === "string" && d.code.trim().length > 0 && d.code.length <= 20 && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 &&
       Object.keys(d).every(key => ["code", "requestId"].includes(key)); break;

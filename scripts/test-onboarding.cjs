@@ -9,59 +9,12 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
-const { deflateSync } = require('node:zlib');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 
 const root = path.resolve(__dirname, '..');
 const artifacts = process.env.ONBOARDING_ARTIFACTS || path.join(os.tmpdir(), 'zimi-onboarding-checks');
 fs.mkdirSync(artifacts, { recursive: true });
 
-// Real PNG inputs exercise the browser's image decoding/upload path.
-function photo(index) {
-  function crc32(buffer) {
-    let crc = 0xffffffff;
-    for (const byte of buffer) {
-      crc ^= byte;
-      for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
-    }
-    return (crc ^ 0xffffffff) >>> 0;
-  }
-  function chunk(type, data) {
-    const tag = Buffer.from(type);
-    const size = Buffer.alloc(4);
-    const crc = Buffer.alloc(4);
-    size.writeUInt32BE(data.length);
-    crc.writeUInt32BE(crc32(Buffer.concat([tag, data])));
-    return Buffer.concat([size, tag, data, crc]);
-  }
-  const width = 640, height = 800;
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(width, 0);
-  header.writeUInt32BE(height, 4);
-  header[8] = 8;
-  header[9] = 2;
-  const pixels = Buffer.alloc(height * (width * 3 + 1));
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const offset = y * (width * 3 + 1) + x * 3 + 1;
-      pixels[offset] = (x + index * 47) % 256;
-      pixels[offset + 1] = (y + index * 31) % 256;
-      pixels[offset + 2] = 90 + index * 15;
-    }
-  }
-  return {
-    name: `onboarding-test-${index}.png`,
-    mimeType: 'image/png',
-    buffer: Buffer.concat([
-      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-      chunk('IHDR', header),
-      chunk('IDAT', deflateSync(pixels)),
-      chunk('IEND', Buffer.alloc(0)),
-    ]),
-  };
-}
-
-const fixtures = Array.from({ length: 7 }, (_, index) => photo(index));
 const errors = [];
 const snapshots = {};
 let browser;
@@ -157,7 +110,29 @@ async function startSignup(page) {
   assert.equal(await page.locator('.ob-role-switch').count(), 0, 'Welcome starts one signup flow without a role choice');
   await page.locator('#ob-start').click();
   await step(page, 'phone');
+  await assertProgress(page, 1);
   assert.equal((await state(page)).creatorIntent, false, 'Fresh signup always begins as a member');
+}
+
+async function assertProgress(page, current) {
+  const progress = page.getByRole('progressbar', { name: 'Account setup' });
+  assert.equal(await progress.getAttribute('aria-valuemax'), '2', 'Signup exposes exactly two setup steps');
+  assert.equal(await progress.getAttribute('aria-valuenow'), String(current));
+  assert.match(await progress.getAttribute('aria-valuetext'), new RegExp(`step ${current} of 2`, 'i'));
+  assert.equal(await progress.locator('span').count(), 2, 'The visual progress indicator has two segments');
+}
+
+async function assertBasicDetailsOnly(page) {
+  await step(page, 'profile');
+  await assertProgress(page, 2);
+  const visibleInputs = await page.locator('[data-ob-step="profile"] input:visible').evaluateAll(inputs => inputs.map(input => input.id).sort());
+  assert.deepEqual(visibleInputs, ['pe', 'pn'], 'Basic details expose only name and email text inputs');
+  assert.equal(await page.locator('[data-ob-step="profile"] select:visible').count(), 0, 'Signup has no creator category field');
+  assert.equal(await page.locator('#p18, #ob-photos, .ob-interests, .ob-options').count(), 0, 'Signup has no age checkbox, photo, interest or language controls');
+  assert.equal(await page.locator('[data-ob-step="profile"] .ob-segment button').count(), 3, 'Gender remains the only choice group');
+  const copy = await page.locator('[data-ob-step="profile"]').innerText();
+  assert.match(copy, /18[^\n]*(?:older|age)|(?:older|age)[^\n]*18/i, 'The Continue disclosure keeps the 18+ attestation visible');
+  assert.doesNotMatch(copy, /Creator category|Languages you speak|Your photos|Your interests/i);
 }
 
 async function enterPhone(page) {
@@ -181,6 +156,7 @@ async function configuredOtpLengths() {
     await enterPhone(page);
     await receive(page, 'auth.otpSent', { phone: '+919876543210', expiresIn: 60, resendAfter: 60, otpLength: length });
     await step(page, 'otp');
+    await assertProgress(page, 1);
     assert.equal(await page.locator('.ob-otp input').count(), length);
     assert.match(await page.locator('[data-ob-step="otp"]').innerText(), new RegExp(`${length}-digit code`));
     assert.equal(await page.locator('.ob-otp').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length), length);
@@ -225,19 +201,16 @@ async function configuredOtpLengths() {
 }
 
 async function fillBasics(page, host = false) {
+  await assertBasicDetailsOnly(page);
   await page.locator('#pn').fill(host ? 'Creator Test' : 'Onboarding Test');
   await page.locator('#pe').fill('onboarding@example.test');
   await page.getByRole('button', { name: host ? 'Male' : 'Female', exact: true }).click();
-  await page.locator('#p18').check();
-  if (host) {
-    // Category/language are required for creators; choose visible controls.
-    await page.getByLabel('Creator category').selectOption('Music');
-    await page.getByRole('button', { name: 'English', exact: true }).click();
-  }
+}
+
+async function submitBasics(page, emailResult = { available: true }) {
   await action(page, 'obNextProfile').click();
-  // The connected app confirms the address is free before photos.
-  if (await page.evaluate(() => !DEMO)) await answerEmailCheck(page, { available: true });
-  await step(page, 'photos');
+  // The connected app confirms the address before saving the basic details.
+  if (await page.evaluate(() => !DEMO) && (await state(page)).busy === 'auth.emailCheck') await answerEmailCheck(page, emailResult);
 }
 
 async function answerEmailCheck(page, data) {
@@ -255,7 +228,7 @@ async function nativeEmailAvailability() {
   await receive(page, 'auth.otpSent', { phone: '+919876543210', resendAfter: 60 });
   await enterCode(page);
   await receive(page, 'auth.ok', { isNew: true, requiresOnboarding: true, user: { id: 'email-member', name: '', role: 'sender' } });
-  await step(page, 'profile');
+  await assertBasicDetailsOnly(page);
   const status = page.locator('#ob-email-status');
   const checks = () => page.evaluate(() => window.__messages.filter(message => message.type === 'auth.emailCheck').length);
 
@@ -268,7 +241,6 @@ async function nativeEmailAvailability() {
   assert.equal(await page.evaluate(() => document.activeElement.id), 'pe', 'The flag must not move focus while typing');
   assert.equal((await page.evaluate(() => window.__messages.filter(message => message.type === 'auth.emailCheck').at(-1).data)).email, 'taken@example.test', 'Checks use the normalized address');
   await page.getByRole('button', { name: 'Female', exact: true }).click();
-  await page.locator('#p18').check();
   await action(page, 'obNextProfile').click();
   assert.equal((await state(page)).step, 'profile', 'A taken email cannot continue');
   assert.match((await state(page)).err, /already used by another account/);
@@ -300,35 +272,29 @@ async function nativeEmailAvailability() {
   assert.match(await action(page, 'obNextProfile').innerText(), /Checking your email/);
   assert.equal(await action(page, 'obNextProfile').isDisabled(), true);
   await answerEmailCheck(page, { available: true });
-  await step(page, 'photos');
-  assert.equal((await state(page)).busy, false);
+  assert.equal((await state(page)).step, 'profile', 'Basic details save directly from the second step');
+  assert.equal((await state(page)).busy, 'profile.save');
+  assert.equal(await page.locator('[data-ob-step="photos"], [data-ob-step="interests"]').count(), 0);
+  await receive(page, 'profile.error', { onboarding: true, message: 'Connection interrupted. Try again.' });
+  assert.match((await state(page)).err, /Connection interrupted/);
 
   // A failed check does not trap the person; the save still verifies the address.
-  await action(page, 'obBack').click();
-  await step(page, 'profile');
   await page.locator('#pe').fill('offline@example.test');
   await action(page, 'obNextProfile').click();
   await answerEmailCheck(page, { status: 0, code: 'NETWORK_ERROR', message: 'Check your connection and try again.' });
-  await step(page, 'photos');
+  assert.equal((await state(page)).busy, 'profile.save', 'An unavailable preflight check falls through to the authoritative save');
 
-  // Someone else saved the address meanwhile: return to the email with photos kept.
-  await uploadPhotos(page);
-  await action(page, 'obNextPhotos').click();
-  await action(page, 'obFinish').click();
+  // Someone else saved the address meanwhile: keep the basic-details draft ready to correct.
   await receive(page, 'profile.error', { onboarding: true, code: 'EMAIL_IN_USE', message: 'This email is already used by another account. Try a different one.' });
   await step(page, 'profile');
   assert.match((await state(page)).err, /already used by another account/);
   assert.equal(await page.evaluate(() => document.activeElement.id), 'pe', 'The email field is ready to correct');
   assert.equal(await status.innerText(), 'This email is already used by another account. Try a different one.');
-  assert.equal((await state(page)).photos.length, 3, 'Photos survive the email conflict');
+  assert.equal(await page.locator('#pn').inputValue(), 'Email Test', 'Save conflicts preserve the entered name');
+  assert.equal(await page.getByRole('button', { name: 'Female', exact: true }).getAttribute('aria-pressed'), 'true', 'Save conflicts preserve gender');
   assert.equal((await state(page)).busy, false);
   await page.context().close();
-  console.log('PASS native email availability: live flag, normalization, stale answers, invalid format, waiting Next, failed check, save-time conflict');
-}
-
-async function uploadPhotos(page, count = 3) {
-  await page.locator('#ob-photos').setInputFiles(fixtures.slice(0, count));
-  await page.waitForFunction(count => (S.auth.photos || []).length === Math.min(count, 6), count);
+  console.log('PASS native email availability: live flag, normalization, stale answers, direct save, failed check and save-time conflict');
 }
 
 async function previewFlow() {
@@ -369,9 +335,10 @@ async function previewFlow() {
   assert.ok((await state(page)).err, 'Invalid phone must explain the error');
   await enterPhone(page);
   await step(page, 'otp');
+  await assertProgress(page, 1);
   await remember(page, 'otp');
   await enterCode(page);
-  await step(page, 'profile');
+  await assertBasicDetailsOnly(page);
   await page.locator('#pn').fill('Draft name');
   await page.locator('#pe').fill('not-an-email');
   await action(page, 'obNextProfile').click();
@@ -382,52 +349,13 @@ async function previewFlow() {
   assert.match((await state(page)).err, /Female, Male or Prefer not to say/, 'Sign-up asks how the member identifies');
   assert.equal(await page.evaluate(() => document.activeElement.id), 'pg', 'The missing choice receives focus');
   await fillBasics(page);
-  await remember(page, 'photos-empty');
-  const next = action(page, 'obNextPhotos');
-  if (await next.isEnabled()) await next.click();
-  assert.equal((await state(page)).step, 'photos', 'Fewer than 3 photos cannot proceed');
-  await page.locator('#ob-photos').setInputFiles({ name: 'not-a-photo.txt', mimeType: 'text/plain', buffer: Buffer.from('invalid photo') });
-  await page.waitForFunction(() => !S.auth.uploading && !!S.auth.err);
-  assert.equal((await state(page)).photos.length, 0, 'Invalid uploads must not enter the photo collection');
-  await uploadPhotos(page, 7);
-  assert.equal((await state(page)).photos.length, 6, 'Uploads must cap at six photos');
-  await page.locator('button[onclick*="obFeature("]').nth(1).click();
-  const featured = await state(page);
-  assert.ok(featured.featured === 1 || featured.feature === 1, 'Second photo can be selected as featured');
-  await page.getByRole('button', { name: 'Remove featured photo', exact: true }).click();
-  assert.equal((await state(page)).featured, 0, 'Removing the featured photo must select a remaining photo');
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Remove featured photo', exact: true }).click();
-  assert.equal((await state(page)).photos.length, 2);
-  assert.equal(await action(page, 'obNextPhotos').isDisabled(), true, 'Removing photos below the minimum must disable continue');
-  await page.locator('#ob-photos').setInputFiles(fixtures.slice(0, 1));
-  await page.waitForFunction(() => (S.auth.photos || []).length === 3 && !S.auth.uploading);
-  await page.locator('button[onclick*="obFeature("]').nth(1).click();
-  await remember(page, 'photos');
-  await action(page, 'obNextPhotos').click();
-  await step(page, 'interests');
-  const chip = action(page, 'obToggleInterest');
-  await chip.click();
-  assert.equal(await chip.getAttribute('aria-pressed'), 'true', 'Interest selection must be exposed to assistive technology');
-  await chip.click();
-  assert.equal(await chip.getAttribute('aria-pressed'), 'false', 'Interest selection must toggle off');
-  await chip.focus();
-  await chip.press('Space');
-  await remember(page, 'interests');
-  await action(page, 'obBack').click();
-  await step(page, 'photos');
-  assert.equal((await state(page)).photos.length, 3, 'Back navigation must retain uploaded photos');
-  await action(page, 'obBack').click();
-  await step(page, 'profile');
-  assert.equal(await page.locator('#pn').inputValue(), 'Onboarding Test', 'Back navigation must retain name');
-  assert.equal(await page.locator('#pe').inputValue(), 'onboarding@example.test', 'Back navigation must retain email');
   await remember(page, 'profile');
-  await action(page, 'obNextProfile').click();
-  await action(page, 'obNextPhotos').click();
-  await action(page, 'obFinish').click();
+  assert.equal(await page.locator('[data-ob-step="photos"], [data-ob-step="interests"]').count(), 0, 'Removed signup sections never render');
+  await submitBasics(page);
   await skipDeviceAccess(page);
   await page.waitForFunction(() => S.v === 'home');
   assert.equal(await page.evaluate(() => S.loggedIn), 1, 'Signup completion must enter the signed-in app');
-  console.log('PASS sender signup: validation, OTP paste, photos, featured image, interests, back navigation, completion');
+  console.log('PASS sender signup: two-step progress, OTP paste, basic-details validation, removed sections and completion');
   return page;
 }
 
@@ -466,17 +394,16 @@ async function hostFlow() {
   await step(page, 'profile');
   assert.equal(await page.evaluate(() => S.role), 'sender', 'Restoring creator setup cannot grant host permissions');
   await fillBasics(page, true);
-  await uploadPhotos(page);
-  await action(page, 'obNextPhotos').click();
-  await action(page, 'obFinish').click();
+  await submitBasics(page);
   await skipDeviceAccess(page);
   await joinHostAgency(page);
   const hostProfile = await page.evaluate(() => S.kf);
   assert.equal(hostProfile.name, 'Creator Test', 'Host setup must preserve the display name');
   assert.equal(hostProfile.email, 'onboarding@example.test', 'Host setup must preserve the email');
-  assert.equal(hostProfile.photos.length, 3, 'Host setup must preserve uploaded photos');
+  assert.deepEqual(hostProfile.photos || [], [], 'Signup does not create a host photo gallery');
+  assert.deepEqual(hostProfile.langs || [], [], 'Creator languages move to the later creator setup');
   await page.getByRole('heading', { name: 'Your Host profile is verified' }).waitFor();
-  console.log('PASS resumed creator setup: account preference, requirements and Agency Owner activation');
+  console.log('PASS resumed creator setup: basic signup details, deferred creator requirements and Agency Owner activation');
 }
 
 async function joinHostAgency(page, native = false) {
@@ -524,16 +451,15 @@ async function nativeFlow() {
   for (let index = 0; index < 6; index++) assert.equal(await page.locator(`#o${index}`).inputValue(), '', 'Failed verification must clear entered code digits');
   await enterCode(page);
   await receive(page, 'auth.ok', { isNew: true, requiresOnboarding: true, user: { id: 'native-member', name: '', role: 'sender' } });
-  await step(page, 'profile');
+  await assertBasicDetailsOnly(page);
   await fillBasics(page);
-  await uploadPhotos(page);
-  await action(page, 'obNextPhotos').click();
-  await action(page, 'obFinish').click();
-  assert.equal((await state(page)).step, 'interests', 'Saving must wait for the server');
+  await submitBasics(page);
+  assert.equal((await state(page)).step, 'profile', 'Saving basic details must wait on the second step for the server');
+  assert.equal((await state(page)).busy, 'profile.save');
   await receive(page, 'profile.error', { onboarding: true, message: 'Connection interrupted. Try again.' });
   assert.match((await state(page)).err, /Connection interrupted/);
-  assert.equal((await state(page)).photos.length, 3, 'Save failures must preserve uploaded photos');
-  await action(page, 'obFinish').click();
+  assert.equal(await page.locator('#pn').inputValue(), 'Onboarding Test', 'Save failures preserve basic details');
+  await action(page, 'obNextProfile').click();
   await receive(page, 'profile.saved', { onboarding: true });
   await skipDeviceAccess(page);
   await page.waitForFunction(() => S.v === 'home');
@@ -543,6 +469,9 @@ async function nativeFlow() {
   assert.equal(saves[0].data.adultConfirmed, true, 'Adult confirmation must reach the validated backend profile');
   assert.equal(saves[0].data.preferredRole, 'member', 'Member preference is metadata, not a permission grant');
   assert.equal(saves[0].data.gender, 'female', 'The chosen gender is saved with the profile');
+  for (const removed of ['photos', 'interests', 'langs', 'languages', 'category']) {
+    assert.equal(Object.hasOwn(saves[0].data, removed), false, `Signup save omits removed ${removed} data`);
+  }
   assert.equal(await page.evaluate(() => window.__messages.some(message => message.type === 'ui.haptic')), false, 'Signup interactions must not request vibration');
   console.log('PASS native bridge: send/verify acknowledgements, delivery error, save error/retry, completion');
 }
@@ -592,13 +521,14 @@ async function nativeSessionRecovery() {
   assert.equal(await page.evaluate(() => window.__messages.at(-1).type), 'session.resume');
   await receive(page, 'session', {
     requiresOnboarding: true, verification: 'none',
-    user: { id: 'resume-user', name: 'Saved Creator', role: 'sender', email: 'saved@example.test', onboardingPreference: 'creator', languages: ['English'], interests: ['Music'], category: 'Music', gender: 'male', adultConfirmed: true },
+    user: { id: 'resume-user', name: 'Saved Creator', role: 'sender', email: 'saved@example.test', onboardingPreference: 'creator', gender: 'male', adultConfirmed: true },
   });
   await step(page, 'profile');
+  await assertBasicDetailsOnly(page);
   assert.equal(await page.locator('#pn').inputValue(), 'Saved Creator', 'An unfinished server profile resumes its saved name');
   assert.equal(await page.getByRole('button', { name: 'Male', exact: true }).getAttribute('aria-pressed'), 'true', 'A saved gender choice resumes');
   assert.equal(await page.locator('#pe').inputValue(), 'saved@example.test');
-  assert.equal(await page.locator('#p18').isChecked(), true);
+  assert.equal(await page.locator('#p18').count(), 0, 'Resumed signup has no age checkbox');
   assert.equal((await state(page)).creatorIntent, true, 'Server setup preference resumes creator onboarding');
   assert.equal(await page.evaluate(() => S.role), 'sender', 'Resuming creator setup must not grant an approved creator role');
   await receive(page, 'session.expired', { message: 'Please sign in again.' });
@@ -619,21 +549,18 @@ async function nativeCreatorFlow() {
   assert.equal((await state(page)).creatorIntent, true, 'A server creator preference restores the creator setup flow');
   assert.equal(await page.evaluate(() => S.role), 'sender', 'Creator setup cannot elevate server permissions');
   await fillBasics(page, true);
-  await uploadPhotos(page);
-  await action(page, 'obNextPhotos').click();
-  await action(page, 'obFinish').click();
+  await submitBasics(page);
   const save = await state(page);
   await receive(page, 'profile.saved', { requestId: save.requestId - 1, onboarding: true });
   assert.equal((await state(page)).busy, 'profile.save', 'An older profile save cannot complete the current onboarding');
-  await receive(page, 'profile.progress', { done: 2, total: 3 });
-  await receive(page, 'profile.saved', { onboarding: true, account: { requiresOnboarding: false, verification: 'none', user: { id: 'new-creator', name: 'Creator Test', email: 'onboarding@example.test', role: 'sender', hostStatus: 'none', onboardingPreference: 'creator', languages: ['English'], category: 'Music' } } });
+  await receive(page, 'profile.saved', { onboarding: true, account: { requiresOnboarding: false, verification: 'none', user: { id: 'new-creator', name: 'Creator Test', email: 'onboarding@example.test', gender: 'male', role: 'sender', hostStatus: 'none', onboardingPreference: 'creator' } } });
   await skipDeviceAccess(page);
   await joinHostAgency(page, true);
   assert.equal(await page.evaluate(() => S.role), 'host', 'The refreshed server account grants Host access after the code is claimed');
   assert.equal(await page.evaluate(() => isApprovedHost()), true);
   const request = await page.evaluate(() => window.__messages.find(message => message.type === 'profile.save'));
   assert.equal(request.data.preferredRole, 'creator');
-  assert.deepEqual(request.data.langs, ['English']);
+  for (const removed of ['photos', 'interests', 'langs', 'languages', 'category']) assert.equal(Object.hasOwn(request.data, removed), false);
   assert.equal(await page.evaluate(() => window.__messages.some(message => message.type === 'verification.submit')), false, 'Agency Owner approval does not submit an Admin-review application');
   console.log('PASS native creator: server roles, setup intent, profile correlation and automatic Agency Owner activation');
 }
@@ -758,7 +685,7 @@ async function internationalPhone() {
 
 async function enlargedTextChecks(page) {
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const name of ['phone', 'profile', 'photos', 'interests']) {
+  for (const name of ['phone', 'profile']) {
     await page.evaluate(auth => { S.v = 'login'; S.auth = auth; r(); }, snapshots[name]);
     // Stress reflow by doubling the computed size of text-bearing elements.
     // This is browser layout coverage; device OS text scaling is a separate check.
@@ -777,7 +704,7 @@ async function enlargedTextChecks(page) {
     assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 391 && bounds.y >= 0 && bounds.y < 844, `${name}: primary action remains reachable with enlarged text`);
     await page.screenshot({ path: path.join(artifacts, `${name}-200pct-text.png`) });
   }
-  console.log('PASS enlarged text: primary actions remain reachable with 200% text on four signup steps');
+  console.log('PASS enlarged text: primary actions remain reachable with 200% text on both signup steps');
 }
 
 (async () => {

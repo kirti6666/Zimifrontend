@@ -67,6 +67,7 @@ Native.on('data.loading',d=>{
   if(d.background&&d.resource!=='home'&&ContentLoading[d.resource].loaded)return;
   if(d.resource==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(d.resource==='search'&&d.q!==(S.sq||'').trim())return;
+  if(d.resource==='leaderboard'&&!window.ZimiLeaderboard?.accepts(d))return;
   Object.assign(ContentLoading[d.resource],{loading:d.loading,error:d.error||'',page:d.page||1});
   if(d.resource==='home'){ContentLoading.home.background=!!d.background&&Home.loaded&&Home.queryKey===homeFeedKey();Home.loading=d.loading;Home.loadingMore=d.loading&&d.page>1;if(!d.loading){Home.error=d.error||''}}
   if(d.resource==='search'){Home.searchLoading=d.loading;Home.searchMore=d.loading&&d.page>1;Home.searchError=d.error||''}
@@ -77,7 +78,7 @@ for(const [event,key] of Object.entries({'data.home':'home','data.search':'searc
   if(key==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(key==='search'&&d.q!==(S.sq||'').trim())return;
   if(key==='thread'&&d.with!==S.h)return;
-  if(key==='leaderboard'&&d.period!==Board.period)return;
+  if(key==='leaderboard'&&!window.ZimiLeaderboard?.accepts(d))return;
   Object.assign(ContentLoading[key],{loading:false,error:'',loaded:true});
   if(!['home','search','catalog','notifications'].includes(key))contentRender(key);
 });

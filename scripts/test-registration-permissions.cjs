@@ -12,7 +12,7 @@ fs.mkdirSync(artifacts, { recursive: true });
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const base = read('assets/aurora.html');
 const start = base.indexOf('/* Onboarding stays a classic script:');
-const end = base.indexOf('/* Animated gift stickers bundled with the app', start);
+const end = base.indexOf('/* Authored gift stickers (web/stickers/', start);
 assert.ok(start >= 0 && end > start, 'Generated page must expose the classic-source boundaries');
 const onboarding = read('web/onboarding.js').replace(/__(?:OB_MEDIA|MODEL_PHOTO)_\d__/g, '');
 const runtime = read('web/aurora-runtime.js').replace('__BRAND_LOGO__', '');
@@ -39,7 +39,7 @@ async function open(demo = false) {
 }
 async function begin(page, account = member) {
   await receive(page, 'session', { ...account, requiresOnboarding: true });
-  await page.evaluate(() => { Object.assign(S.auth, { step: 'interests', busy: 'profile.save', requestId: 901, name: 'Asha', gender: 'female', cat: 'Music', langs: ['English'], interests: [], photos: ['data:image/png;base64,AA=='], featured: 0 }); r(); });
+  await page.evaluate(() => { Object.assign(S.auth, { step: 'profile', mode: 'signup', verified: true, busy: 'profile.save', requestId: 901, name: 'Asha', email: 'asha@example.test', gender: 'female', creatorIntent: false }); r(); });
   await receive(page, 'profile.saved', { onboarding: true, account, requestId: 901 });
   await step(page).waitFor();
 }

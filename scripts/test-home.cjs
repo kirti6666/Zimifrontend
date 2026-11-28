@@ -169,7 +169,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(),['Following','Explore','For You','New'],'The Home header has the reference feed tabs');
     assert.equal(await page.getByRole('tab',{name:'Explore',exact:true}).getAttribute('aria-selected'),'true','Explore is the default feed');
     assert.equal(await page.locator('.zh-brand,.zh-logo').count(),0,'The discovery tabs replace the app-name header');
-    assert.deepEqual(await page.locator('.zh-header-actions button').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label'))),['Search creators','Leaderboard','Notifications'],'The Home header follows the reference action order');
+    assert.deepEqual(await page.locator('.zh-header-actions button').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label'))),['Search creators','Notifications'],'Home keeps Search and Notifications');
     assert.deepEqual(await page.locator('.zh-region-chips button').allInnerTexts(),['Popular','India'],'Country chips offer Popular and India only');
     assert.equal(await page.locator('.zh-region-chips button[aria-pressed="true"]').innerText(),'Popular');
     assert.equal(await page.locator('.zh-host-status').count(),0,'Sender accounts do not show host availability');
@@ -366,12 +366,12 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await receive('wallet.balance',{coins:901});
     await real.getByRole('button',{name:'Back',exact:true}).click();
     await real.getByRole('button',{name:'Search creators',exact:true}).click();
-    await real.getByRole('textbox',{name:'Search creators',exact:true}).fill('new creator');
-    await real.waitForFunction(()=>window.__sent.some(m=>m.type==='hosts.search'&&m.data.q==='new creator'));
-    await receive('data.search',{q:'new creator',hosts:[{...host,name:'New creator'}],total:1,page:1});
-    assert.equal(await real.locator('#home-search-results article.zh-creator-card h3').innerText(),'New creator');
-    await receive('data.search',{q:'stale query',hosts:[],total:0,page:1});
-    assert.equal(await real.locator('#home-search-results article.zh-creator-card').count(),1,'outdated search responses cannot replace current results');
+    await real.getByRole('textbox',{name:'Search users and hosts by name or ID',exact:true}).fill('new creator');
+    await real.waitForFunction(()=>window.__sent.some(m=>m.type==='profiles.search'&&m.data.q==='new creator'));
+    await receive('data.search',{q:'new creator',filter:'all',hosts:[{...host,name:'New creator'}],total:1,page:1});
+    assert.equal(await real.locator('#home-search-results .zh-user-identity strong').innerText(),'New creator');
+    await receive('data.search',{q:'stale query',filter:'all',hosts:[],total:0,page:1});
+    assert.equal(await real.locator('#home-search-results .zh-user-row').count(),1,'outdated search responses cannot replace current results');
     await real.getByRole('button',{name:'Back to home',exact:true}).click();
     await receive('session',{user:{id:'507f1f77bcf86cd799439017',name:'Host',role:'host',hostStatus:'approved',isVerifiedHost:true},verification:'verified',requiresOnboarding:false});
     assert.equal(await real.getByRole('button',{name:'Find a match',exact:true}).count(),0,'Creator accounts do not see member matching');
@@ -490,6 +490,6 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await real.evaluate(()=>logout());
     assert.equal(await real.evaluate(()=>Home.hosts.length),0,'logout clears home and payment state');
     assert.deepEqual(errors,[]);
-    console.log('PASS: profile-first discovery, reference header (Following/Explore/For You/New, Search, trophy), Popular/India chips, square two-column photo grid, All Creators, profile Message/Call routing, pagination/deduplication/retry, responsive skeletons, coin confirmation, wallet recovery, disabled stream entry points, server-only content, XSS escaping, gifts, rewards, checkout and logout.');
+    console.log('PASS: profile-first discovery, Home feed tabs, Search and Notifications, Popular/India chips, square two-column photo grid, All Creators, profile Message/Call routing, pagination/deduplication/retry, responsive skeletons, coin confirmation, wallet recovery, disabled stream entry points, server-only content, XSS escaping, gifts, rewards, checkout and logout.');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

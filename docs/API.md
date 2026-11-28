@@ -289,14 +289,15 @@ for it (login, call failed).
 | Set creator card image in call setup | Upload with `purpose: "creator-card"`, then `PATCH /profile` `{creatorCardKey}` | Saved separately as `creatorCardUrl` for discovery cards. Profile `coverUrl` and cover drafts stay unchanged; the setup stays open. |
 | Change cover on your Profile | `profile.cover.save` uploads with `purpose: "cover"`, then `PATCH /profile` `{coverKey}` and fresh `GET /auth/me` | Members and hosts preview and confirm the change without opening Edit Profile. Dedicated success/error events preserve other profile drafts and keep failed uploads available for retry. |
 | App opens with a saved login | `GET /me` | `Account` |
-| Finish sign-up, edit profile | `PUT /me/profile` | – |
+| Finish sign-up | `PATCH /auth/profile` with `{name, onboarding: {email, gender, adultConfirmed: true}}` | The second and final registration step. Photos, interests, languages and category are not required. |
+| Edit profile | `PATCH /profile` | Updated account profile |
 | Submit verification | `POST /me/verification` | `{status}` |
 | Go online or offline | `PATCH /safety` `{onlineForCalls, allowRequests, showActivity, discoverable}` | Saved safety flags; `onlineForCalls` persists through backgrounding and socket loss |
 | Show MVPs switch | `PUT /me/settings` | – |
 | Home header feeds | `GET /home?mode=following\|popular\|foryou\|new&page=1`, optional `country` (the India chip sends `country=India`) | Adapter returns `HomeData`. Following lists saved follows, Explore (`popular`) every host, For You the hosts not followed yet, New the latest hosts first; `country` matches the host's country (ignoring case) before pagination |
 | Other discovery filters | `GET /home?mode=online` or `mode=instant`, optional `category` and `page` | Adapter returns `HomeData` for the selected discovery filters |
 | Refer a Friend (Settings, Home pop-up, call card) | `GET /referrals/me`, `POST /referrals/apply` `{code}` | `referral.load` → `data.referral` `{code, shareUrl, rewardCoins, friendBonusCoins, applyDays, friendsJoined, friendsRewarded, coinsEarned, appliedCode, canApplyCode}`; `referral.apply {code, requestId}` → `referral.applied` (same summary + `requestId`, then a wallet refresh) or `referral.error {message, requestId, status}`; `referral.share` opens the native share sheet with the code and link |
-| Leaderboard (Home trophy) | `GET /leaderboard/creators?period=daily\|weekly\|monthly&limit=50` | `leaderboard.load` `{period}` → `data.leaderboard` `{period, items: {id, name, avatarUrl, coins, rank}[], total}`: eligible approved creators ranked by confirmed gift Coins received during the UTC calendar period |
+| Leaderboard (Home trophy) | `GET /leaderboard/creators?period=daily\|weekly\|monthly&limit=50&includeSamples=true`, optional `page` from 1 to 1000 | `leaderboard.load {period, page?}` → `data.leaderboard {period, page, items, total, sampleItems, sampleTotal}`. `items` ranks eligible creators by confirmed gift Coins received during the UTC calendar period. Each row has `{id, name, avatarUrl, coins, rank}`. Sample rows include `sample: true` and use simulated scores. Both lists use the requested page, which defaults to 1. `data.loading` includes `period` and `page`. Older servers return only ranked creators, so the adapter supplies an empty sample list and zero sample total. |
 | Chats | `GET /chats` | `{chats: ChatSummary[]}` |
 | Open a chat | `GET /chats/:id` | Adapter returns `{messages: Message[], canSend, sendDisabledReason?}` |
 | Missed calls tab | `GET /calls/missed` | `{calls: MissedCall[]}` |
@@ -313,6 +314,7 @@ for it (login, call failed).
 | Edit your message | `PATCH /chats/:id/messages/:messageId` `{text}` | The edited message (filtered again) |
 | Delete a message | `DELETE /chats/:id/messages/:messageId?for=everyone` (your own) or `?for=me` (any) | The deleted placeholder, or `{_id}` |
 | Follow | `POST /users/:id/follow` `{following}` | `{following}`; members follow hosts, hosts follow members back |
+| Public profile | `GET /users/:id` | Approved host profiles can include `lifetimeGiftDiamondUnits`, the total confirmed gift earnings in millionths of a Diamond. The public view shows an explicit zero for no recorded Diamond credits and a dash when the field is omitted. The host's own Profile and Wallet use the authenticated balance. |
 | A profile's posts | `GET /users/:id/posts?page=1` | `{items, total, page, limit}`; each post has `likes`, `comments` and the viewer's `liked` |
 | Like a post | `POST /posts/:id/like` `{liked}` | `{liked, likes}` |
 | Post comments | `GET /posts/:id/comments?page=1`, `POST /posts/:id/comments` `{text}` | Newest first, with the author; text is moderated like chat |
@@ -602,14 +604,16 @@ daily cap per member and optional impression or click budgets.
 - Each card is labelled “Sponsored” and has an **About this ad** dialog that names
   the advertiser and destination and links to Premium.
 
-## Registration device access
+## Post-registration device access
 
-After the server confirms profile completion, Android registration offers a
-device-access screen for camera, microphone and notifications. Only its explicit
-Allow access action opens system prompts. Continue/Not now completes setup with
-any permission choice. A pending per-account marker resumes interrupted setup;
-completed returning accounts have no automatic permission dialog. Photo uploads
-use the system picker, with camera access requested when taking a photo.
+After the server confirms the two-step account setup is complete, Android may
+offer a separate device-access screen for camera, microphone and notifications.
+This screen is post-registration setup: it is not a third sign-up step and does
+not delay creation of the account. Only its explicit Allow access action opens
+system prompts. Continue/Not now leaves the account ready with any permission
+choice. A pending per-account marker resumes interrupted device setup; completed
+returning accounts have no automatic permission dialog. Later photo uploads use
+the system picker, with camera access requested when taking a photo.
 
 The WebView sends `permissions.load`, `permissions.request`, or
 `permissions.settings` with a positive `requestId`. Native replies with
