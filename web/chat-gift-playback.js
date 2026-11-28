@@ -1,14 +1,15 @@
-/* Confirmed gifts play once over the conversation. The shared player lives
+/* Confirmed gifts play once over the sending surface. The shared player lives
    outside screen redraws and never changes chat DOM, focus or scrolling. */
 window.ZimiChatGifts=(()=>{
   const seen=new Map();
   let owner='',foreground=true;
   const account=()=>String(S.user?.id||S.user?._id||(DEMO?'preview':''));
   const thread=()=>S.v==='thread'&&S.h?String(S.h):'';
-  const available=peer=>!!account()&&foreground&&!document.hidden&&thread()===peer;
+  const profilePeer=()=>S.v==='host'?S.h:S.v==='user'?S.u:'';
+  const available=(peer,profile=false)=>!!account()&&foreground&&!document.hidden&&(profile?profilePeer()===peer:thread()===peer);
   const player=ZimiGiftPlayback.create({
     id:'zc-gift-playback',imageClass:'zc-gift-playback-art',
-    available:item=>available(item.peer),
+    available:item=>available(item.peer,item.profile),
     obstructed:()=>!!(Home.giftTo||document.querySelector('#zc-photo-viewer,.zc-overlay,.zc-message-menu,.zh-sheet-backdrop,dialog[open]'))
   });
   function clear(reset=false){
@@ -41,13 +42,14 @@ window.ZimiChatGifts=(()=>{
       remember([...keys,peer+':request:'+requestId]);return;
     }
     if(!keys.length||remember(keys))return;
-    // History, other conversations and background arrivals never replay later.
-    if(!available(peer))return;
     const gift=message.gift,media=giftMotionUrl(gift.name,gift.mediaUrl||gift.image||'');
-    if(!media)return;
+    const local=message.mine&&giftIsVideo(media)&&window.ZimiCoins?.giftReceipt(receipt);
+    const profile=Boolean(local&&local._view===S.v&&profilePeer()===peer);
+    // History, other conversations and background arrivals never replay later.
+    if(!media||!available(peer,profile))return;
     const catalog=Home.gifts.find(item=>String(item.id)===String(gift.giftId));
     const catalogDuration=catalog&&giftMotionUrl(catalog.name,catalog.mediaUrl)===media?catalog.durationMs:undefined;
-    player.enqueue({peer,media,poster:giftStillResource(gift.name,gift.mediaUrl||gift.image||'',gift.coverUrl),durationMs:gift.durationMs??catalogDuration,
+    player.enqueue({peer,profile,media,poster:giftStillResource(gift.name,gift.mediaUrl||gift.image||'',gift.coverUrl),durationMs:gift.durationMs??catalogDuration,
       transferId:String(gift.transferId||receipt.id||message.id||receipt.idempotencyKey)});
   }
   Native.on('chat.message',message=>{
@@ -85,6 +87,7 @@ window.ZimiChatGifts=(()=>{
   window.ZimiHome.afterRender=()=>{afterRender();sync()};
   function preview(peer,gift,attempt){
     sync();peer=String(peer||'');if(!available(peer)||!attempt.idempotencyKey)return false;
+    if(giftIsVideo(gift.mediaUrl))return false;
     return player.enqueue({peer,requestId:attempt.idempotencyKey,transferId:'request:'+attempt.idempotencyKey,provisional:true,priority:true,
       media:giftMotionUrl(gift.name,gift.mediaUrl),poster:giftStillResource(gift.name,gift.mediaUrl,gift.coverUrl),emoji:gift.emoji,durationMs:gift.durationMs});
   }

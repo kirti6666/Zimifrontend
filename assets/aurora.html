@@ -5938,7 +5938,7 @@ html:root :is(#zc-gift-playback,#zr-gift-playback){position:fixed;inset:auto;z-i
 html:root :is(#zc-gift-playback,#zr-gift-playback)[hidden]{display:none}
 html:root :is(#zc-gift-playback,#zr-gift-playback)::before,html:root :is(#zc-gift-playback,#zr-gift-playback)::after{content:none!important;display:none!important}
 html:root #zc-gift-playback{padding:0}
-html:root :is(#zc-gift-playback>.zc-gift-playback-art,#zr-gift-playback .zr-gift-stage-art>img){display:block;width:100%;height:100%;min-width:0;min-height:0;max-width:none;max-height:none;object-fit:contain;object-position:center;pointer-events:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;animation:none!important;opacity:1}
+html:root :is(#zc-gift-playback>.zc-gift-playback-art,#zr-gift-playback .zr-gift-stage-art>:is(img,canvas)){display:block;width:100%;height:100%;min-width:0;min-height:0;max-width:none;max-height:none;object-fit:contain;object-position:center;pointer-events:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;animation:none!important;opacity:1}
 html:root #zr-gift-playback .zr-gift-stage-art>span{font-size:clamp(100px,40vmin,240px);line-height:1}
 .zci-dialog{position:fixed;inset:0;margin:auto;width:min(390px,calc(100% - 32px));max-height:calc(100vh - 40px);max-height:calc(100dvh - 40px);overflow:auto;border:1px solid var(--line);background:var(--canvas);color:var(--ink);padding:20px;font-size:14px;line-height:1.6}
 .zci-dialog::backdrop{background:rgba(0,0,0,.4)}.zci-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.zci-label{font-size:12px;font-weight:600;color:var(--accent-ink)}.zci-dialog header button{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);background:var(--surface);color:var(--ink);flex:none}
@@ -11026,15 +11026,14 @@ function giftStickerMotion(sticker){
  if(!sticker.motionUrl){try{const base64=sticker.motion.slice(sticker.motion.indexOf(',')+1);let bytes;if(typeof Uint8Array.fromBase64==='function')bytes=Uint8Array.fromBase64(base64);else{const data=atob(base64);bytes=new Uint8Array(data.length);for(let i=0;i<data.length;i++)bytes[i]=data.charCodeAt(i)}sticker.motionUrl=URL.createObjectURL(new Blob([bytes],{type:'image/webp'}))}catch{sticker.motionUrl=sticker.motion}}
  return sticker.motionUrl;
 }
-/* Keep bundled thumbnails and receipt banners static so a video call only
-   decodes the active celebration. Uploaded artwork remains authoritative: the
-   catalog has no separate cover URL, so never substitute a same-named sticker. */
+/* Lists and receipts use the uploaded still. Never use a video as its own cover. */
 function giftSourceUrl(raw){if(!homeGiftUrl(raw||''))return '';try{return new URL(raw).href}catch{return ''}}
 function giftStillResource(name,mediaUrl,coverUrl){
  const uploaded=giftSourceUrl(mediaUrl);
  if(uploaded){
   const catalog=typeof Home!=='undefined'?Home.gifts?.find(gift=>giftSourceUrl(gift.mediaUrl)===uploaded):null;
-  return giftSourceUrl(coverUrl||catalog?.coverUrl)||uploaded;
+  const cover=giftSourceUrl(coverUrl)||giftSourceUrl(catalog?.coverUrl);
+  return (cover&&!giftIsVideo(cover)?cover:'')||(giftIsVideo(uploaded)?'':uploaded);
  }
  return giftSticker(name)?.cover||'';
 }
@@ -11044,8 +11043,102 @@ function giftIsFree(gift){return gift?.coins===0}
 function giftPriceLabel(gift){return giftIsFree(gift)?'Free':n(gift?.coins)+' coins'}
 function giftPriceMarkup(gift,size=13){return giftIsFree(gift)?'Free':coinIcon(size)+' '+n(gift?.coins)}
 
+/* Composite the original MP4 over the app without displaying the source video.
+   Dark foliage keeps its color; pixels dominated by the screen green fade out. */
+const giftVideoVertex=`
+  attribute vec2 position;
+  varying vec2 uv;
+  void main(){
+    uv=vec2(position.x*.5+.5,.5-position.y*.5);
+    gl_Position=vec4(position,0.,1.);
+  }`;
+const giftVideoFragment=`
+  precision mediump float;
+  varying vec2 uv;
+  uniform sampler2D frame;
+  uniform vec3 green;
+  uniform vec2 threshold;
+  void main(){
+    vec3 rgb=texture2D(frame,uv).rgb;
+    float excess=rgb.g-max(rgb.r,rgb.b);
+    float removed=smoothstep(threshold.x,threshold.y,excess);
+    float alpha=1.-removed;
+    vec3 foreground=max(rgb-removed*green,0.);
+    foreground.g=mix(foreground.g,min(foreground.g,max(foreground.r,foreground.b)),removed);
+    gl_FragColor=vec4(min(foreground,vec3(alpha)),alpha);
+  }`;
+
+function giftScreenColor(video){
+  const sample=document.createElement('canvas');
+  sample.width=sample.height=16;
+  const context=sample.getContext('2d');
+  context.drawImage(video,0,0,16,16);
+  const pixels=context.getImageData(0,0,16,16).data;
+  const corners=[0,15,240,255].map(offset=>Array.from(pixels.subarray(offset*4,offset*4+3),value=>value/255));
+  const green=corners.filter(([r,g,b])=>g-Math.max(r,b)>=.15);
+  if(green.length<3)return null;
+  return [0,1,2].map(channel=>green.reduce((sum,pixel)=>sum+pixel[channel],0)/green.length);
+}
+
+function createGiftVideoRenderer(canvas,video){
+  const gl=canvas.getContext('webgl',{alpha:true,premultipliedAlpha:true,depth:false,antialias:false});
+  if(!gl)throw new Error('Gift video compositor is unavailable');
+  const destroy=()=>gl.getExtension('WEBGL_lose_context')?.loseContext();
+  try{
+    const screen=giftScreenColor(video);
+    const compile=(type,source)=>{
+      const shader=gl.createShader(type);
+      gl.shaderSource(shader,source);
+      gl.compileShader(shader);
+      if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error('Gift video shader could not compile');
+      return shader;
+    };
+    const vertex=compile(gl.VERTEX_SHADER,giftVideoVertex),fragment=compile(gl.FRAGMENT_SHADER,giftVideoFragment);
+    const program=gl.createProgram();
+    gl.attachShader(program,vertex);
+    gl.attachShader(program,fragment);
+    gl.linkProgram(program);
+    if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error('Gift video shader could not link');
+    gl.deleteShader(vertex);
+    gl.deleteShader(fragment);
+    gl.useProgram(program);
+    const buffer=gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+    const position=gl.getAttribLocation(program,'position');
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position,2,gl.FLOAT,false,0,0);
+    const texture=gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D,texture);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    const dominance=screen?screen[1]-Math.max(screen[0],screen[2]):0;
+    gl.uniform3fv(gl.getUniformLocation(program,'green'),screen||[0,0,0]);
+    gl.uniform2f(gl.getUniformLocation(program,'threshold'),screen?dominance*.24:1,screen?dominance*.77:2);
+    canvas.width=video.videoWidth;
+    canvas.height=video.videoHeight;
+    gl.viewport(0,0,canvas.width,canvas.height);
+    return {
+      draw(){
+        if(gl.isContextLost())throw new Error('Gift video compositor stopped');
+        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB,gl.RGB,gl.UNSIGNED_BYTE,video);
+        gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+      },
+      destroy(){
+        gl.deleteTexture(texture);
+        gl.deleteBuffer(buffer);
+        gl.deleteProgram(program);
+        destroy();
+      }
+    };
+  }catch(error){destroy();throw error}
+}
+
 ﻿/* Keep original gift bytes cached and each playback image alive outside screen
    redraws. Calls and conversations share presentation, never financial state. */
+function giftIsVideo(media){try{return /\.mp4$/i.test(new URL(media).pathname)}catch{return false}}
 window.ZimiGiftPlayback=(()=>{
   const artwork=new Map(),warmImages=new Map(),maxBytes=64*1024*1024,maxEntries=3;
   function fetchSource(media){
@@ -11127,6 +11220,8 @@ window.ZimiGiftPlayback=(()=>{
   }
   function preload(media){
     if(!media)return Promise.resolve(false);
+    const video=giftIsVideo(media);
+    if(video&&matchMedia('(prefers-reduced-motion: reduce)').matches)return Promise.resolve(false);
     // Selecting another gift must not leave several large originals downloading
     // on the call's connection. Active/queued consumers hold explicit leases.
     for(const [key,entry] of artwork)if(key!==media&&!entry.ready&&entry.warm){
@@ -11134,7 +11229,7 @@ window.ZimiGiftPlayback=(()=>{
       if(!entry.users){artwork.delete(key);entry.controller.abort()}
     }
     for(const [key,entry] of warmImages)if(key!==media&&entry.image){warmImages.delete(key);entry.finish(false)}
-    return warmImages.has(media)?warmImage(media):originalFile(media).then(()=>true,error=>error?.name==='AbortError'?false:warmImage(media));
+    return warmImages.has(media)?warmImage(media):originalFile(media).then(()=>true,error=>video||error?.name==='AbortError'?false:warmImage(media));
   }
   function duration(value,fallback=6400){
     const time=Number(value);
@@ -11157,11 +11252,24 @@ window.ZimiGiftPlayback=(()=>{
     }
     function release(item){
       if(item?.frameRequest)cancelAnimationFrame(item.frameRequest);
+      stopVideo(item);
       item?.releaseFile?.();item?.releaseWarm?.();
       if(item){item.releaseFile=null;item.releaseWarm=null}
       if(item?.image){item.image.onload=null;item.image.onerror=null;item.image.removeAttribute('src');item.image=null}
       if(item?.objectUrl){URL.revokeObjectURL(item.objectUrl);item.objectUrl=null}
       if(item){clearFeedback(item);item.art=null;item.loading=null}
+    }
+    function stopVideo(item){
+      const video=item?.video;
+      if(!video)return;
+      if(item.videoFrame!==undefined){
+        if(video.cancelVideoFrameCallback)video.cancelVideoFrameCallback(item.videoFrame);
+        else cancelAnimationFrame(item.videoFrame);
+      }
+      video.onloadeddata=video.onended=video.onerror=null;
+      video.pause();video.removeAttribute('src');video.load();
+      item.renderer?.destroy();item.canvas?.remove();
+      item.renderer=item.video=item.canvas=null;
     }
     function clearFeedback(item){
       for(const property of ['background-image','background-size','background-position','background-repeat'])item.art?.style.removeProperty(property);
@@ -11228,6 +11336,62 @@ window.ZimiGiftPlayback=(()=>{
         item.motionSource=media;item.image.src=media;
       }finally{lease?.release();if(item.releaseFile===lease?.release)item.releaseFile=null}
     }
+    function videoStill(item){
+      if(active!==item)return;
+      stopVideo(item);
+      if(item.poster&&!giftIsVideo(item.poster)){
+        const image=item.image=document.createElement('img');
+        image.className=options.imageClass||'';image.alt='';image.src=item.poster;
+        item.art.appendChild(image);
+      }else{
+        const emoji=document.createElement('span');emoji.textContent=item.emoji||'🎁';item.art.appendChild(emoji);
+      }
+      item.durationMs=2400;
+      if(!item.at){play(item);return}
+      clearTimeout(timer);
+      item.timer=timer=setTimeout(()=>finish(item),item.durationMs);
+    }
+    async function videoSource(item){
+      if(matchMedia('(prefers-reduced-motion: reduce)').matches){videoStill(item);return}
+      const lease=originalFile(item.media,true);item.releaseFile=lease.release;
+      item.releaseWarm?.();item.releaseWarm=null;
+      try{
+        const blob=await lease.promise;
+        if(active!==item)return;
+        const video=item.video=document.createElement('video');
+        video.muted=true;video.playsInline=true;video.preload='auto';
+        video.onerror=()=>videoStill(item);
+        video.onended=()=>finish(item);
+        video.onloadeddata=()=>{
+          video.onloadeddata=null;
+          if(active!==item)return;
+          try{
+            const canvas=item.canvas=document.createElement('canvas');
+            canvas.className=options.imageClass||'';
+            canvas.dataset.mediaUrl=item.media;canvas.dataset.transferId=item.transferId||item.requestId||'';
+            item.renderer=createGiftVideoRenderer(canvas,video);
+            item.renderer.draw();
+            if(Number.isFinite(video.duration)&&video.duration>0)item.durationMs=Math.ceil(video.duration*1000);
+            item.art.appendChild(canvas);
+            play(item);
+          }catch{videoStill(item)}
+        };
+        item.objectUrl=URL.createObjectURL(blob);video.src=item.objectUrl;
+      }catch{videoStill(item)}
+      finally{lease.release();if(item.releaseFile===lease.release)item.releaseFile=null}
+    }
+    function startVideo(item){
+      const video=item.video;
+      const tick=()=>{
+        if(active!==item||item.video!==video)return;
+        try{item.renderer.draw()}catch{videoStill(item);return}
+        schedule();
+      };
+      function schedule(){
+        item.videoFrame=video.requestVideoFrameCallback?video.requestVideoFrameCallback(tick):requestAnimationFrame(tick);
+      }
+      video.play().then(()=>{if(active===item&&item.video===video)tick()},()=>{if(item.video===video)videoStill(item)});
+    }
     async function cacheCompleted(item){
       if(item.cacheFillStarted||item.corsRetried)return;
       item.cacheFillStarted=true;
@@ -11248,8 +11412,9 @@ window.ZimiGiftPlayback=(()=>{
       clearFeedback(item);
       portal.dataset.state='playing';portal.dataset.startedAt=String(item.at);position();
       // Downloads and poster visibility do not consume motion playback time.
-      item.timer=timer=setTimeout(()=>finish(item),item.durationMs);
+      item.timer=timer=setTimeout(()=>finish(item),item.durationMs+(item.video?750:0));
       options.onStart?.(item);
+      if(item.video)startVideo(item);
     }
     function next(){
       if(active||!queue.length)return;
@@ -11262,7 +11427,7 @@ window.ZimiGiftPlayback=(()=>{
       const art=options.artClass?document.createElement('div'):portal;
       item.art=art;
       if(art!==portal){art.className=options.artClass;portal.appendChild(art)}
-      if(item.media){
+      if(item.media&&!giftIsVideo(item.media)){
         const image=item.image=document.createElement('img');
         image.className=options.imageClass||'';image.alt='';image.draggable=false;image.decoding='async';
         image.dataset.transferId=item.transferId||item.requestId||'';image.dataset.mediaUrl=item.media;
@@ -11277,9 +11442,11 @@ window.ZimiGiftPlayback=(()=>{
           finish(item);
         };
         art.appendChild(image);
+      }
+      if(item.media){
         // A separate static still survives while the network image has no
         // frames. Never load an animation URL again as its own background.
-        if(item.poster&&item.poster!==item.media){
+        if(item.poster&&item.poster!==item.media&&!giftIsVideo(item.poster)){
           art.style.setProperty('background-image','url('+JSON.stringify(item.poster)+')','important');
           art.style.setProperty('background-size','contain','important');
           art.style.setProperty('background-position','center','important');
@@ -11293,7 +11460,9 @@ window.ZimiGiftPlayback=(()=>{
       }
       document.body.appendChild(portal);position();options.onLoading?.(item);
       loadingTimer=setTimeout(()=>finish(item),60000);
-      if(item.media)source(item);else play(item);
+      if(giftIsVideo(item.media))videoSource(item);
+      else if(item.media)source(item);
+      else play(item);
       warmNext();
     }
     function warmNext(){
@@ -11354,6 +11523,7 @@ window.ZimiGiftPlayback=(()=>{
       if(active===item&&portal){
         portal.dataset.provisional='false';portal.dataset.transferId=item.transferId||item.requestId||'';
         if(item.image)item.image.dataset.transferId=portal.dataset.transferId;
+        if(item.canvas)item.canvas.dataset.transferId=portal.dataset.transferId;
       }
       if(provisional)options.onConfirm?.(item);
       next();warmNext();
@@ -20536,17 +20706,18 @@ window.ZimiChatPhoto = (() => {
   return { open, close, sync, download, reset, toggleZoom, sendReply, photoReply, updateReply: controls, zoomBy: delta => { if (current) zoom(current.scale + delta); }, retry: () => { if (current) load(current); } };
 })();
 
-/* Confirmed gifts play once over the conversation. The shared player lives
+/* Confirmed gifts play once over the sending surface. The shared player lives
    outside screen redraws and never changes chat DOM, focus or scrolling. */
 window.ZimiChatGifts=(()=>{
   const seen=new Map();
   let owner='',foreground=true;
   const account=()=>String(S.user?.id||S.user?._id||(DEMO?'preview':''));
   const thread=()=>S.v==='thread'&&S.h?String(S.h):'';
-  const available=peer=>!!account()&&foreground&&!document.hidden&&thread()===peer;
+  const profilePeer=()=>S.v==='host'?S.h:S.v==='user'?S.u:'';
+  const available=(peer,profile=false)=>!!account()&&foreground&&!document.hidden&&(profile?profilePeer()===peer:thread()===peer);
   const player=ZimiGiftPlayback.create({
     id:'zc-gift-playback',imageClass:'zc-gift-playback-art',
-    available:item=>available(item.peer),
+    available:item=>available(item.peer,item.profile),
     obstructed:()=>!!(Home.giftTo||document.querySelector('#zc-photo-viewer,.zc-overlay,.zc-message-menu,.zh-sheet-backdrop,dialog[open]'))
   });
   function clear(reset=false){
@@ -20579,13 +20750,14 @@ window.ZimiChatGifts=(()=>{
       remember([...keys,peer+':request:'+requestId]);return;
     }
     if(!keys.length||remember(keys))return;
-    // History, other conversations and background arrivals never replay later.
-    if(!available(peer))return;
     const gift=message.gift,media=giftMotionUrl(gift.name,gift.mediaUrl||gift.image||'');
-    if(!media)return;
+    const local=message.mine&&giftIsVideo(media)&&window.ZimiCoins?.giftReceipt(receipt);
+    const profile=Boolean(local&&local._view===S.v&&profilePeer()===peer);
+    // History, other conversations and background arrivals never replay later.
+    if(!media||!available(peer,profile))return;
     const catalog=Home.gifts.find(item=>String(item.id)===String(gift.giftId));
     const catalogDuration=catalog&&giftMotionUrl(catalog.name,catalog.mediaUrl)===media?catalog.durationMs:undefined;
-    player.enqueue({peer,media,poster:giftStillResource(gift.name,gift.mediaUrl||gift.image||'',gift.coverUrl),durationMs:gift.durationMs??catalogDuration,
+    player.enqueue({peer,profile,media,poster:giftStillResource(gift.name,gift.mediaUrl||gift.image||'',gift.coverUrl),durationMs:gift.durationMs??catalogDuration,
       transferId:String(gift.transferId||receipt.id||message.id||receipt.idempotencyKey)});
   }
   Native.on('chat.message',message=>{
@@ -20623,6 +20795,7 @@ window.ZimiChatGifts=(()=>{
   window.ZimiHome.afterRender=()=>{afterRender();sync()};
   function preview(peer,gift,attempt){
     sync();peer=String(peer||'');if(!available(peer)||!attempt.idempotencyKey)return false;
+    if(giftIsVideo(gift.mediaUrl))return false;
     return player.enqueue({peer,requestId:attempt.idempotencyKey,transferId:'request:'+attempt.idempotencyKey,provisional:true,priority:true,
       media:giftMotionUrl(gift.name,gift.mediaUrl),poster:giftStillResource(gift.name,gift.mediaUrl,gift.coverUrl),emoji:gift.emoji,durationMs:gift.durationMs});
   }

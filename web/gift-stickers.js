@@ -13,15 +13,14 @@ function giftStickerMotion(sticker){
  if(!sticker.motionUrl){try{const base64=sticker.motion.slice(sticker.motion.indexOf(',')+1);let bytes;if(typeof Uint8Array.fromBase64==='function')bytes=Uint8Array.fromBase64(base64);else{const data=atob(base64);bytes=new Uint8Array(data.length);for(let i=0;i<data.length;i++)bytes[i]=data.charCodeAt(i)}sticker.motionUrl=URL.createObjectURL(new Blob([bytes],{type:'image/webp'}))}catch{sticker.motionUrl=sticker.motion}}
  return sticker.motionUrl;
 }
-/* Keep bundled thumbnails and receipt banners static so a video call only
-   decodes the active celebration. Uploaded artwork remains authoritative: the
-   catalog has no separate cover URL, so never substitute a same-named sticker. */
+/* Lists and receipts use the uploaded still. Never use a video as its own cover. */
 function giftSourceUrl(raw){if(!homeGiftUrl(raw||''))return '';try{return new URL(raw).href}catch{return ''}}
 function giftStillResource(name,mediaUrl,coverUrl){
  const uploaded=giftSourceUrl(mediaUrl);
  if(uploaded){
   const catalog=typeof Home!=='undefined'?Home.gifts?.find(gift=>giftSourceUrl(gift.mediaUrl)===uploaded):null;
-  return giftSourceUrl(coverUrl||catalog?.coverUrl)||uploaded;
+  const cover=giftSourceUrl(coverUrl)||giftSourceUrl(catalog?.coverUrl);
+  return (cover&&!giftIsVideo(cover)?cover:'')||(giftIsVideo(uploaded)?'':uploaded);
  }
  return giftSticker(name)?.cover||'';
 }

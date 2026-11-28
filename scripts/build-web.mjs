@@ -165,6 +165,7 @@ const page = (demo, hosted = false) =>
     .replace(/__MODEL_PHOTO_([1-6])__/g, (_, i) => (demo || Number(i) <= 3 ? modelPhoto(i) : "")) +
   read("web/aurora-runtime.js").replace("__BRAND_LOGO__", brandLogo) +
   "\n" + read("web/gift-stickers.js").replace(/__GIFT_STICKER_([a-z0-9-]+)__/g, giftSticker) +
+  "\n" + read("web/gift-video.js") +
   "\n" + read("web/gift-playback.js") +
   "\n" + read("web/host-access.js") +
   "\n" + read("web/loading.js") +
