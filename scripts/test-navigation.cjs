@@ -92,7 +92,7 @@ const tabs = ['Home', 'Chat', 'Profile', 'Settings'];
           if (name === 'Home') {
             assert.deepEqual(await layout.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(), ['Following', 'Explore', 'For You', 'New']);
             assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: account === approved ? 'Search users' : 'Search creators', exact: true }).count(), 1);
-            assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: 'Leaderboard', exact: true }).count(), 1);
+            assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: 'Leaderboard', exact: true }).count(), 0, 'Home hides the creator leaderboard');
             assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: 'Notifications', exact: true }).count(), 1, 'The reference notification bell stays in Home');
             assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: /^Wallet/ }).count(), 0, 'Home has no wallet action');
             assert.equal(await layout.locator('.zh-host-status').count(), account === approved ? 1 : 0, 'Only a host account sees its availability control');

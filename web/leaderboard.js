@@ -75,7 +75,7 @@ function lbView(){
   else if(firstPage&&error)body=contentError('leaderboard');
   else if(Board.rows.length||Board.sampleRows.length){
     const giftRankings=Board.rows.length?`<p class="zlb-note">Creators ranked by gift coins received</p>${lbRows(Board.rows)}`:'';
-    body=giftRankings+lbSamples(pending,error);
+    body=lbSamples(pending,error)+giftRankings;
   }else{
     const periodText=BOARD_PERIODS.find(([key])=>key===Board.period)[2];
     body=`<div class="zlb-empty">${hi('trophy',30)}<h2>No rankings yet</h2><p>Creators appear here after receiving paid gifts ${periodText}.</p></div>`;

@@ -1,7 +1,6 @@
-/* Production Home with authenticated fixture responses: the reference header (feed tabs,
-   Search, leaderboard and notification actions), Popular/India chips, one square-card grid, the host's
-   floating availability button and the leaderboard. Also checks that sample rankings
-   are available only in the standalone preview. */
+/* Production Home with authenticated fixture responses: feed tabs, Search and Notifications,
+   Popular/India chips, one square-card grid and the host's floating availability button.
+   Also checks that the leaderboard is hidden by default and exercises it when enabled. */
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -38,9 +37,9 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     assert.deepEqual(await tabs.allInnerTexts(), ['Following', 'Explore', 'For You', 'New']);
     assert.equal(await page.getByRole('tab', { name: 'Explore', exact: true }).getAttribute('aria-selected'), 'true', 'Explore is the default feed');
     assert.equal(await page.locator('.zh-brand,.zh-logo,.zh-dashboard-filters,.zh-dashboard .zh-filters').count(), 0);
-    assert.deepEqual(await page.locator('.zh-header-actions button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['Search creators', 'Leaderboard', 'Notifications'], 'Home keeps the reference header actions in order');
+    assert.deepEqual(await page.locator('.zh-header-actions button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['Search creators', 'Notifications'], 'Home hides the leaderboard trophy');
     assert.equal(await page.locator('.zh-bell>i').count(), 1, 'Unread notifications show the reference accent dot');
-    assert.equal(await page.locator('.zh-feed-tabs').evaluate(tabs => { const last=tabs.lastElementChild.getBoundingClientRect(), viewport=tabs.getBoundingClientRect(); return last.left>=viewport.left-1&&last.right<=viewport.right+1; }),true,'All four Home tabs remain fully visible beside the three reference actions');
+    assert.equal(await page.locator('.zh-feed-tabs').evaluate(tabs => { const last=tabs.lastElementChild.getBoundingClientRect(), viewport=tabs.getBoundingClientRect(); return last.left>=viewport.left-1&&last.right<=viewport.right+1; }),true,'All four Home tabs remain fully visible beside Search and Notifications');
     await page.getByRole('button', { name: 'Notifications', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'notifications', 'The Home bell opens the real notification inbox');
     await page.getByRole('button', { name: 'Back to home', exact: true }).click();
@@ -48,8 +47,10 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     // The selected tab reads larger and bolder, as in the reference.
     const [following, explore] = await Promise.all(['Following', 'Explore'].map(name => page.getByRole('tab', { name, exact: true }).evaluate(el => { const style = getComputedStyle(el); return { size: parseFloat(style.fontSize), weight: Number(style.fontWeight) }; })));
     assert.ok(explore.size > following.size && explore.weight > following.weight, 'The selected feed stands out');
-    // The trophy is gold in every theme.
-    assert.equal(await page.locator('.zh-trophy').evaluate(el => getComputedStyle(el).color), await page.evaluate(() => { const probe = document.createElement('i'); probe.style.color = 'var(--gold)'; document.body.append(probe); const color = getComputedStyle(probe).color; probe.remove(); return color; }));
+    await page.evaluate(() => { go('search'); go('board'); });
+    assert.equal(await page.evaluate(() => S.v), 'home', 'The hidden leaderboard route returns to Home');
+    assert.equal(await page.locator('.zlb-page').count(), 0, 'The hidden leaderboard does not render');
+    assert.equal(await lastSent(page, 'leaderboard.load'), undefined, 'The hidden leaderboard does not request rankings');
 
     // One square-card grid in the server's order, every profile once, no featured card.
     assert.equal(await page.locator('.zh-featured-host,.zh-featured-carousel,.zh-featured-dots').count(), 0, 'Home has no featured card');
@@ -145,7 +146,9 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     await receive(page, 'data.ads', { adFree: true, items: [] });
     assert.equal(await page.locator('.za-campaigns,.za-card').count(), 0, 'Premium members see no banners');
 
-    // The trophy opens the real leaderboard.
+    // Enable the leaderboard in this test context to keep its behavior covered.
+    await page.evaluate(() => { window.ZIMI_CREATOR_LEADERBOARD_ENABLED = true; r(); });
+    assert.equal(await page.locator('.zh-trophy').evaluate(el => getComputedStyle(el).color), await page.evaluate(() => { const probe = document.createElement('i'); probe.style.color = 'var(--gold)'; document.body.append(probe); const color = getComputedStyle(probe).color; probe.remove(); return color; }));
     await page.getByRole('button', { name: 'Leaderboard', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'board');
     assert.equal(await page.locator('#nav').isVisible(), false, 'The leaderboard has Back instead of the bottom tabs');
@@ -190,6 +193,7 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     ];
     await receive(page, 'data.leaderboard', { period: 'daily', page: 1, items: rows, total: 2, sampleItems: sampleHosts.slice(0, 2), sampleTotal: 3 });
     const sampleRankings = page.getByRole('region', { name: 'Top creators', exact: true });
+    assert.equal(await page.locator('#board-panel > :first-child').getByRole('heading', { name: 'Top creators', exact: true }).count(), 1, 'Top creators is the first ranking section');
     assert.deepEqual(await sampleRankings.locator('.zlb-coins').allInnerTexts(), ['1.3M', '800K']);
     assert.equal(await page.getByText(/sample rankings/i).count(), 0, 'The leaderboard never presents creators as a sample');
     assert.equal(await sampleRankings.locator('.zlb-score small').count(), 0, 'Ranking rows have no demo-style badge');
@@ -238,6 +242,8 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     await preview.route('https://**/*', route => route.abort());
     await preview.clock.install({ time: new Date('2026-11-25T23:59:00Z') });
     await preview.goto(pathToFileURL(path.join(root, 'dist/index.html')).href + '?role=sender');
+    assert.equal(await preview.getByRole('button', { name: 'Leaderboard', exact: true }).count(), 0, 'The standalone preview also hides the leaderboard by default');
+    await preview.evaluate(() => { window.ZIMI_CREATOR_LEADERBOARD_ENABLED = true; r(); });
     await preview.getByRole('button', { name: 'Leaderboard', exact: true }).click();
     await preview.getByText(/Top creators by Coins received/).waitFor();
     assert.doesNotMatch(await preview.locator('.zlb-page').innerText(), /sample|design preview|posed by models/i, 'The leaderboard reads like a finished ranking');
@@ -272,6 +278,6 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     assert.equal(await preview.evaluate(() => S.v), 'host', 'A new leaderboard sample opens its preview profile');
     await preview.close();
     assert.deepEqual(errors, [], 'No browser exceptions');
-    console.log('PASS Home discovery: Following/Explore/For You/New header with Search and trophy, keyboard tabs, Popular/India chips on the server, square grid without a featured card, round call buttons and rectangular flags, campaign banners after two rows (11:3, Ad label, dots, auto-advance, per-slide views and counted taps) and cards after ten hosts, real leaderboard (periods, stale answers, empty, error/retry, profiles) and the host availability button');
+    console.log('PASS Home discovery: Search and Notifications, keyboard feed tabs, country filters, square cards, ad placement, host availability and the default-off leaderboard');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

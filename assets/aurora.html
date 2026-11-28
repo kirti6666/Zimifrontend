@@ -4653,7 +4653,7 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 .zh-user-person:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 @media(max-width:359px){.zh-user-person{gap:9px}.zh-profile-filters>button{min-width:42px;padding-inline:8px}}
 /* Home header, after the reference: Following, Explore, For You and New in place of the app
-   name, the selected feed larger and bolder; then Search, leaderboard and Notifications. */
+   name, the selected feed larger and bolder, followed by Search and Notifications. */
 .zh-header.zh-home-header{gap:6px;padding-left:14px;padding-right:6px}
 :is(.zh-feed-tabs,.zh-host-tabs){display:flex;align-items:center;align-self:stretch;gap:12px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
 :is(.zh-feed-tabs,.zh-host-tabs)::-webkit-scrollbar{display:none}
@@ -5584,7 +5584,7 @@ button.zlb-row:active{background:var(--raised)}
 .zlb-score{display:grid;justify-items:end;flex:none;gap:1px}
 .zlb-coins{display:inline-flex;align-items:center;gap:5px;flex:none;color:var(--ink);font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;font-variant-numeric:tabular-nums}
 .zlb-samples h2{margin:8px 0 4px;font-size:calc(16px * var(--theme-font-scale,1));font-weight:600}
-.zlb-list+.zlb-samples{margin-top:16px;border-top:1px solid var(--line);padding-top:8px}
+.zlb-samples+.zlb-note{margin-top:16px;border-top:1px solid var(--line);padding-top:8px}
 .zlb-empty{padding:46px 16px;text-align:center;color:var(--muted)}
 .zlb-empty>svg{color:var(--gold)}
 .zlb-empty h2{margin:14px 0 8px;color:var(--ink);font-size:calc(18px * var(--theme-font-scale,1));font-weight:600}
@@ -5981,7 +5981,7 @@ html video[data-zimi-native-video] { color: transparent; object-fit: contain !im
 <!-- Loaded as a classic script so its inline onclick handlers keep resolving globals. -->
 <script>
 window.ZIMI_DEMO = false;
-window.ZIMI_APP_VERSION = "1.2.6";
+window.ZIMI_APP_VERSION = "1.2.7";
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -8439,12 +8439,6 @@ const PREVIEW_HOSTS = MODEL_PHOTOS.map((src, i) => src || OB_MEDIA[i]);
 // Stock licences ask for this line wherever model photos stand in for real people.
 const MODEL_NOTE = MODEL_PHOTOS.some(Boolean) ? " &middot; photos posed by models" : "";
 const OB_HEART = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 20.6s-7.4-4.4-9.3-8.9C1.3 8.5 3.3 5 6.8 5c2.1 0 3.6 1.1 4.5 2.5C12.2 6.1 13.7 5 15.8 5c3.5 0 5.5 3.5 4.1 6.7-1.9 4.5-7.9 8.9-7.9 8.9z"/></svg>';
-const OB_INTERESTS = [
-  ["🎵", "Music"], ["💃", "Dance"], ["💬", "Conversations"], ["🎬", "Movies"],
-  ["✈️", "Travel"], ["🎤", "Singing"], ["🎮", "Gaming"], ["😂", "Comedy"],
-  ["✨", "Astrology"], ["💪", "Fitness"], ["🤝", "New friends"], ["🏏", "Cricket"],
-  ["👗", "Style"], ["🍳", "Cooking"], ["📚", "Books"], ["🌿", "Wellness"]
-];
 let obRenderKey = "", obRequestTimer, obDialogTrigger, obSwipe, obSequence = 0, obRateTimer, obCountryList = [], obCountrySearchTimer = 0;
 let obEmailTimer = 0, obEmailSequence = 0, obEmailWaiting = null, obEmailGateTimer = 0;
 const OB_EMAIL_TAKEN = "This email is already used by another account. Try a different one.";
@@ -8606,7 +8600,7 @@ function obResetProfileDraft() {
 function obResumeOnboarding(account, desiredCreator) {
   const u = account.user || {};
   obRememberPermissionIntro(account);
-  S.auth = { step: "profile", mode: "signup", verified: true, creatorIntent: !!desiredCreator || u.onboardingPreference === "creator", name: u.name || "", email: u.email || "", langs: u.languages || [], interests: u.interests || [], photos: (u.photos || []).map(p => obPhotoUrl(p.url)).filter(Boolean), featured: 0, adult: !!u.adultConfirmed, cat: u.category || "", gender: u.gender || "" };
+  S.auth = { step: "profile", mode: "signup", verified: true, creatorIntent: !!desiredCreator || u.onboardingPreference === "creator", name: u.name || "", email: u.email || "", gender: u.gender || "" };
   S.loggedIn = 0; go("login");
 }
 function obResetSession(message = "") {
@@ -8662,7 +8656,7 @@ function obStart(mode = "signup") {
   if (mode === "signup" && S.auth.mode === "signup" && S.auth.verified) return go("login");
   S.role = "sender";
   S.notice = "";
-  S.auth = { step: "phone", mode, creatorIntent: false, phone: "", code: "", langs: [], interests: [], photos: [], featured: 0 };
+  S.auth = { step: "phone", mode, creatorIntent: false, phone: "", code: "" };
   go("login");
 }
 function obDeckMarkup() {
@@ -8721,9 +8715,7 @@ function obStep(step, backward = false) {
 function obBack() {
   const a = S.auth;
   if (a.step === "permissions") return obFinishPermissions();
-  if (a.busy || a.uploading) return;
-  if (a.step === "interests") return obStep("photos", true);
-  if (a.step === "photos") return obStep("profile", true);
+  if (a.busy) return;
   if (a.step === "profile" || a.step === "sprofile") {
     // Verification remains valid while editing this in-memory draft.
     return go("welcome");
@@ -8826,7 +8818,7 @@ function obVerifyOtp() {
 function obSignedIn() {
   clearInterval(S.otpT); clearTimeout(obRequestTimer); obHaptic("success");
   if (S.auth.mode === "signup") {
-    Object.assign(S.auth, { step: "profile", busy: false, err: "", verified: true, cat: S.auth.cat || "", langs: S.auth.langs || [], photos: S.auth.photos || [], interests: S.auth.interests || [] });
+    Object.assign(S.auth, { step: "profile", busy: false, err: "", verified: true });
     return r();
   }
   const creator = S.creatorSetup || S.auth.creatorIntent;
@@ -8838,11 +8830,6 @@ function obPickGender(value, button) {
   S.auth.gender = value;
   button.parentElement.removeAttribute("aria-invalid");
   button.parentElement.querySelectorAll("button").forEach(b => { const on = b === button; b.classList.toggle("selected", on); b.setAttribute("aria-pressed", String(on)); });
-}
-function obToggleLanguage(value, button) {
-  const list = S.auth.langs;
-  list.includes(value) ? list.splice(list.indexOf(value), 1) : list.push(value);
-  button.classList.toggle("selected", list.includes(value)); button.setAttribute("aria-pressed", String(list.includes(value)));
 }
 const obEmailKey = value => String(value || "").trim().toLowerCase();
 /** The server's answer for the address now in the field: checking, available, taken, invalid, unknown or "". */
@@ -8899,25 +8886,16 @@ function obEmailSettled(a) {
 function obNextProfile() {
   const a = S.auth;
   if (a.busy) return;
-  a.name = document.getElementById("pn").value.trim(); a.email = document.getElementById("pe").value.trim(); a.adult = document.getElementById("p18").checked;
+  a.name = document.getElementById("pn").value.trim(); a.email = document.getElementById("pe").value.trim();
   if (a.name.length < 2) return obSetError("Use at least two characters for your name.", "pn");
   if (!okEmail(a.email)) return obSetError(OB_EMAIL_INVALID, "pe");
   const email = obEmailState();
   if (email === "taken") return obSetError(OB_EMAIL_TAKEN, "pe");
   if (email === "invalid") return obSetError(OB_EMAIL_INVALID, "pe");
   if (!a.gender) return obSetError("Choose Female, Male or Prefer not to say.", "pg");
-  if (obIsCreator() && !a.cat) return obSetError("Pick a category for your creator profile.", "pc");
-  if (obIsCreator() && !a.langs.length) return obSetError("Select at least one language for your calls.");
-  if (!a.adult) return obSetError("You need to be 18 or older to join BinzoLive.", "p18");
   if (!DEMO && (!email || email === "checking")) return obAwaitEmail();
-  obStep("photos");
+  obFinish();
 }
-function obNextPhotos() {
-  if (S.auth.uploading) return;
-  if (S.auth.photos.length < MIN_PHOTOS) return obSetError(`Add ${MIN_PHOTOS - S.auth.photos.length} more ${S.auth.photos.length === 2 ? "photo" : "photos"} to continue.`);
-  obStep("interests");
-}
-function obChoosePhotos(camera = false) { const input = document.getElementById(camera ? "ob-camera" : "ob-photos"); if (input) input.click(); }
 function obReadPhoto(file) {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) return reject(new Error("Choose an image file (JPG, PNG or WebP)."));
@@ -8938,55 +8916,21 @@ function obReadPhoto(file) {
     img.src = url;
   });
 }
-async function obUpload(event) {
-  const a = S.auth;
-  if (a.uploading) return;
-  const files = Array.from(event.target.files || []); event.target.value = "";
-  if (!files.length) return;
-  const space = MAX_PHOTOS - a.photos.length;
-  a.uploading = true; a.err = ""; r();
-  let error = "";
-  // Decode one at a time to keep peak memory low on mobile devices.
-  for (const file of files.slice(0, space)) {
-    try { const image = await obReadPhoto(file); if (a !== S.auth) return; a.photos.push(image); }
-    catch (e) { error = e.message; }
-  }
-  if (a !== S.auth) return;
-  a.uploading = false; a.err = error || (files.length > space ? "You can keep up to six photos. The first available photos were added." : "");
-  a.featured = Math.min(a.featured || 0, Math.max(0, a.photos.length - 1));
-  obHaptic(error ? "error" : "success"); r();
-}
-function obFeature(index) { if (S.auth.uploading) return; S.auth.featured = index; r(); }
-function obRemovePhoto(index) {
-  const a = S.auth; if (a.uploading) return;
-  a.photos.splice(index, 1);
-  a.featured = index < a.featured ? a.featured - 1 : index === a.featured ? 0 : a.featured;
-  a.err = ""; r();
-}
-function obToggleInterest(index, button) {
-  const value = OB_INTERESTS[index][1], list = S.auth.interests;
-  list.includes(value) ? list.splice(list.indexOf(value), 1) : list.push(value);
-  button.classList.toggle("selected", list.includes(value)); button.setAttribute("aria-pressed", String(list.includes(value)));
-  const count = document.getElementById("ob-interest-count");
-  if (count) count.textContent = obInterestCount();
-}
-function obInterestCount() { const n = S.auth.interests.length; return n ? `${n} picked. Add as many as you like.` : "Pick as many as you like."; }
-function obFinish(skip = false) {
+function obFinish() {
   const a = S.auth; if (a.busy) return;
-  if (!a.verified || !a.name || !okEmail(a.email) || !a.gender || !a.adult) return obStep("profile");
-  if (a.photos.length < MIN_PHOTOS) return obStep("photos");
-  if (skip) a.interests = [];
-  const photos = [a.photos[a.featured || 0], ...a.photos.filter((_, i) => i !== (a.featured || 0))];
-  const profile = { onboarding: true, role: S.role, name: a.name, email: a.email, photos, category: a.cat || undefined, langs: a.langs, interests: a.interests, gender: a.gender, adultConfirmed: !!a.adult, preferredRole: obIsCreator() ? "creator" : "member" };
+  if (!a.verified || !a.name || !okEmail(a.email) || !a.gender) return obStep("profile");
+  // The final action is the 18+ attestation shown beside the button; it is not
+  // another field or registration step.
+  const profile = { onboarding: true, role: S.role, name: a.name, email: a.email, gender: a.gender, adultConfirmed: true, preferredRole: obIsCreator() ? "creator" : "member" };
   if (DEMO) { Native.send("profile.save", profile); return obComplete(); }
   obRequest("profile.save", profile);
 }
 function obComplete(account) {
   const a = S.auth; clearTimeout(obRequestTimer); obHaptic("success");
   const creator = obIsCreator();
-  me.n = a.name; S.editName = a.name; me.gender = a.gender; S.editGender = a.gender; S.avatarData = a.photos[a.featured || 0]; S.interests = a.interests.slice();
+  me.n = a.name; S.editName = a.name; me.gender = a.gender; S.editGender = a.gender;
   if (account) obApplyAccount(account);
-  if (creator) { me.tag = a.cat; S.creatorSetup = true; S.fromSignup = 1; S.kf = { ...S.kf, name: a.name, email: a.email, langs: a.langs, category: a.cat, bio: "", photos: account ? (account.user.photos || []).map(p => p.url) : a.photos }; }
+  if (creator) { S.creatorSetup = true; S.fromSignup = 1; S.kf = { ...S.kf, name: a.name, email: a.email, bio: "", photos: account ? (account.user.photos || []).map(p => p.url) : [] }; }
   if (account?.requiresOnboarding) return obResumeOnboarding(account, creator);
   if (obStartPermissionSetup(account, creator)) return;
   S.loggedIn = 1; S.auth = { step: "phone" }; go(creator ? "kyc" : "home");
@@ -8995,27 +8939,15 @@ function obErrorMarkup() { return `<p class="ob-error" id="ob-error" role="alert
 function obButton(text, handler, disabled = false) {
   const kind = handler === "obSendOtp()" ? "auth.sendOtp" : handler === "obVerifyOtp()" ? "auth.verifyOtp" : "";
   const left = kind ? obWait(kind) : 0, idle = kind === "auth.sendOtp" ? "Send my code" : "Verify & continue";
-  return `<button ${kind ? `id="ob-auth-submit" data-idle-label="${idle}"` : ""} class="ob-primary" aria-busy="${!!(S.auth.busy || S.auth.uploading)}" ${disabled || left ? "disabled" : ""} onclick="${handler}">${S.auth.busy || S.auth.uploading ? '<span class="ob-spinner" aria-hidden="true"></span>' : ""}${left && !S.auth.busy ? `Try again in ${obDuration(left)}` : text}${S.auth.busy || S.auth.uploading || left ? "" : obArrow()}</button>`;
-}
-function obLanguages() { return `<div class="ob-options">${LANGS.map(value => { const selected = S.auth.langs.includes(value); return `<button type="button" class="${selected ? "selected" : ""}" aria-pressed="${selected}" onclick="obToggleLanguage('${value}',this)" ${S.auth.busy ? "disabled" : ""}>${value}</button>`; }).join("")}</div>`; }
-function obPhotoContent() {
-  const a = S.auth, count = a.photos.length, index = a.featured || 0;
-  return `<input hidden id="ob-photos" type="file" accept="image/*" multiple onchange="obUpload(event)"><input hidden id="ob-camera" type="file" accept="image/*" capture="user" onchange="obUpload(event)">
-    <div class="ob-photo-layout"><div class="ob-upload"><span class="ob-upload-camera">${I("flip", 23)}</span>
-      <button class="ob-add-photo" onclick="obChoosePhotos()" ${a.uploading || count >= MAX_PHOTOS ? "disabled" : ""}><span class="ob-add-plus">${I("plus", 28)}</span><b>${a.uploading ? "Adding…" : "Add photos"}</b><small>From your gallery</small></button>
-      <button class="ob-camera-button" onclick="obChoosePhotos(true)" ${a.uploading || count >= MAX_PHOTOS ? "disabled" : ""}>${I("flip", 15)} Take a photo</button></div>
-    <div class="ob-featured">${count ? `<img src="${a.photos[index]}" alt="Your featured profile photo"><span class="ob-feature-badge">${I("star", 14)} FEATURED</span><button class="ob-photo-remove ob-icon" aria-label="Remove featured photo" onclick="obRemovePhoto(${index})" ${a.uploading ? "disabled" : ""}>×</button><div class="ob-photo-caption"><div><b>Your first hello</b><p>The photo people see first</p></div><span>${I("check", 19)}</span></div>` : `<div class="ob-photo-empty">${I("user", 45)}<b>A face to your name</b><p>Your favorite photo<br>goes right here.</p></div>`}</div></div>
-    <div class="ob-preview-heading"><b>Your lineup</b><span>Tap a photo to feature it</span></div>
-    <div class="ob-photo-strip">${Array.from({ length: MAX_PHOTOS }, (_, i) => `<button class="ob-thumb ${count && index === i ? "selected" : ""}" aria-label="${i < count ? `Feature photo ${i + 1}` : "Add photo"}" ${i < count ? `aria-pressed="${index === i}"` : ""} onclick="${i < count ? `obFeature(${i})` : "obChoosePhotos()"}" ${a.uploading ? "disabled" : ""}>${i < count ? `<img src="${a.photos[i]}" alt="Photo ${i + 1}">${index === i ? `<span>${I("star", 12)}</span>` : ""}` : I("plus", 22)}</button>`).join("")}</div>
-    <div class="ob-photo-status" aria-live="polite"><span>${count} of ${MAX_PHOTOS} photos</span><span class="${count >= MIN_PHOTOS ? "ready" : ""}">${count >= MIN_PHOTOS ? "● Looking good" : `${MIN_PHOTOS - count} more to get started`}</span></div>`;
+  return `<button ${kind ? `id="ob-auth-submit" data-idle-label="${idle}"` : ""} class="ob-primary" aria-busy="${!!S.auth.busy}" ${disabled || left ? "disabled" : ""} onclick="${handler}">${S.auth.busy ? '<span class="ob-spinner" aria-hidden="true"></span>' : ""}${left && !S.auth.busy ? `Try again in ${obDuration(left)}` : text}${S.auth.busy || left ? "" : obArrow()}</button>`;
 }
 function obLogin() {
   if (S.auth.step === "permissions") return obPermissionsView();
-  const a = S.auth, signup = a.mode === "signup", host = obIsCreator();
+  const a = S.auth, signup = a.mode === "signup";
   if (a.step === "choose") a.step = "phone";
-  if (a.step === "sprofile") a.step = "profile";
-  const step = a.step, number = ({ phone: 1, otp: 1, profile: 2, photos: 3, interests: 4 })[step] || 1;
-  const stepLabel = ({ phone: "Verify your phone", otp: "Verify your phone", profile: "Your profile", photos: "Your photos", interests: "Your interests" })[step] || "Account setup";
+  if (["sprofile", "photos", "interests"].includes(a.step)) a.step = "profile";
+  const step = a.step, number = step === "profile" ? 2 : 1;
+  const stepLabel = step === "profile" ? "Basic details" : "Verify your phone";
   let title, description = "", content, actions;
   if (step === "phone") {
     title = !signup ? "Welcome <em>back</em>." : "Let’s get you <em>connected</em>.";
@@ -9030,25 +8962,17 @@ function obLogin() {
     content = `<div class="ob-otp" style="--otp-length:${length}" onpaste="obOtpPaste(event)">${Array.from({ length }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="${length}" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? `<p class="ob-field-hint ob-demo-note">Preview mode &middot; Enter any ${length} digits to explore.</p>` : ""}`;
     actions = obButton(a.busy ? "Checking your code…" : "Verify & continue", "obVerifyOtp()", !!a.busy);
   } else if (step === "profile") {
-    title = "Make it <em>yours</em>.";
-    content = `<form class="ob-form" onsubmit="event.preventDefault();obNextProfile()"><div class="ob-field"><label for="pn">${host ? "Creator name" : "Your name"}</label><input id="pn" autocomplete="nickname" maxlength="32" placeholder="Your name" value="${esc(a.name || "")}" oninput="S.auth.name=this.value" aria-describedby="ob-error" ${a.busy ? "disabled" : ""}></div>
+    title = "Tell us about <em>you</em>.";
+    description = "Add your basic details to finish creating your account.";
+    content = `<form class="ob-form" onsubmit="event.preventDefault();obNextProfile()"><div class="ob-field"><label for="pn">Your name</label><input id="pn" autocomplete="name" maxlength="32" placeholder="Your name" value="${esc(a.name || "")}" oninput="S.auth.name=this.value" aria-describedby="ob-error" ${a.busy ? "disabled" : ""}></div>
       <div class="ob-field"><label for="pe">Email address</label><input id="pe" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" maxlength="100" placeholder="you@example.com" value="${esc(a.email || "")}" oninput="obEmailInput(this)" onblur="obCheckEmail(obEmailKey(this.value))" aria-describedby="ob-email-status ob-error" ${["taken", "invalid"].includes(obEmailState()) ? 'aria-invalid="true"' : ""} ${a.busy ? "disabled" : ""}><p class="ob-email-status ${obEmailState()}" id="ob-email-status" aria-live="polite">${obEmailStatusText(obEmailState())}</p></div>
       <div class="ob-field ob-inline"><span class="ob-label" id="pg-label">Gender</span><div class="ob-segment" id="pg" role="group" aria-labelledby="pg-label" aria-describedby="ob-error" tabindex="-1">${GENDERS.map(([value, label]) => `<button type="button" class="${a.gender === value ? "selected" : ""}" aria-pressed="${a.gender === value}" onclick="obPickGender('${value}',this)" ${a.busy ? "disabled" : ""}>${label}</button>`).join("")}</div></div>
-      ${host ? `<div class="ob-field"><label for="pc">Creator category</label><select id="pc" onchange="S.auth.cat=this.value" aria-describedby="ob-error" ${a.busy ? "disabled" : ""}><option value="" disabled ${a.cat ? "" : "selected"}>Choose a category</option>${CATS.map(c => `<option value="${c}" ${a.cat === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>` : ""}
-      <div><span class="ob-label">Languages you speak ${host ? "" : '<small>Optional</small>'}</span>${obLanguages()}</div>
-      <label class="ob-check"><input id="p18" type="checkbox" ${a.adult ? "checked" : ""} onchange="S.auth.adult=this.checked" aria-describedby="ob-error" ${a.busy ? "disabled" : ""}><span>I’m 18 or older.</span></label><button hidden type="submit" tabindex="-1">Continue</button></form>`;
-    actions = obButton(a.busy === "auth.emailCheck" ? "Checking your email…" : "Next, your photos", "obNextProfile()", !!a.busy);
-  } else if (step === "photos") {
-    title = "Add your <em>photos</em>."; description = "Choose at least three clear photos. Your featured photo appears first.";
-    content = obPhotoContent(); actions = obButton(a.uploading ? "Preparing your photos…" : "Looking good. Continue", "obNextPhotos()", a.uploading || a.photos.length < MIN_PHOTOS);
-  } else {
-    title = "Share your <em>interests</em>."; description = `<span id="ob-interest-count" aria-live="polite">${obInterestCount()}</span>`;
-    content = `<div class="ob-interests" aria-label="Your interests">${OB_INTERESTS.map(([emoji, label], i) => `<button class="ob-interest ${a.interests.includes(label) ? "selected" : ""}" aria-pressed="${a.interests.includes(label)}" onclick="obToggleInterest(${i},this)" ${a.busy ? "disabled" : ""}><span aria-hidden="true">${emoji}</span>${label}<span class="ob-chip-check" aria-hidden="true">${I("check", 13)}</span></button>`).join("")}</div>`;
-    actions = obButton(a.busy ? "Making it yours…" : host ? "Finish my creator profile" : "Let’s meet your people", "obFinish()", !!a.busy) + `<button class="ob-secondary" onclick="obFinish(true)" ${a.busy ? "disabled" : ""}>Skip for now</button>`;
+      <p class="ob-field-hint">By creating your account, you confirm you’re 18 or older.</p><button hidden type="submit" tabindex="-1">Create account</button></form>`;
+    actions = obButton(a.busy === "auth.emailCheck" ? "Checking your email…" : a.busy ? "Creating your account…" : "Create my account", "obNextProfile()", !!a.busy);
   }
   return `<section class="ob-shell" data-ob-step="${step}" aria-label="${signup ? "Create your BinzoLive account" : "Log in to BinzoLive"}">
-    <header class="ob-header">${backButton("obBack()", {attrs: a.busy || a.uploading ? "disabled" : ""})}
-      ${signup ? `<div class="ob-progress" data-label="${stepLabel} · ${number} of 4" role="progressbar" aria-label="Account setup" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${number}" aria-valuetext="${stepLabel}, step ${number} of 4">${[1, 2, 3, 4].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : `<span class="ob-login-label"><img class="ob-login-logo" src="${BRAND_LOGO}" alt="BinzoLive" width="66" height="26" decoding="async"></span>`}
+    <header class="ob-header">${backButton("obBack()", {attrs: a.busy ? "disabled" : ""})}
+      ${signup ? `<div class="ob-progress" data-label="${stepLabel} · ${number} of 2" role="progressbar" aria-label="Account setup" aria-valuemin="1" aria-valuemax="2" aria-valuenow="${number}" aria-valuetext="${stepLabel}, step ${number} of 2">${[1, 2].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : `<span class="ob-login-label"><img class="ob-login-logo" src="${BRAND_LOGO}" alt="BinzoLive" width="66" height="26" decoding="async"></span>`}
       <button class="ob-support" onclick="obShowHelp()">Help</button></header>
     <div class="ob-main">
       <h1 class="ob-heading" tabindex="-1">${title}</h1>${description ? `<p class="ob-description">${description}</p>` : ""}
@@ -9059,7 +8983,7 @@ function obLogin() {
 function obShowHelp() {
   if (document.getElementById("ob-help")) return;
   const dialog = document.createElement("dialog"); dialog.id = "ob-help"; dialog.className = "ob-dialog"; dialog.setAttribute("aria-labelledby", "ob-help-title");
-  dialog.innerHTML = `<div class="ob-dialog-head"><span class="ob-eyebrow">WE’RE HERE TO HELP</span><button class="ob-dialog-close ob-icon" aria-label="Close help" onclick="obCloseHelp()">×</button></div><div class="ob-dialog-body"><h2 id="ob-help-title">A little help getting in.</h2><p>Choose your country, then enter your mobile number. You can also paste a full number that starts with + and its country code. Double-check it before requesting your code.</p><p>No message yet? Check your mobile signal and wait for the resend timer. Use the newest code if you requested more than one.</p><p>For photos, choose clear JPG, PNG or WebP images under 20 MB each. You can add up to six.</p><button class="ob-primary" onclick="obCloseHelp()">Got it ${I("check", 18)}</button></div>`;
+  dialog.innerHTML = `<div class="ob-dialog-head"><span class="ob-eyebrow">WE’RE HERE TO HELP</span><button class="ob-dialog-close ob-icon" aria-label="Close help" onclick="obCloseHelp()">×</button></div><div class="ob-dialog-body"><h2 id="ob-help-title">A little help getting in.</h2><p>Choose your country, then enter your mobile number. You can also paste a full number that starts with + and its country code. Double-check it before requesting your code.</p><p>No message yet? Check your mobile signal and wait for the resend timer. Use the newest code if you requested more than one.</p><p>After verification, add your name, email and gender to finish creating your account.</p><button class="ob-primary" onclick="obCloseHelp()">Got it ${I("check", 18)}</button></div>`;
   obModal(dialog);
 }
 function obCloseHelp() { const dialog = document.getElementById("ob-help"); if (dialog) dialog.close(); }
@@ -9170,12 +9094,12 @@ Native.on("profile.saved", d => { if (obMatches(d) && d.onboarding && S.v === "l
 Native.on("profile.progress", d => {
   if (!obMatches(d) || S.v !== "login" || S.auth.busy !== "profile.save") return;
   const button = document.querySelector(".ob-actions .ob-primary");
-  if (button) button.textContent = d.done < d.total ? `Saving photo ${d.done + 1} of ${d.total}…` : "Saving your profile…";
+  if (button) button.textContent = "Saving your profile…";
 });
 Native.on("profile.error", d => {
   if (!obMatches(d) || !d.onboarding || S.v !== "login") return;
   clearTimeout(obRequestTimer); S.auth.busy = false;
-  // Someone else took the address since it was checked; photos stay in the draft.
+  // Someone else took the address since it was checked; keep the basic-details draft.
   if (d.code === "EMAIL_IN_USE") {
     S.auth.emailStatus = { email: obEmailKey(S.auth.email), state: "taken" };
     obStep("profile", true); return obSetError(OB_EMAIL_TAKEN, "pe");
@@ -9191,6 +9115,7 @@ Native.on("auth.emailChecked", d => {
 });
 /* Live broadcasting is paused for this release; private calls stay available. */
 window.ZIMI_LIVE_STREAMING_ENABLED = false;
+window.ZIMI_CREATOR_LEADERBOARD_ENABLED = false;
 const H=[
  {id:"aanya",n:"Aanya Kapoor",c:"Mumbai",cat:"Dance",tag:"Dancing",age:26,rate:34,fee:60,on:1,live:1,seed:12,v:"2.4K",pk:1,top:0,fol:1,nw:0},
  {id:"ishaan",n:"Ishaan Verma",c:"Bengaluru",cat:"Gaming",tag:"Esports",age:24,rate:22,fee:40,on:1,live:1,seed:47,v:"1.1K",pk:0,top:1,fol:1,nw:0},
@@ -9369,7 +9294,7 @@ function go(v,id,{returnRoute}={}){
  /* A minimized call stays the only call until it ends (web/ongoing-call.js). */
  if(S.bgCall&&["dial","dialback","call","voice","hcall"].includes(v)){appNotice("Finish your current call first.");return}
  if(v==='kyc'&&window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
- if(v==='explore')v='home';
+ if(v==='explore'||(v==='board'&&!window.ZIMI_CREATOR_LEADERBOARD_ENABLED))v='home';
  if(window.ZimiHostAccess?.financialHost()&&['precall','dial'].includes(v)){if(!isApprovedHost())window.ZimiHostAccess.guard();else appNotice('Use your host calling tools to contact users.');return}
  if(window.ZimiHostAccess?.financialHost()&&['coins','refer'].includes(v)){appNotice('Your host account earns diamonds. Open your wallet to view them.');v='wallet'}
  if(v==='payout-history'&&window.ZimiHostAccess&&!window.ZimiHostAccess.financialHost()){appNotice('Withdrawals are available to host accounts.');return}
@@ -10781,7 +10706,7 @@ function topFor(){
    ${T.map(([k,l])=>`<button class="stab ${S.tab===k?"on":""}" onclick="setTab('${k}')">${l}</button>`).join("")}
    <span class="sicons">
     <button class="ibtn" aria-label="Search creators" onclick="go('search')">${I("srch",19)}</button>
-    <button class="tbadge" aria-label="Leaderboard" onclick="go('board')">${I("cup",19)}</button></span></div>`}
+    ${window.ZIMI_CREATOR_LEADERBOARD_ENABLED?`<button class="tbadge" aria-label="Leaderboard" onclick="go('board')">${I("cup",19)}</button>`:""}</span></div>`}
  if(S.v==="search")return `<div class="hdr" style="gap:8px">
    ${backButton("go('home')")}
    <span class="sfield">${I("srch",17)}
@@ -10814,7 +10739,7 @@ function appNotice(message){
 let zimiSecured=null;
 function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread","support-chat","official-chat","payout-kyc"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
- if(S.v==='explore')S.v='home';
+ if(S.v==='explore'||(S.v==='board'&&!window.ZIMI_CREATOR_LEADERBOARD_ENABLED))S.v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout","host-statistics"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
@@ -11991,8 +11916,21 @@ function homeFeedTabKey(event){
   const next=event.key==='Home'?keys[0]:event.key==='End'?keys.at(-1):keys[(at+(event.key==='ArrowRight'?1:-1)+keys.length)%keys.length];
   homeDashboardFilter(next);document.getElementById('home-tab-'+next)?.focus();
 }
-// Like the reference: the feed tabs, then Search, the creator leaderboard and Notifications.
-function homeHeader(){return `<header class="zh-header zh-home-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${HOME_FEEDS.map(([key,label])=>{const on=Home.dashboardFilter===key;return `<button type="button" id="home-tab-${key}" role="tab" aria-selected="${on}" aria-controls="home-feed-panel" tabindex="${on?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`}).join('')}</div><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="go('search')" aria-label="${isApprovedHost()?'Search users':'Search creators'}">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button><button type="button" class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications">${hi('bell',25)}${Home.unreadCount?'<i aria-hidden="true"></i>':''}</button></div></header>`}
+function homeHeader(){
+  const tabs=HOME_FEEDS.map(([key,label])=>{
+    const on=Home.dashboardFilter===key;
+    return `<button type="button" id="home-tab-${key}" role="tab" aria-selected="${on}" aria-controls="home-feed-panel" tabindex="${on?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`;
+  }).join('');
+  const trophy=window.ZIMI_CREATOR_LEADERBOARD_ENABLED
+    ? `<button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button>` : '';
+  return `<header class="zh-header zh-home-header">
+    <div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${tabs}</div>
+    <div class="zh-header-actions">
+      <button type="button" class="zh-icon" onclick="go('search')" aria-label="${isApprovedHost()?'Search users':'Search creators'}">${hi('srch',25)}</button>
+      ${trophy}<button type="button" class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications">${hi('bell',25)}${Home.unreadCount?'<i aria-hidden="true"></i>':''}</button>
+    </div>
+  </header>`;
+}
 function homeRegionChips(){if(!homeRegionShown())return '';return `<div class="zh-region-chips" role="group" aria-label="Country">${HOME_REGIONS.map(([key,label])=>`<button type="button" aria-pressed="${Home.region===key}" onclick="homeRegion('${key}')">${key?homeFlag(key,'zh-flag-chip',true):''}<span>${label}</span></button>`).join('')}</div>`}
 function homeNav(){
   const el=document.getElementById('nav');
@@ -12510,7 +12448,7 @@ function lbView(){
   else if(firstPage&&error)body=contentError('leaderboard');
   else if(Board.rows.length||Board.sampleRows.length){
     const giftRankings=Board.rows.length?`<p class="zlb-note">Creators ranked by gift coins received</p>${lbRows(Board.rows)}`:'';
-    body=giftRankings+lbSamples(pending,error);
+    body=lbSamples(pending,error)+giftRankings;
   }else{
     const periodText=BOARD_PERIODS.find(([key])=>key===Board.period)[2];
     body=`<div class="zlb-empty">${hi('trophy',30)}<h2>No rankings yet</h2><p>Creators appear here after receiving paid gifts ${periodText}.</p></div>`;

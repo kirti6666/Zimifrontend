@@ -1814,7 +1814,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         // A summary fetched before this edit must not repaint old profile fields.
         readRequests.set("profileSettings", (readRequests.get("profileSettings") ?? 0) + 1);
         try {
-          let account = await api.saveProfile(profile, (done, total) => {
+          let account = await api.saveProfile(onboarding === true ? { ...profile, onboarding: true } : profile, (done, total) => {
             if (applicable()) emit({ type: "profile.progress", data: { done, total, requestId: id } });
           });
           while (applicable() && revision !== hostRevision) {

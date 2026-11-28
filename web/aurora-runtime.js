@@ -1,5 +1,6 @@
 /* Live broadcasting is paused for this release; private calls stay available. */
 window.ZIMI_LIVE_STREAMING_ENABLED = false;
+window.ZIMI_CREATOR_LEADERBOARD_ENABLED = false;
 const H=[
  {id:"aanya",n:"Aanya Kapoor",c:"Mumbai",cat:"Dance",tag:"Dancing",age:26,rate:34,fee:60,on:1,live:1,seed:12,v:"2.4K",pk:1,top:0,fol:1,nw:0},
  {id:"ishaan",n:"Ishaan Verma",c:"Bengaluru",cat:"Gaming",tag:"Esports",age:24,rate:22,fee:40,on:1,live:1,seed:47,v:"1.1K",pk:0,top:1,fol:1,nw:0},
@@ -178,7 +179,7 @@ function go(v,id,{returnRoute}={}){
  /* A minimized call stays the only call until it ends (web/ongoing-call.js). */
  if(S.bgCall&&["dial","dialback","call","voice","hcall"].includes(v)){appNotice("Finish your current call first.");return}
  if(v==='kyc'&&window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
- if(v==='explore')v='home';
+ if(v==='explore'||(v==='board'&&!window.ZIMI_CREATOR_LEADERBOARD_ENABLED))v='home';
  if(window.ZimiHostAccess?.financialHost()&&['precall','dial'].includes(v)){if(!isApprovedHost())window.ZimiHostAccess.guard();else appNotice('Use your host calling tools to contact users.');return}
  if(window.ZimiHostAccess?.financialHost()&&['coins','refer'].includes(v)){appNotice('Your host account earns diamonds. Open your wallet to view them.');v='wallet'}
  if(v==='payout-history'&&window.ZimiHostAccess&&!window.ZimiHostAccess.financialHost()){appNotice('Withdrawals are available to host accounts.');return}
@@ -1590,7 +1591,7 @@ function topFor(){
    ${T.map(([k,l])=>`<button class="stab ${S.tab===k?"on":""}" onclick="setTab('${k}')">${l}</button>`).join("")}
    <span class="sicons">
     <button class="ibtn" aria-label="Search creators" onclick="go('search')">${I("srch",19)}</button>
-    <button class="tbadge" aria-label="Leaderboard" onclick="go('board')">${I("cup",19)}</button></span></div>`}
+    ${window.ZIMI_CREATOR_LEADERBOARD_ENABLED?`<button class="tbadge" aria-label="Leaderboard" onclick="go('board')">${I("cup",19)}</button>`:""}</span></div>`}
  if(S.v==="search")return `<div class="hdr" style="gap:8px">
    ${backButton("go('home')")}
    <span class="sfield">${I("srch",17)}
@@ -1623,7 +1624,7 @@ function appNotice(message){
 let zimiSecured=null;
 function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread","support-chat","official-chat","payout-kyc"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
- if(S.v==='explore')S.v='home';
+ if(S.v==='explore'||(S.v==='board'&&!window.ZIMI_CREATOR_LEADERBOARD_ENABLED))S.v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout","host-statistics"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();

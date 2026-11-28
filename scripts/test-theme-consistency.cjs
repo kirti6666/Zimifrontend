@@ -122,7 +122,7 @@ async function mountedThemes(page, name, rules = [], shot = false) {
       const rules = view === 'home' ? [bg('.zh-region-chips [aria-pressed="false"]', 'surfaceElevated'), ink('.zh-region-chips [aria-pressed="false"]', 'textMuted'), bg('.zh-region-chips [aria-pressed="true"]', 'primary'), ink('.zh-region-chips [aria-pressed="true"]', 'primaryContrast'), ink('.zh-feed-tabs [aria-selected="true"]'), ink('.zh-feed-tabs [aria-selected="false"]', 'textMuted')] : view === 'all-creators' ? [ink('.zac-heading h1')] : view === 'chats' ? [bg('.zc-search', 'surfaceElevated'), ink('.zc-name')] : view === 'profile' ? [bg('.zu-own-page', 'surface')] : [bg('.zp-wallet', 'wallet'), ...cta('.zp-topup')];
       await mountedThemes(page, view, rules);
     }
-    for (const view of ['themes', 'wallet', 'transactions', 'calls', 'blocked', 'safety', 'help', 'editprofile', 'notifications', 'board', 'host', 'post']) {
+    for (const view of ['themes', 'wallet', 'transactions', 'calls', 'blocked', 'safety', 'help', 'editprofile', 'notifications', 'host', 'post']) {
       await nav(page, view); await mountedThemes(page, view, view === 'wallet' ? [bg('.accthero', 'surface'), ink('.accthero'), ink('.accthero .eyebrow', 'textMuted'), ...cta('.accthero .cta')] : view === 'editprofile' ? cta('.editsave') : []);
     }
     await nav(page, 'search');

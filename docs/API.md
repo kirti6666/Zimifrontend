@@ -289,7 +289,8 @@ for it (login, call failed).
 | Set creator card image in call setup | Upload with `purpose: "creator-card"`, then `PATCH /profile` `{creatorCardKey}` | Saved separately as `creatorCardUrl` for discovery cards. Profile `coverUrl` and cover drafts stay unchanged; the setup stays open. |
 | Change cover on your Profile | `profile.cover.save` uploads with `purpose: "cover"`, then `PATCH /profile` `{coverKey}` and fresh `GET /auth/me` | Members and hosts preview and confirm the change without opening Edit Profile. Dedicated success/error events preserve other profile drafts and keep failed uploads available for retry. |
 | App opens with a saved login | `GET /me` | `Account` |
-| Finish sign-up, edit profile | `PUT /me/profile` | – |
+| Finish sign-up | `PATCH /auth/profile` with `{name, onboarding: {email, gender, adultConfirmed: true}}` | The second and final registration step. Photos, interests, languages and category are not required. |
+| Edit profile | `PATCH /profile` | Updated account profile |
 | Submit verification | `POST /me/verification` | `{status}` |
 | Go online or offline | `PATCH /safety` `{onlineForCalls, allowRequests, showActivity, discoverable}` | Saved safety flags; `onlineForCalls` persists through backgrounding and socket loss |
 | Show MVPs switch | `PUT /me/settings` | – |
@@ -603,14 +604,16 @@ daily cap per member and optional impression or click budgets.
 - Each card is labelled “Sponsored” and has an **About this ad** dialog that names
   the advertiser and destination and links to Premium.
 
-## Registration device access
+## Post-registration device access
 
-After the server confirms profile completion, Android registration offers a
-device-access screen for camera, microphone and notifications. Only its explicit
-Allow access action opens system prompts. Continue/Not now completes setup with
-any permission choice. A pending per-account marker resumes interrupted setup;
-completed returning accounts have no automatic permission dialog. Photo uploads
-use the system picker, with camera access requested when taking a photo.
+After the server confirms the two-step account setup is complete, Android may
+offer a separate device-access screen for camera, microphone and notifications.
+This screen is post-registration setup: it is not a third sign-up step and does
+not delay creation of the account. Only its explicit Allow access action opens
+system prompts. Continue/Not now leaves the account ready with any permission
+choice. A pending per-account marker resumes interrupted device setup; completed
+returning accounts have no automatic permission dialog. Later photo uploads use
+the system picker, with camera access requested when taking a photo.
 
 The WebView sends `permissions.load`, `permissions.request`, or
 `permissions.settings` with a positive `requestId`. Native replies with

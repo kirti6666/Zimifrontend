@@ -167,14 +167,14 @@ async function navigationChecks(page) {
 
 async function profileInterruptionChecks(page) {
   await seed(page);
-  await navigate(page, 'board');
+  await navigate(page, 'all-creators');
   await navigate(page, 'host', creator.id);
   await receive(page, 'call.incoming', { callId: 'incoming-member-test', fromHost: true, from: { ...creator, id: '507f1f77bcf86cd799439012' } });
   assert.equal(await current(page), 'incoming');
   await back(page);
   assert.deepEqual(await page.evaluate(() => [S.v, S.h]), ['host', creator.id], 'Declining an incoming call resumes the host profile');
   await back(page);
-  assert.equal(await current(page), 'board', 'The dismissed call does not replace the profile origin');
+  assert.equal(await current(page), 'all-creators', 'The dismissed call does not replace the profile origin');
 
   await seed(page, host);
   await navigate(page, 'user', member.user.id);

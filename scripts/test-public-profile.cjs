@@ -297,7 +297,7 @@ async function run() {
     await tab(page, 'MVP').click(); await acceptMvps(page, creator, supporters, 'week');
     await mvpPanel.getByRole('button', { name: /View Riya Kapoor's profile/ }).click();
     assert.deepEqual(await page.evaluate(() => [S.v, S.u]), ['user', supporters[0].id], 'A User supporter opens the User profile route');
-    await page.evaluate(() => go('board'));
+    await page.evaluate(() => go('all-creators'));
     await navigate(page); await acceptProfile(page); await acceptPosts(page);
     await tab(page, 'MVP').click();
     await mvpPanel.getByRole('button', { name: 'All time', exact: true }).click();
@@ -309,7 +309,7 @@ async function run() {
     assert.equal(await tab(page, 'MVP').getAttribute('aria-selected'), 'true', 'Returning to a Host restores the selected MVP tab');
     await acceptMvps(page, creator, supporters, 'all');
     await receive(page, 'app.back');
-    assert.equal(await page.evaluate(() => S.v), 'board', 'Android Back returns to the original leaderboard');
+    assert.equal(await page.evaluate(() => S.v), 'all-creators', 'Android Back returns to All Creators');
     console.log('PASS public profile: real MVP loading, period switching, retry/stale isolation, ranked coin totals and supporter Back navigation');
 
     await navigate(page);
