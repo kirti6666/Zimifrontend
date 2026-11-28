@@ -331,6 +331,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let appActive = AppState?.currentState !== "background" && AppState?.currentState !== "inactive";
   let liveOnboarding = false;
   let activeCall: string | undefined;
+  let awaitingOutgoingAnswer: { callId: string; peerId: string; generation: number } | undefined;
   let callRecovery: ReturnType<typeof createCallRecovery> | undefined;
   // A staff verification call; `accepted` marks the device that answered it.
   let verifyCall: { callId: string; accepted: boolean; connected: boolean } | undefined;
@@ -494,6 +495,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   ringing.foreground(appActive);
   const emit = (message: AppMessage) => {
     if (closed) return;
+    if ((message.type === "call.connected" || message.type === "call.ended") && awaitingOutgoingAnswer?.callId === message.data.callId)
+      awaitingOutgoingAnswer = undefined;
     ringing.observe(message as unknown as { type: string; data: Record<string, unknown> });
     if (message.type === "call.connected" || message.type === "call.ended") void dismissIncomingCallNotification(message.data.callId).catch(() => {});
     post(message);
@@ -779,6 +782,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
       available: !closed && sessionAvailable && !!accountId && !!getCachedToken() && webReady && !restoring && !liveOnboarding,
     }),
     read: callId => api.callState(callId),
+    accepted: ({ callId, connection }) => {
+      const outgoing = awaitingOutgoingAnswer;
+      if (!outgoing || outgoing.callId !== callId || outgoing.generation !== callGeneration ||
+        activeCall !== callId || connection?.peerId !== outgoing.peerId || cancelledCalls.has(callId)) return;
+      emit({ type: "call.connected", data: { callId, initiator: true, ...connection } });
+    },
     ended: ({ callId, coins, reason }) => endRemoteCall({ callId, ...(coins !== undefined ? { coins } : {}), ...(reason ? { reason } : {}) }),
   });
   const homeFlightCurrent = () => homeFlight && current(homeFlight.epoch) && homeFlight.session === getSessionVersion() && homeFlight.document === documentRevision;
@@ -2218,6 +2227,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
             return;
           }
           activeCall = result.callId;
+          if (intent.callId !== result.callId)
+            awaitingOutgoingAnswer = { callId: result.callId, peerId: result.to, generation: intent.generation };
           holdCallActivity(result.callId, intent.activity);
           emit({ type: "call.created", data: { callId: activeCall, to: result.to, voice: result.voice, ...(msg.type === "call.invitation.connect" ? { invitationId: msg.data.id, requestId: msg.data.requestId } : {}) } });
           if (result.connected && intent.callId !== result.callId) emit({ type: "call.connected", data: { ...result, initiator: true, peerId: result.to } });

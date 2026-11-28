@@ -929,6 +929,10 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     expect('GET', `/calls/${pushCallId}`, { ...confirmedCall, status });
     assert.deepEqual(plain(await api.callState(pushCallId)), {callId:pushCallId,status,coins:70}, 'Authoritative call checks preserve every supported state');
   }
+  expect('GET', `/calls/${pushCallId}`, { ...confirmedCall, kind:'audio' });
+  assert.deepEqual(plain((await api.callState(pushCallId)).connection), { peerId:pushPeer,voice:true,rate:35 });
+  expect('GET', `/calls/${pushCallId}`, { ...confirmedCall, callerId:pushPeer,calleeId:'member-id',kind:'audio' });
+  assert.equal((await api.callState(pushCallId)).connection, undefined, 'Status polling does not auto-answer an incoming call');
   expect('GET', `/calls/${pushCallId}`, {...confirmedCall, callerId:{_id:pushPeer},calleeId:{id:'member-id'},status:'ended',coinsCharged:0,endReason:'out_of_coins'});
   assert.deepEqual(plain(await api.callState(pushCallId)), {callId:pushCallId,status:'ended',coins:0,reason:'out_of_coins'}, 'Either participant can reconcile an ended call, including a confirmed zero charge');
   for (const endReason of ['switch','host_unavailable']) {

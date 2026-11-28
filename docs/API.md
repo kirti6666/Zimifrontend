@@ -604,7 +604,13 @@ daily cap per member and optional impression or click budgets.
 - Each card is labelled “Sponsored” and has an **About this ad** dialog that names
   the advertiser and destination and links to Premium.
 
-## Post-registration device access
+## Device access on Android
+
+A fresh installation requests missing camera, microphone and notification
+permissions once when the first screen opens. An incoming call or mandatory
+update has priority over the startup prompts. Permission choices do not block
+access to the app, and the startup flow does not register an FCM token or
+capture media.
 
 After the server confirms the two-step account setup is complete, Android may
 offer a separate device-access screen for camera, microphone and notifications.

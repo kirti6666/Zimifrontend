@@ -98,14 +98,20 @@ const receive = (page, type, data) => page.evaluate(message => Native.receive(me
       await page.close();
     }
     const page = await open();
+    await page.evaluate(() => {
+      window.__scheduleRecovery = window.setTimeout;
+      window.setTimeout = (fn, delay, ...args) => {
+        if (delay === 3000) window.__oldRecovery = fn;
+        return __scheduleRecovery(fn, delay, ...args);
+      };
+    });
     await start(page, 'old-session');
     await page.evaluate(() => {
+      window.setTimeout = __scheduleRecovery;
       const peer = __peers.at(-1); window.__oldFailure = peer.onconnectionstatechange;
       Object.defineProperty(peer, 'connectionState', { configurable: true, get: () => 'failed' });
       Object.defineProperty(peer, 'iceConnectionState', { configurable: true, get: () => 'failed' });
-      const schedule = window.setTimeout;
-      window.setTimeout = (fn, delay, ...args) => { if (delay === 3000) window.__oldRecovery = fn; return schedule(fn, delay, ...args); };
-      peer.onconnectionstatechange(); window.setTimeout = schedule;
+      peer.onconnectionstatechange();
     });
     await receive(page, 'call.ended', { callId: 'old-session' });
     await start(page, 'new-session');

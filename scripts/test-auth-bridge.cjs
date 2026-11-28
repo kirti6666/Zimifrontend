@@ -4297,6 +4297,25 @@ test('call recovery checks a background call on foreground without waiting for a
   } finally {h.bridge.close();}
 });
 
+test('call recovery connects an outgoing call when the realtime answer was lost', async () => {
+  const h = harness(), callId = 'missed-accept-event', peerId = 'host-id';
+  try {
+    h.overrides.me = () => ({...account(),requiresOnboarding:false});
+    h.overrides.startCall = () => ({callId});
+    await h.session.setSessionTokens(tokenPair());
+    h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+    h.bridge.handle({type:'call.start',data:{to:peerId,voice:true}});await settle();
+    h.overrides.callState = () => ({callId,status:'accepted',connection:{peerId:'different-host',voice:true}});
+    h.live[0].onEvent({type:'realtime.status',data:{connected:true}});await settle();
+    assert.equal(h.find('call.connected').length,0,'A different peer cannot start media');
+    h.overrides.callState = () => ({callId,status:'accepted',connection:{peerId,voice:true,rate:35}});
+    h.live[0].onEvent({type:'realtime.status',data:{connected:true}});await settle();
+    assert.deepEqual(plain(h.find('call.connected').map(event=>event.data)),[{callId,initiator:true,peerId,voice:true,rate:35}]);
+    h.live[0].onEvent({type:'realtime.status',data:{connected:true}});await settle();
+    assert.equal(h.find('call.connected').length,1,'More status reads do not restart media');
+  } finally {h.bridge.close();}
+});
+
 test('call recovery retains healthy media through failed and accepted state checks, then recovers a terminal state', async () => {
   const callId='uncertain-call',h=await recoveryCallHarness(callId);
   try {

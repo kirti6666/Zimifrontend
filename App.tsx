@@ -8,6 +8,7 @@ import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import html from "./assets/aurora-bundle";
 import { createBridge, postToWeb, type AppMessage, type WebMessage } from "./src/bridge";
 import { LaunchScreen } from "./src/launch-screen";
+import { requestFirstLaunchPermissions } from "./src/first-launch-permissions";
 import { readThemeCache, type ThemeCache } from "./src/theme-cache";
 import { isTrustedDocument, parseWebMessage } from "./src/web-message";
 import { useAppUpdates } from "./src/app-update";
@@ -81,6 +82,12 @@ export default function App() {
     if (priorityIncoming) setStartupVisible(false);
     else if (!startupReady && (updates.state.status === "checking" || updates.state.status === "allowed")) setStartupVisible(true);
   }, [priorityIncoming, startupReady, updates.state.status]);
+  useEffect(() => {
+    if (updates.state.status !== "allowed" || !startupReady || startupVisible || priorityIncoming) return;
+    const request = new AbortController();
+    void requestFirstLaunchPermissions(request.signal);
+    return () => request.abort();
+  }, [priorityIncoming, startupReady, startupVisible, updates.state.status]);
   const content = updates.state.status === "allowed"
     ? <AppContent priorityIncoming={priorityIncoming} startupCovered={startupVisible} onStartupReady={contentReady} onIncomingEvent={incoming.onEvent} onIncomingResult={incoming.onResult} />
     : <AppUpdateScreen {...updates} />;

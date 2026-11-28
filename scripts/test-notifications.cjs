@@ -299,6 +299,15 @@ async function mutations(page) {
   mutation = await requestAfter(page, 'notifications.unread', () => button(detail(page), `Mark as unread: ${notices[0].title}`).click());
   assert.deepEqual(mutation.ids, [notices[0].id]);
   assert.doesNotMatch(await row(page, notices[0]).getAttribute('class'), /\bunread\b/, 'Unread state also waits for acknowledgment');
+  await receive(page, 'notifications.error', { requestId: mutation.requestId, message: 'This update was not saved.' });
+  await button(page, 'Close notification').click();
+  await button(page, `Open notification: ${notices[2].title}`).click();
+  assert.equal(await button(detail(page), 'Retry update').isVisible(), false, 'Another notification does not show the failed write');
+  assert.equal(await detail(page).getByRole('status').textContent(), 'Read');
+  await button(page, 'Close notification').click();
+  await button(page, `Open notification: ${notices[0].title}`).click();
+  mutation = await requestAfter(page, 'notifications.unread', () => button(detail(page), 'Retry update').click());
+  assert.deepEqual(mutation.ids, [notices[0].id], 'The retry still targets the notification with the failed write');
   updated[0].read = false;
   await save(page, mutation, false, [notices[0].id], updated);
   assert.match(await row(page, notices[0]).getAttribute('class'), /\bunread\b/);
@@ -459,7 +468,8 @@ async function realLogoutIsolation(page) {
 
 async function visualChecks(page) {
   const request = await loadAfter(page, () => page.locator('.zn-period-tabs').getByRole('button', { name: 'All', exact: true }).click());
-  await result(page, request, [...notices, moreNotice]);
+  const longNotice = { ...moreNotice, title: 'An announcement with a longer message', body: ('A longer announcement should stay readable on small screens.\n\n').repeat(30) + 'End of announcement.', targetType: 'creator', targetId: account.user.id };
+  await result(page, request, [...notices, longNotice]);
   await stopSelecting(page);
   await button(page, 'Filter notifications').click();
   fs.mkdirSync(artifacts, { recursive: true });
@@ -477,6 +487,28 @@ async function visualChecks(page) {
       await showFilters(page);
       await layout(page, `${mode} expanded notification filters at ${width}px`);
       await button(page, 'Filter notifications').click();
+      const openNotice = button(page, `Open notification: ${longNotice.title}`);
+      await openNotice.click();
+      const dialog = detail(page);
+      const geometry = await dialog.evaluate(el => {
+        const box = el.getBoundingClientRect(), body = el.querySelector('.zn-detail-content');
+        const close = el.querySelector('header button'), action = el.querySelector('.zn-detail-open');
+        const closeTop = close.getBoundingClientRect().top, actionTop = action.getBoundingClientRect().top;
+        body.scrollTop = body.scrollHeight;
+        const actionBottom = action.getBoundingClientRect().bottom;
+        return {
+          centered: Math.abs(box.left + box.width / 2 - innerWidth / 2) < 1 && Math.abs(box.top + box.height / 2 - innerHeight / 2) < 1,
+          insideViewport: box.left >= 15 && box.top >= 15 && box.right <= innerWidth - 15 && box.bottom <= innerHeight - 15,
+          scrolls: body.scrollTop > 0 && body.scrollTop + body.clientHeight >= body.scrollHeight - 1,
+          controlsPinned: close.getBoundingClientRect().top === closeTop && action.getBoundingClientRect().top === actionTop,
+          actionVisible: actionBottom <= box.bottom,
+          noHorizontalOverflow: body.scrollWidth <= body.clientWidth,
+        };
+      });
+      assert.deepEqual(geometry, { centered: true, insideViewport: true, scrolls: true, controlsPinned: true, actionVisible: true, noHorizontalOverflow: true }, `${mode} notification details at ${width}px`);
+      await page.mouse.click(2, 2);
+      assert.equal(await dialog.count(), 0, 'A tap on the backdrop dismisses notification details');
+      assert.equal(await openNotice.evaluate(el => el === document.activeElement), true, 'Dismiss returns focus to the notification');
     }
   }
   console.log('PASS notifications: 320/390/1280px light/dark layouts, reduced motion and screenshot artifacts');

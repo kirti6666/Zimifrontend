@@ -4901,7 +4901,7 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 .zn-feedback:not(:empty){margin:8px 3px 12px}
 .zn-inline-error,.zn-live-update{display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 14px;margin:10px 0;font-size:.85em}
 .zn-inline-error p{margin:0;flex:1;line-height:1.6;color:var(--theme-danger)}
-.zn-inline-error button,.zn-live-update button,#zn-detail-status button{border:0;min-height:40px;background:transparent;color:var(--accent-ink)}
+.zn-inline-error button,.zn-live-update button{border:0;min-height:40px;background:transparent;color:var(--accent-ink)}
 .zn-empty{text-align:center;padding:65px 24px 45px;margin-top:5px}
 .zn-empty-icon{display:grid;place-items:center;width:62px;height:62px;background:var(--raised);border-radius:50%;color:var(--accent-ink);margin:0 auto 20px}
 .zn-empty h3{font-size:1.2em;font-weight:600;margin:0 0 10px;color:var(--ink)}
@@ -4929,17 +4929,24 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 .zn-filter-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px;margin-top:12px}
 .zn-filter-actions button{display:flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--muted);min-height:40px;padding:4px;font-size:.77em}
 .zn-filter-actions button:first-child{color:var(--accent-ink)}
-.zn-dialog{width:min(440px,calc(100vw - 32px));max-height:calc(100vh - 64px);max-height:calc(100dvh - 64px);padding:0;border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--ink);font:calc(13px * var(--theme-font-scale,1))/1.6 var(--theme-font,Inter,sans-serif);box-shadow:0 24px 80px #0004;overflow:auto;overscroll-behavior:contain}
-.zn-dialog::backdrop{background:#0006;backdrop-filter:blur(3px)}
-.zn-dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px 12px 22px;font-size:.85em;font-weight:500;color:var(--muted)}
-.zn-dialog-heading button{display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:50%;background:transparent;color:var(--ink)}
-.zn-detail-content{padding:24px}
-.zn-detail-icon{width:48px;height:48px;display:grid;place-items:center;background:var(--raised);color:var(--accent-ink);border-radius:50%;margin-bottom:20px}
-.zn-detail-content>.zn-tag{color:var(--accent-ink);font-weight:500;font-size:.78em}
-.zn-detail-content h2{font-size:1.4em;line-height:1.5;font-weight:600;margin:8px 0;overflow-wrap:anywhere}
-.zn-detail-content time{font-size:.75em;color:var(--muted)}
-.zn-detail-content>p{white-space:pre-wrap;overflow-wrap:anywhere;margin:24px 0;line-height:1.85;color:var(--ink)}
-#zn-detail-status{display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:12px;font-size:.8em;color:var(--muted)}
+.zn-dialog{position:fixed;inset:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);margin:auto;width:min(440px,calc(100% - 32px - var(--safe-left) - var(--safe-right)));height:fit-content;max-height:calc(100% - 32px - var(--safe-top) - var(--safe-bottom));padding:0;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:calc(14px * var(--theme-font-scale,1))/1.55 var(--theme-font,Inter,sans-serif);overflow:hidden}
+.zn-dialog[open]{display:flex;flex-direction:column}
+.zn-dialog::backdrop{background:#0006}
+.zn-dialog-heading{display:flex;flex:none;align-items:center;gap:10px;padding:12px 16px 8px 20px}
+.zn-detail-icon{flex:none;width:36px;height:36px;display:grid;place-items:center;background:var(--raised);color:var(--accent-ink)}
+.zn-dialog-heading .zn-tag{flex:1;color:var(--muted);font-size:.86em;font-weight:500}
+.zn-dialog-heading button{display:grid;place-items:center;flex:none;width:44px;height:44px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.zn-detail-content{min-height:0;overflow:auto;overscroll-behavior:contain;padding:6px 20px 16px;overflow-wrap:anywhere}
+.zn-detail-content:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
+.zn-detail-content h2{font-size:1.43em;line-height:1.3;font-weight:600;margin:0 0 4px}
+.zn-detail-content time{font-size:.86em;color:var(--muted)}
+.zn-detail-content p{white-space:pre-wrap;margin:12px 0 0}
+.zn-detail-actions{flex:none;padding:0 20px 12px}
+.zn-detail-actions>hr{border:0;border-top:1px solid var(--line)}
+#zn-detail-status{display:flex;align-items:center;flex-wrap:wrap;gap:0 10px;font-size:.93em;color:var(--muted)}
+#zn-detail-status>span{flex:1;min-width:0;overflow-wrap:anywhere;padding:8px 0}
+#zn-detail-status button{min-height:44px;border:0;background:transparent;color:var(--accent-ink)}
+.zn-detail-open{width:100%;margin-top:4px}
 @media(hover:hover){.zn-notice-main:hover{background:color-mix(in srgb,var(--accent) 4%,transparent)}.zn-filter-toggle:hover{background:var(--raised)}}
 @media(min-width:761px){.zn-page{padding-top:18px}.zn-notice-main{padding:19px 14px}.zn-notice-icon{width:38px;height:38px}.zn-page .zh-notification h3{font-size:1em}.zn-page .zh-notification p{font-size:.9em}}
 @media(max-width:360px){.zn-page{padding:8px 12px 24px}.zn-period-tabs{gap:5px}.zn-period-tabs button{padding:7px 9px;font-size:.75em}.zn-filter-toggle{width:36px}.zn-notice-main{gap:10px;padding:14px 9px}.zn-notice-icon{width:30px;height:30px}.zn-notice-heading{gap:8px}.zn-page .zh-notification h3{font-size:.9em}.zn-controls{padding:12px}.zn-audience button{padding:7px 9px}.zn-filter-row{gap:8px}}
@@ -17322,7 +17329,7 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
   let state = { hasVideo: false, hasRemoteVideo: false, facing: 'user', playbackMuted: false, quality: 'good' };
   const pending = new Map(), shapes = {}, dimensions = {}, ancestors = new Set();
   const selector = 'video[data-zimi-local], video[data-zimi-remote]';
-  const mediaViews = new Set(['precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
+  const mediaViews = new Set(['precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'incoming', 'switch']);
   function request(action, data = {}) {
     const requestId = ++sequence;
     return new Promise((resolve, reject) => {
@@ -17509,7 +17516,7 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
   // Beauty supplies a separate track for both local preview and peer senders.
   let beauty = null, beautyRefresh = null, trackMutation = Promise.resolve();
   const peers = new Map(), earlySignals = [];
-  const mediaViews = new Set(['broadcast', 'live', 'precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
+  const mediaViews = new Set(['broadcast', 'live', 'precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'incoming', 'switch']);
   /* Cameras list their sizes in landscape and phones rotate the frames to portrait. Asking for a
      portrait size made the browser crop a narrow strip out of each frame (the zoomed preview);
      'none' keeps the camera's own framing so a full-screen video looks like a normal call. */
@@ -17526,6 +17533,7 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
   ];
   const VIDEO_START_LEVEL = 1;
   const REMOTE_IMPAIRMENT_MS = 8000;
+  const CALL_RETRY_MS = 3000, CALL_RECOVERY_LIMIT_MS = 30000;
   const MEDIA_SELECTOR = 'video[data-zimi-local], video[data-zimi-remote], audio[data-zimi-remote]';
 
   // Connect the new layout before moving videos, so moveBefore can preserve their
@@ -17941,6 +17949,24 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
       ? { streamId: session.id, to, ...signal }
       : { callId: session.id, ...signal });
   }
+  function rememberDescription(peer) {
+    const { type, sdp } = peer.pc.localDescription;
+    // localDescription.sdp can grow as ICE candidates arrive. Retries must
+    // carry the exact same SDP so the receiving peer can recognize the offer.
+    peer.description = { type, sdp };
+  }
+  function resendDescription(session, peer, withCandidates = false) {
+    if (!peer.description) return;
+    sendSignal(session, peer.id, { description: peer.description });
+    if (withCandidates) peer.candidates.forEach(candidate => sendSignal(session, peer.id, { candidate }));
+  }
+  async function addCandidate(session, peer, candidate) {
+    try { await peer.pc.addIceCandidate(candidate); }
+    catch (error) {
+      // Call retries can replay a candidate from a retired ICE generation.
+      if (session.kind !== 'call') throw error;
+    }
+  }
   /* Switching calls: the call being left closes its connection, but the camera and microphone stay for the next one. */
   function handoff(callId) { handoffCall = callId || null; }
   function releaseCall() { active = null; earlySignals.length = 0; clearPeers(); }
@@ -18153,36 +18179,40 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
   }
   function connectedPeer(session, peer) {
     clearTimeout(peer.recoveryTimer); peer.recoveryTimer = null; peer.recoveryStarted = 0;
+    peer.wasConnected = true;
     setQuality('good');
     status(session.kind === 'stream' && session.hosting ? 'You are live.' : 'Connected');
     if (session.kind === 'call') void tuneVideo(peer, peer.videoLevel ?? VIDEO_START_LEVEL);
   }
-  function recoverPeer(session, id, peer) {
+  function recoverPeer(session, id, peer, initial = false) {
     if (active !== session || peers.get(id) !== peer || peer.recoveryTimer) return;
     if (!peer.recoveryStarted) peer.recoveryStarted = Date.now();
-    setQuality('reconnecting');
-    status('Connection interrupted. Reconnecting…');
+    if (!initial) {
+      setQuality('reconnecting');
+      status(peer.wasConnected ? 'Connection interrupted. Reconnecting…' : 'Still connecting your call…');
+    }
     peer.recoveryTimer = setTimeout(() => {
       peer.recoveryTimer = null;
       if (active !== session || peers.get(id) !== peer) return;
       if (peerConnected(peer.pc)) return connectedPeer(session, peer);
-      if (Date.now() - peer.recoveryStarted >= 30000) return fail(session, new Error('The media connection could not recover. Please reconnect.'));
+      const elapsed = Date.now() - peer.recoveryStarted;
+      if (elapsed >= CALL_RECOVERY_LIMIT_MS)
+        return fail(session, new Error(peer.wasConnected ? 'The media connection could not recover. Please reconnect.' : 'The call could not connect. Check your connection and try again.'));
       // Only the original offerer restarts ICE, avoiding competing offers.
       if (peer.offerer) enqueue(session, id, async current => {
-        if (current.pc.signalingState === 'stable') {
+        if (current.pc.signalingState === 'stable' && (current.wasConnected || current.pc.iceConnectionState === 'failed' || elapsed >= 3 * CALL_RETRY_MS)) {
           current.candidates.length = 0;
           const description = await current.pc.createOffer({ iceRestart: true });
           if (active !== session || peers.get(id) !== current) return;
           await current.pc.setLocalDescription(description);
+          if (active !== session || peers.get(id) !== current) return;
+          rememberDescription(current);
         }
-        const description = current.pc.localDescription;
-        if (description?.type === 'offer') {
-          sendSignal(session, id, { description: { type: description.type, sdp: description.sdp } });
-          current.candidates.forEach(candidate => sendSignal(session, id, { candidate }));
-        }
+        if (current.description?.type === 'offer') resendDescription(session, current, true);
       });
+      else if (peer.description?.type === 'answer') resendDescription(session, peer, true);
       recoverPeer(session, id, peer);
-    }, 3000);
+    }, CALL_RETRY_MS);
   }
   function newPeer(session, id, offerer) {
     if (peers.has(id)) return peers.get(id);
@@ -18230,6 +18260,8 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
         else if (peer.recoveryStarted && peerConnected(pc)) connectedPeer(session, peer);
       };
       peer.monitor = setInterval(() => void sampleQuality(session, id, peer), 2000);
+      // A lost first offer or answer can leave ICE in "new" forever.
+      recoverPeer(session, id, peer, true);
     }
     return peer;
   }
@@ -18250,11 +18282,7 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
       // A viewer may announce readiness after our first offer was sent. Replay
       // the outstanding negotiation rather than abandoning that viewer.
       if (existing.pc.connectionState !== 'connected') enqueue(session, id, async peer => {
-        const description = peer.pc.localDescription;
-        if (description && description.type === 'offer') {
-          sendSignal(session, id, { description: { type: description.type, sdp: description.sdp } });
-          peer.candidates.forEach(candidate => sendSignal(session, id, { candidate }));
-        }
+        if (peer.description?.type === 'offer') resendDescription(session, peer, true);
       });
       return;
     }
@@ -18265,7 +18293,8 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
       await peer.pc.setLocalDescription(description);
       if (session.kind === 'call') await tuneVideo(peer, peer.videoLevel);
       if (active !== session || peers.get(id) !== peer) return;
-      sendSignal(session, id, { description: { type: peer.pc.localDescription.type, sdp: peer.pc.localDescription.sdp } });
+      rememberDescription(peer);
+      resendDescription(session, peer);
     });
   }
   function receive(kind, data) {
@@ -18289,19 +18318,29 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
       if (data.description) {
         const description = data.description;
         if (description.type !== (peer.offerer ? 'answer' : 'offer')) return;
-        if (peer.offerer && peer.pc.signalingState !== 'have-local-offer') return;
+        if (peer.offerer && (peer.pc.signalingState !== 'have-local-offer' || peer.remoteAnswer === description.sdp)) return;
+        if (session.kind === 'call' && description.type === 'offer' && peer.remoteOffer === description.sdp) {
+          // The caller may have missed our answer. Replay it without applying
+          // the same offer to the peer again or disturbing established media.
+          if (peer.description?.type === 'answer') resendDescription(session, peer, true);
+          return;
+        }
         await peer.pc.setRemoteDescription(description);
-        while (peer.pending.length) await peer.pc.addIceCandidate(peer.pending.shift());
+        if (description.type === 'answer') peer.remoteAnswer = description.sdp;
+        while (peer.pending.length) await addCandidate(session, peer, peer.pending.shift());
         if (description.type === 'offer') {
+          peer.remoteOffer = description.sdp;
+          if (session.kind === 'call') peer.candidates.length = 0;
           const answer = await peer.pc.createAnswer();
           await peer.pc.setLocalDescription(answer);
           if (session.kind === 'call') await tuneVideo(peer, peer.videoLevel);
           if (active !== session || peers.get(from) !== peer) return;
-          sendSignal(session, from, { description: { type: peer.pc.localDescription.type, sdp: peer.pc.localDescription.sdp } });
+          rememberDescription(peer);
+          resendDescription(session, peer);
         }
       }
       if (data.candidate) {
-        if (peer.pc.remoteDescription) await peer.pc.addIceCandidate(data.candidate);
+        if (peer.pc.remoteDescription) await addCandidate(session, peer, data.candidate);
         else if (peer.pending.length < 100) peer.pending.push(data.candidate);
       }
     });
@@ -18368,10 +18407,9 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
       }
       if (active !== session) return;
       if (!await initialize(session)) return;
-      if (session.initiator) {
-        if (!session.peerId) throw new Error('The call participant could not be identified. Please try again.');
-        offer(session, session.peerId);
-      }
+      if (!session.peerId) throw new Error('The call participant could not be identified. Please try again.');
+      if (session.initiator) offer(session, session.peerId);
+      else newPeer(session, session.peerId, false);
       earlySignals.splice(0).forEach(signal => receive(signal.kind, signal.data));
       status('Connecting your call…');
     } catch (error) { fail(session, error); }
@@ -21549,20 +21587,34 @@ function znDetails(id){
   const item=Home.notifications.find(entry=>entry.id===id);if(!item)return;
   znCloseDetail();ZNotices.detail={...item};
   const dialog=document.createElement('dialog');dialog.id='zn-detail';dialog.className='zn-dialog';dialog.setAttribute('aria-label','Notification details');
-  dialog.innerHTML=`<div class="zn-dialog-heading"><span>Notification details</span><button aria-label="Close notification" onclick="znCloseDetail()">${hi('close',21)}</button></div><div class="zn-detail-content"><span class="zn-detail-icon">${hi(item.audience==='announcements'?'broadcast':'bell',30)}</span><span class="zn-tag">${znAudience(item)}</span><h2>${esc(item.title)}</h2><time>${esc(znDate(item))}</time><p>${esc(item.body)}</p><div id="zn-detail-status" role="status"></div></div>`;
+  dialog.innerHTML=`<header class="zn-dialog-heading">
+    <span class="zn-detail-icon" aria-hidden="true">${hi(item.audience==='announcements'?'broadcast':'bell',20)}</span><span class="zn-tag">${znAudience(item)}</span>
+    <button type="button" aria-label="Close notification" onclick="znCloseDetail()">${hi('close',21)}</button>
+  </header><div class="zn-detail-content" tabindex="0" role="region" aria-label="Notification message">
+    <h2>${esc(item.title)}</h2><time datetime="${esc(item.createdAt||'')}">${esc(znDate(item))}</time><p>${esc(item.body)}</p>
+  </div><footer class="zn-detail-actions"><hr aria-hidden="true">
+    <div id="zn-detail-status"><span role="status"></span><button class="zn-detail-retry" type="button" onclick="znRetryUpdate()" hidden>Retry update</button>
+    <button class="zn-detail-toggle" type="button" onclick="znUpdate(!ZNotices.detail.read,[ZNotices.detail.id])"></button></div>
+  </footer>`;
   dialog.addEventListener('close',()=>{dialog.remove();if(document.getElementById('zn-detail'))return;ZNotices.detail=null;const row=[...document.querySelectorAll('.zh-notification[data-notification-id]')].find(node=>node.dataset.notificationId===id);row?.querySelector('.zn-notice-main')?.focus({preventScroll:true})});
   dialog.addEventListener('click',event=>{if(event.target===dialog){const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)znCloseDetail()}});
-  document.body.append(dialog);dialog.showModal();znPaintDetailStatus();
   if(item.targetType&&item.targetType!=='inbox'){
-    const open=document.createElement('button');open.type='button';open.className='zn-primary';open.textContent=znTargetLabel(item.targetType);
-    open.onclick=()=>znRequestTarget(item);dialog.querySelector('.zn-detail-content').append(open);
+    const open=document.createElement('button');open.type='button';open.className='zn-primary zn-detail-open';open.textContent=znTargetLabel(item.targetType);
+    open.onclick=()=>znRequestTarget(item);dialog.querySelector('.zn-detail-actions').append(open);
   }
+  document.body.append(dialog);znPaintDetailStatus();dialog.showModal();
   if(!item.read&&!ZNotices.pending)znUpdate(true,[id]);
 }
 function znPaintDetailStatus(){
   const el=document.getElementById('zn-detail-status'),item=ZNotices.detail;if(!el||!item)return;
-  const status=ZNotices.pending?'Saving&hellip;':ZNotices.mutationError?`${esc(ZNotices.mutationError)} <button onclick="znRetryUpdate()">Retry update</button>`:item.read?'Read':'Unread';
-  el.innerHTML=`<span>${status}</span><button class="zn-detail-toggle" aria-label="Mark as ${item.read?'unread':'read'}: ${esc(item.title)}" ${ZNotices.pending?'disabled':''} onclick="znUpdate(!ZNotices.detail.read,[ZNotices.detail.id])">Mark as ${item.read?'unread':'read'}</button>`;
+  const pending=ZNotices.pending,ids=ZNotices.lastMutation?.request.ids;
+  const saving=pending&&(pending.all||pending.request.ids.includes(item.id));
+  const error=ids?.length===1&&ids[0]===item.id?ZNotices.mutationError:'';
+  const retry=el.querySelector('.zn-detail-retry'),toggle=el.querySelector('.zn-detail-toggle');
+  el.querySelector('[role="status"]').textContent=saving?'Saving…':error||(item.read?'Read':'Unread');
+  retry.hidden=!error;retry.disabled=!!pending;
+  const label=item.read?'Mark as unread':'Mark as read';
+  toggle.textContent=label;toggle.setAttribute('aria-label',`${label}: ${item.title}`);toggle.disabled=!!pending;
 }
 function znCloseDetail(){const dialog=document.getElementById('zn-detail');if(dialog){dialog.close();dialog.remove()}ZNotices.detail=null}
 function znReset(){clearTimeout(ZNotices.timer);znCloseDetail();Object.assign(ZNotices,{q:'',status:'all',audience:'all',period:'all',sort:'newest',page:1,total:0,totalCount:0,loaded:false,requestId:++ZNotices.sequence,selected:new Set(),pending:null,lastMutation:null,mutationError:'',message:'',timer:null,focus:null,changed:false,accountId:'',filtersOpen:false,selecting:false,pendingTarget:null,postTarget:null});Home.notifications=[];Home.unreadCount=0}

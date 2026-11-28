@@ -8,6 +8,7 @@ type Snapshot = { key: string; callId?: string; available: boolean };
 export function createCallRecovery(options: {
   snapshot: () => Snapshot;
   read: (callId: string) => Promise<CallState>;
+  accepted: (state: CallState) => void;
   ended: (state: CallState) => void;
 }) {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -28,7 +29,9 @@ export function createCallRecovery(options: {
     try {
       const state = await options.read(snapshot.callId!);
       if (closed || flight !== request || !matches(snapshot, options.snapshot())) return;
-      if (state.callId === snapshot.callId && ["ended", "declined", "missed"].includes(state.status)) options.ended(state);
+      if (state.callId !== snapshot.callId) return;
+      if (state.status === "accepted" && state.connection) options.accepted(state);
+      else if (["ended", "declined", "missed"].includes(state.status)) options.ended(state);
     } catch { /* A failed read means uncertain state, not a hangup. Retry later. */ }
     finally {
       if (flight === request) { flight = undefined; sync(); }

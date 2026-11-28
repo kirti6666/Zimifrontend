@@ -89,16 +89,22 @@ export async function readPushPermission(): Promise<PushPermissionStatus> {
   } catch { return "unavailable"; }
 }
 
-/** Only an explicit prompt/settings action may open a native dialog. Requests
- * re-read permission inside the shared queue, so concurrent callers cannot
+/** Prompt/settings modes may open a dialog when their caller still owns it.
+ * Requests re-read permission inside the shared queue so callers cannot
  * display multiple camera/microphone/notification dialogs at the same time. */
-export function requestPushPermission(mode: PushMode, isCurrent: () => boolean = () => true): Promise<PushPermissionStatus> {
+export function requestPushPermission(
+  mode: PushMode,
+  isCurrent: () => boolean = () => true,
+  waitForForeground?: () => Promise<boolean>,
+): Promise<PushPermissionStatus> {
   return queuePermissionRequest(async () => {
     if (!supported()) return "unavailable";
     try {
       await ensureChannels();
       let permission = await Notifications.getPermissionsAsync();
-      if (!permission.granted && mode !== "silent" && AppState.currentState === "active" && isCurrent()) {
+      if (permission.granted || mode === "silent" || !isCurrent()) return permissionStatus(permission);
+      if (waitForForeground && !await waitForForeground()) return permissionStatus(permission);
+      if (AppState.currentState === "active" && isCurrent()) {
         if (permission.canAskAgain) permission = await Notifications.requestPermissionsAsync();
         else if (mode === "settings") await Linking.openSettings();
       }

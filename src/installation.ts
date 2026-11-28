@@ -7,6 +7,13 @@ const OPTIONS = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 let cached: string | undefined, loading: Promise<string | undefined> | undefined;
 
+/** A signed-in installation can already have completed permission setup. */
+export async function hasStoredInstallationId(): Promise<boolean> {
+  if (cached) return true;
+  const saved = await SecureStore.getItemAsync(KEY, OPTIONS);
+  return !!saved && uuid.test(saved);
+}
+
 export async function getInstallationId(): Promise<string | undefined> {
   if (cached) return cached;
   if (loading) return loading;
