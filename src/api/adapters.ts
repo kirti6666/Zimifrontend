@@ -4,6 +4,7 @@ import { notificationPreferencesFrom } from "../notification-preferences";
 import { notificationTargetFrom } from "../notification-target";
 import type { ChatGift } from "./types";
 import { officialChatSummaryFrom } from "./official";
+import { purchaseIntentsFrom } from "./payment-intents";
 export { officialChatFrom, officialChatSummaryFrom } from "./official";
 import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, ProfileMvpSupporter, ProfileMvps, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, ReferralSummary, UserPost, Verification, Wallet, PostComment, PostComments, RechargePrompt, CallTargets } from "./types";
 
@@ -345,7 +346,8 @@ export function purchaseFrom(value: unknown): Purchase {
     ...(idOf(data.packId) ? { packId: idOf(data.packId) } : {}), ...(typeof data.idempotencyKey === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(data.idempotencyKey) ? { idempotencyKey: data.idempotencyKey } : {}),
     ...Object.fromEntries(["requestedRoute", "route", "pageStyle"].filter(key => validPaymentRoute(data[key])).map(key => [key, data[key]])), ...(data.currency === "INR" ? { currency: "INR" as const } : {}),
     ...Object.fromEntries(["coins", "amountPaise", "payableAmountPaise"].filter(key => typeof data[key] === "number" && Number.isSafeInteger(data[key]) && Number(data[key]) >= 0).map(key => [key, data[key]])),
-    ...(typeof data.expiresAt === "string" && Number.isFinite(Date.parse(data.expiresAt)) ? { expiresAt: data.expiresAt } : {}) };
+    ...(typeof data.expiresAt === "string" && Number.isFinite(Date.parse(data.expiresAt)) ? { expiresAt: data.expiresAt } : {}),
+    ...purchaseIntentsFrom(data) };
 }
 export function themeFrom(value: unknown): AppTheme {
   const data = record(value), colors = record(data.colors), typography = record(data.typography);

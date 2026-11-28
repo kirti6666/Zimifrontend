@@ -73,6 +73,24 @@ document.addEventListener('aurora:navigate',()=>{
   if(pending&&(S.v!=='live'||Home.stream?.id!==pending.streamId||S.h!==pending.hostId))Home.dashboardCall=null;
 });
 function homeDashboardSkeleton(label='Loading creators',count=4){return contentSkeleton('cards',label,count)}
+function homeCoinPill(){
+  const member=DEMO?!isHost():S.loggedIn&&S.user?.serverRole==='user'&&!isHostWallet();
+  if(!member)return '';
+  const wallet=S.walletSnapshot?.owner===S.user?.id?S.walletSnapshot?.data:null;
+  const coins=DEMO?S.bal:wallet?.coins;
+  const known=Number.isSafeInteger(coins)&&coins>=0;
+  const balance=known?`${n(coins)} coins`:'Balance unavailable';
+  const visible=known?(coins<=99999?n(coins):`${(coins/1000).toFixed(1).replace(/\.0$/,'')}K`):'—';
+  const loading=!known&&contentPending('wallet')&&!ContentLoading.wallet.error;
+  return `<div class="zh-home-coins" role="group" aria-label="Coin balance">
+    ${coinIcon(18)}${loading?'<span class="zh-home-coin-count" role="status" aria-label="Loading balance" aria-busy="true">'+skeletonLine('42px',13)+'</span>':`<span class="zh-home-coin-count" title="${balance}"><span aria-hidden="true">${visible}</span><span class="zh-home-coin-exact">${balance}</span></span>`}
+    <button id="home-add-coins" class="zh-home-coin-add" type="button" aria-label="Add coins" onclick="go('coins')">${hi('plus',17)}</button>
+  </div>`;
+}
+function homeDashboardToolbar(){
+  const regions=homeRegionChips(),coins=homeCoinPill();
+  return regions||coins?`<div class="zh-home-toolbar">${regions?`<div class="zh-home-discovery">${regions}</div>`:''}${coins}</div>`:'';
+}
 function homeDashboardEmpty(){
   const following=Home.dashboardFilter==='following',region=homeRegionShown()&&Home.region;
   const title=following?'No followed creators yet':region?`No creators from ${esc(region)} right now`:'No hosts to show right now';
@@ -90,7 +108,7 @@ function homeDashboard(){
   const failure=!pending&&!more&&homeContentError(),moreError=ContentLoading.home.page>1?failure:'',error=moreError?'':failure;
   const hosts=homeDashboardHosts(),all=hosts.all,feed=HOME_FEEDS.find(([key])=>key===Home.dashboardFilter)||HOME_FEEDS[1];
   const grid=pending?homeDashboardSkeleton('Loading creators',6):error?'':all.length?`<div id="home-host-grid" class="zh-grid">${homeGridWithAd(all.map(homeTile),'home')}</div>`:homeDashboardEmpty()+(window.ZimiAds?.campaigns('home')||'')+(window.ZimiAds?.card('home')||'');
-  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${feed[0]}"><h1 class="zh-home-title">${feed[1]}</h1>${homeRegionChips()}${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}<section class="zh-discover" aria-label="${feed[1]} creators">${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!DEMO&&!pending&&!error&&Home.hasMore?'<div id="home-feed-next" class="zh-feed-next" aria-hidden="true"></div>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}${homeDashboardHostEntry()}</div>${homeGiftSheet()}`;
+  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${feed[0]}"><h1 class="zh-home-title">${feed[1]}</h1>${homeDashboardToolbar()}${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}<section class="zh-discover" aria-label="${feed[1]} creators">${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!DEMO&&!pending&&!error&&Home.hasMore?'<div id="home-feed-next" class="zh-feed-next" aria-hidden="true"></div>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}${homeDashboardHostEntry()}</div>${homeGiftSheet()}`;
 }
 
 /* Observe the actual app scroller. Keep one listener/observer, even when live

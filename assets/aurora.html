@@ -2664,6 +2664,25 @@ button.gpill[onclick]{cursor:pointer}
 .zh-flag.zh-flag-chip{width:21px;height:14px;background:radial-gradient(circle at 50% 50%,#06038d 0 1.8px,transparent 2.2px),linear-gradient(#ff9933 0 33.4%,#fff 33.4% 66.6%,#138808 66.6%)}
 @media(min-width:600px){.zh-creator-status{font-size:13px;padding:5px 12px}.zh-creator-bottom{left:12px;right:10px;bottom:10px;gap:8px}.zh-creator-name{font-size:17px}.zh-creator-call{width:44px;height:44px}}
 @media(max-width:359px){.zh-creator-status{font-size:11px;padding:2px 7px}.zh-creator-bottom{left:8px;right:6px;bottom:6px;gap:4px}.zh-creator-name{font-size:13px;gap:4px}.zh-creator-call{width:30px;height:30px}}
+/* Home keeps its compact cards and uses the same neutral placeholder before and after a photo fails. */
+.zh-home.zh-dashboard .zh-creator-card{border-radius:14px!important}
+.zh-home.zh-dashboard .zh-creator-card>.zh-creator-status:not(.is-live){background:none}
+.zh-home.zh-dashboard .zh-creator-card>.zh-fallback{background:var(--raised)}
+@supports(background:color-mix(in srgb,#000,#fff)){
+  :root[data-theme="dark"] .zh-home.zh-dashboard .zh-creator-card>.zh-fallback{background:color-mix(in srgb,var(--raised) 94%,var(--ink))}
+}
+.zh-home.zh-dashboard .zh-creator-card:has(>.zh-fallback):not(:has(>.zh-card-video))>.zh-creator-shade{background:none}
+.zh-home.zh-dashboard .zh-creator-card:has(>.zh-fallback):not(:has(>.zh-card-video)) :is(.zh-creator-status,.zh-creator-name){color:var(--ink)}
+.zh-home.zh-dashboard .zh-creator-card:has(>.zh-fallback):not(:has(>.zh-card-video))>.zh-creator-status{top:5px;left:7px;padding:0;background:none}
+.zh-home.zh-dashboard .zh-creator-card>.zh-fallback>.zf-face{display:none}
+.zh-home.zh-dashboard .zh-creator-card>.zh-fallback::before,
+.zh-home.zh-dashboard .zh-creator-card>.zh-fallback::after{content:"";position:absolute;left:50%;transform:translateX(-50%);box-sizing:border-box;border:2px solid var(--faint);opacity:.6;pointer-events:none}
+.zh-home.zh-dashboard .zh-creator-card>.zh-fallback::before{top:calc(50% - 20px);width:20px;height:20px;border-radius:50%!important}
+.zh-home.zh-dashboard .zh-creator-card>.zh-fallback::after{top:calc(50% + 2px);width:40px;height:20px;border-bottom:0;border-radius:20px 20px 0 0!important}
+@media(max-width:599px){
+  .zh-home.zh-dashboard .zh-creator-call{width:30px;height:30px}
+  .zh-home.zh-dashboard .zh-creator-call::before{inset:-7px}
+}
 @media(prefers-reduced-motion:reduce){.zh-creator-card>.zh-photo{transition:none!important;transform:none!important}}
 .zh-bonus{display:flex;align-items:center;gap:10px;background:#331c2b;border-radius:14px;padding:12px;margin:24px 0 0}
 .zh-bonus-icon{display:grid;place-items:center;width:31px;height:31px;border-radius:50%;background:#594051;color:#ffc2de;flex:none}
@@ -4747,10 +4766,12 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 @media(max-width:380px){.zh-header.zh-home-header{padding-left:12px}:is(.zh-feed-tabs,.zh-host-tabs){gap:10px}:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]{font-size:calc(14px * var(--theme-font-scale,1))}:is(.zh-feed-tabs,.zh-host-tabs)>[aria-selected="true"]{font-size:calc(19px * var(--theme-font-scale,1))}.zh-home-header .zh-icon{width:34px}}
 @media(max-width:340px){:is(.zh-feed-tabs,.zh-host-tabs){gap:8px}:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]{font-size:calc(13px * var(--theme-font-scale,1))}:is(.zh-feed-tabs,.zh-host-tabs)>[aria-selected="true"]{font-size:calc(17px * var(--theme-font-scale,1))}.zh-home-header .zh-icon{width:32px}}
 @media(prefers-reduced-motion:reduce){:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]{transition:none}}
-/* Country chips under the header: Popular, then India (the only country for now). */
-.zh-region-chips{display:flex;gap:8px;margin:0 0 12px;overflow-x:auto;scrollbar-width:none}
+/* Keep the country filters and account action on the same line. */
+.zh-home-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:34px;margin:0 0 8px}
+.zh-home-discovery{flex:1 1 auto;min-width:0}
+.zh-region-chips{display:flex;gap:8px;margin:0;min-width:0;overflow-x:auto;scrollbar-width:none}
 .zh-region-chips::-webkit-scrollbar{display:none}
-.zh-region-chips>button{display:inline-flex;align-items:center;gap:7px;flex:none;min-height:36px;padding:0 16px;border:0;background:var(--raised);color:var(--muted);font-size:calc(14px * var(--theme-font-scale,1));font-weight:500;white-space:nowrap}
+.zh-region-chips>button{display:inline-flex;align-items:center;gap:7px;flex:none;min-height:34px;padding:0 15px;border:0;background:var(--raised);color:var(--ink);font-size:calc(14px * var(--theme-font-scale,1));font-weight:500;white-space:nowrap}
 .zh-region-chips>button:has(.zh-flag){padding-left:9px}
 .zh-region-chips>button[aria-pressed="true"]{background:var(--accent);color:var(--cta-ink);font-weight:600}
 /* An approved host's availability floats over Home where the reference places its LIVE button. */
@@ -4818,6 +4839,14 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 @media(min-width:600px){.zh-home.zh-dashboard{padding:20px 24px 40px}.zh-home.zh-dashboard .zh-grid{gap:12px}}
 @media(max-width:359px){.zh-home.zh-dashboard{padding-inline:10px}.zh-home.zh-dashboard .zh-grid{gap:6px}.zh-home.zh-dashboard .zh-section-title h2{font-size:17px}}
 @media(prefers-reduced-motion:reduce){.zh-home.zh-dashboard button{transition:none}.zh-home.zh-dashboard :is(.zh-live-shortcut,.zh-empty-actions>button,.zh-empty-links>button):active{transform:none}}
+.zh-home-coins{display:flex;align-items:center;flex:none;gap:5px;margin-inline-start:auto;min-height:34px;padding:2px 3px 2px 8px;border:1px solid var(--line);background:var(--raised);color:var(--ink);white-space:nowrap}
+:root .zh-home-coins,:root .zh-home-coins>.zh-home-coin-add{border-radius:999px!important}
+.zh-home-coins>.zc-coin{flex:none}
+.zh-home-coin-count{font-size:calc(14px * var(--theme-font-scale,1));font-weight:750;font-variant-numeric:tabular-nums}
+.zh-home-coin-exact{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.zh-home-coin-add{position:relative;display:grid;place-items:center;flex:none;width:28px;height:28px;border:0;background:var(--accent);color:var(--cta-ink)}
+.zh-home-coin-add::before{content:"";position:absolute;inset:-8px}
+.zh-home-coin-add:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 /* The same gold BinzoLive mark remains recognizable in every app palette. */
 .zc-coin{flex-shrink:0;vertical-align:middle;overflow:visible;filter:none}
 .zw-coins{max-width:620px;margin:0 auto;padding:18px 20px 30px;color:var(--ink)}
@@ -5096,25 +5125,81 @@ html:root .zpay-kyc-steps i{border-radius:999px!important}
 .zpm-choice{display:flex;flex-direction:column;gap:9px;min-width:0;width:100%;padding:15px;margin:14px 0;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);text-align:left}
 .zpm-choice label,.zpm-choice>span{font-size:12px;font-weight:650}.zpm-choice select{width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--raised);color:var(--ink);font:inherit;font-size:13px}.zpm-choice>strong{font-size:13px;overflow-wrap:anywhere}.zpm-choice>small,.zpm-choice p{font-size:11px;line-height:1.6;color:var(--muted);margin:0;overflow-wrap:anywhere}.zpm-choice>button{align-self:flex-start;min-height:44px;padding:7px 0;background:transparent;color:var(--accent-ink);font-size:12px;font-weight:600}.zpm-choice :is(select,button):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}.zpm-loading{display:flex;flex-direction:column;gap:9px;padding:4px 0}.zt-premium>.zpm-choice{grid-column:1/-1;flex-basis:100%;margin:0}.zt-premium .zpm-choice>small{color:var(--muted)}
 
-.zpm-dialog{position:fixed;inset:0;margin:auto;width:calc(100% - 32px);max-width:420px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);padding:20px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
-.zpm-dialog::backdrop{background:#0006}
-.zpm-dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
-.zpm-dialog-heading h2{font-size:18px;font-weight:600;line-height:1.4;margin:0;letter-spacing:-.3px}
-.zpm-close{display:grid;place-items:center;flex:none;width:44px;height:44px;background:transparent;color:var(--ink)}
-.zpm-order-summary{display:flex;align-items:center;gap:7px;margin:0 0 18px;padding:0 0 18px;border-bottom:1px solid var(--line);font-size:14px}
-.zpm-order-summary>strong{font-weight:600}.zpm-order-summary>span{margin-left:auto;font-weight:600}
-.zpm-methods{display:flex;flex-direction:column;gap:9px;min-width:0;padding:0;margin:0;border:0}
-.zpm-methods>legend{font-size:12px;color:var(--muted);padding:0 0 10px}
-.zpm-method{display:flex;align-items:center;gap:12px;min-height:64px;padding:12px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
-.zpm-method.is-selected{border-color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 4%,var(--surface))}
-.zpm-method>input{appearance:auto;flex:none;width:18px;height:18px;padding:0;accent-color:var(--accent)}
-.zpm-method>span{display:flex;flex-direction:column;gap:4px;min-width:0}
-.zpm-method strong{font-size:14px;font-weight:500;line-height:1.4;overflow-wrap:anywhere}
-.zpm-method small{font-size:12px;color:var(--muted);line-height:1.5}
-.zpm-dialog .zpm-confirm{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:44px;padding:12px;margin-top:20px;font-size:14px;font-weight:600}
+.zpm-dialog{--zpm-sheet:var(--surface);--zpm-panel:var(--raised);--zpm-pill:var(--line);position:fixed;inset:auto 0 var(--safe-bottom);margin:0 auto;width:100%;max-width:440px;max-height:calc(100vh - var(--safe-top) - var(--safe-bottom) - 16px);max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 16px);padding:0;overflow:hidden;border:1px solid var(--line);border-bottom:0;background:var(--zpm-sheet);color:var(--ink)}
+:root .zpm-dialog{border-radius:28px 28px 0 0!important}
+:root[data-theme="dark"] .zpm-dialog{--zpm-sheet:var(--raised);--zpm-panel:var(--line);--zpm-pill:var(--surface)}
+@supports(color:color-mix(in srgb,#000,#fff)){
+ :root[data-theme="dark"] .zpm-dialog{--zpm-panel:color-mix(in srgb,var(--raised) 94%,var(--ink));--zpm-pill:color-mix(in srgb,var(--raised) 88%,var(--ink))}
+}
+.zpm-dialog[open]{display:flex;flex-direction:column}
+.zpm-dialog.has-upi-apps{min-height:min(78vh,680px);min-height:min(78dvh,680px)}
+.zpm-dialog::backdrop{background:#0009}
+.zpm-grabber{flex:none;align-self:center;width:36px;height:5px;margin:7px 0 1px;background:var(--faint);opacity:.6}
+.zpm-dialog-heading{display:flex;align-items:center;justify-content:space-between;flex:none;gap:10px;padding:0 8px 0 16px}
+.zpm-dialog-heading h2,.zpm-opening h2{font-size:18px;font-weight:750;line-height:1.35;margin:0;letter-spacing:-.2px}
+.zpm-close{display:grid;place-items:center;flex:none;width:44px;height:44px}
+.zpm-close>span{display:grid;place-items:center;width:28px;height:28px;background:var(--zpm-pill);color:var(--muted)}
+.zpm-body{display:flex;flex:1;flex-direction:column;min-height:0;overflow:auto;overscroll-behavior:contain;padding:8px 16px 18px}
+.zpm-body>*{flex-shrink:0}
+.zpm-order-summary{min-width:0;padding:12px 14px 5px;background:var(--zpm-panel);font-size:14px}
+.zpm-summary-pack{display:flex;align-items:center;gap:10px;min-height:60px;margin-bottom:7px}
+.zpm-pack-art{display:grid;place-items:center;flex:none;width:52px;height:52px;background:var(--zpm-sheet);background:color-mix(in srgb,var(--gold) 10%,var(--zpm-sheet))}
+.zpm-pack-art>.zw-pack-art{width:36px;height:36px}
+.zpm-pack-info{min-width:0;flex:1;line-height:1.25}
+.zpm-pack-info strong{display:block;font-size:16px;font-weight:750}
+.zpm-pack-info small{display:inline-block;max-width:100%;padding:2px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--zpm-pill);color:var(--muted);font-size:11px;font-weight:650}
+.zpm-change{min-height:44px;min-width:64px;padding:0;font-size:12px;font-weight:700}
+.zpm-change>span{display:inline-block;padding:7px 10px;background:var(--zpm-pill)}
+.zpm-summary-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:41px}
+.zpm-summary-row>span{font-size:13px;font-weight:650}
+.zpm-summary-row>strong{display:flex;align-items:center;gap:6px;font-size:25px;font-variant-numeric:tabular-nums;font-weight:800}
+.zpm-total{min-height:39px;margin-top:4px;border-top:1px dashed var(--zpm-pill)}
+.zpm-total>span{color:var(--muted);font-size:12px;font-weight:500}
+.zpm-total>strong{font-size:16px}
+.zpm-methods{min-width:0;margin-top:15px}
+.zpm-methods-heading{display:flex;align-items:center;justify-content:space-between;margin:0 0 8px}
+.zpm-methods-heading h3{font-size:13px;font-weight:750;line-height:1.4}
+.zpm-methods-heading>span{padding:3px 6px;background:var(--zpm-pill);color:var(--muted);font-size:8px;font-weight:800;font-style:italic;letter-spacing:.04em}
+.zpm-app-list,.zpm-manual{background:var(--zpm-panel);padding:0 12px}
+.zpm-method{display:flex;align-items:center;gap:10px;min-height:56px;width:100%;color:var(--ink);text-align:left}
+:root .zpm-dialog .zpm-app-list .zpm-method{border-radius:0!important}
+.zpm-app-list .zpm-method+.zpm-method{border-top:1px solid var(--zpm-pill)}
+.zpm-method-name{display:flex;flex:1;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}
+.zpm-method-name strong{font-size:14px;font-weight:700;line-height:1.25}
+.zpm-method-name small{padding:3px 6px;background:var(--accent-wash);color:var(--accent-ink);font-size:9px;font-weight:750}
+.zpm-app-icon{display:grid;place-items:center;overflow:hidden;flex:none;width:37px;height:37px;background:var(--zpm-pill);color:var(--ink);font-size:17px;font-weight:750}
+.zpm-app-icon img{display:block;width:100%;height:100%;object-fit:contain}
+.zpm-pay-label{flex:none;min-width:58px;padding:6px 10px;background:var(--zpm-pill);font-size:12px;font-weight:750;text-align:center}
+.zpm-method.is-preferred:not(:disabled) .zpm-pay-label{background:var(--accent);color:var(--cta-ink)}
+.zpm-method.is-install .zpm-pay-label{color:var(--accent-ink)}
+.zpm-app-note{margin:7px 2px 0;color:var(--muted);font-size:11px;line-height:1.45}
+.zpm-hosted,.zpm-manual{margin-top:12px}
+.zpm-hosted{padding:0 12px;background:var(--zpm-panel)}
+.zpm-manual-panel{padding:10px 0 4px;border-top:1px solid var(--zpm-pill);font-size:13px;line-height:1.5}
+.zpm-manual-panel label{display:block;font-weight:650;margin:9px 0 4px}
+.zpm-upi-id{display:flex;align-items:center;gap:8px;padding:0 8px;background:var(--zpm-sheet)}
+.zpm-upi-id input{min-width:0;user-select:all;-webkit-user-select:all}
+.zpm-upi-id button{display:flex;align-items:center;gap:4px;flex:none;min-height:44px;font-weight:650;color:var(--accent-ink)}
+.zpm-manual-actions{display:flex;align-items:center;flex-wrap:wrap;gap:0 16px}
+.zpm-manual-actions button{font-weight:650}
+.zpm-manual-panel [role="status"]:not(:empty){margin-top:4px;color:var(--muted)}
+:root .zpm-dialog :is(.zpm-grabber,.zpm-close>span,.zpm-change>span,.zpm-pay-label,.zpm-method-name small){border-radius:999px!important}
+.zpm-body .zpm-order-summary,.zpm-body .zpm-app-list,.zpm-body .zpm-manual{border-radius:14px!important}
+.zpm-dialog .zpm-confirm{width:100%;min-height:44px;padding:8px;margin-top:12px;font-size:14px;font-weight:600}
+.zpm-dialog .zpm-loading{padding:12px 0 0}
+.zpm-recheck{min-height:44px;color:var(--accent-ink);font-size:13px}
+.zpm-dialog.is-opening{inset:0;margin:auto;align-items:center;justify-content:center;gap:12px;width:calc(100% - 32px);max-width:360px;height:fit-content;padding:24px;text-align:center;background:transparent;border:0;color:#fff}
+.zpm-dialog.is-opening::backdrop{background:#000d}
+.zpm-opening{display:grid;justify-items:center;gap:8px}
+.zpm-opening-icon{display:grid;place-items:center;width:70px;height:70px;margin-bottom:6px;border:2px solid #fffb;border-right-color:#fff3}
+:root .zpm-opening-icon{border-radius:50%!important}
+.zpm-opening-icon>.zpm-app-icon{width:50px;height:50px;background:#3b3b3d;color:#fff}
+.zpm-opening p{color:#c4c4c8;font-size:13px;line-height:1.5}
+:root .zpm-dialog.is-opening>.zpm-change{min-height:40px;padding:0 17px;background:#353538;border-radius:999px!important;color:#fff}
 .zpm-dialog .zpm-confirm:disabled{opacity:.45;cursor:default}
-.zpm-security{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:11px;line-height:1.6;text-align:center;margin:12px 0 0}
-.zpm-method-error{font-size:12px;color:var(--theme-danger);line-height:1.6}.zpm-method-error>button{min-height:44px;margin-top:8px;color:var(--accent-ink);font-size:12px;font-weight:600}.zpm-method-error>p{margin:0}
+.zpm-dialog button:disabled{opacity:.5;cursor:default}
+.zpm-security{display:flex;flex:1 0 auto;align-items:center;justify-content:center;gap:6px;min-height:30px;color:var(--muted);font-size:11px;line-height:1.6;text-align:center;margin:12px 0 0;padding:10px 0 2px;border-top:1px solid var(--zpm-pill)}
+.zpm-method-error{margin:10px 0 0;font-size:13px;color:var(--theme-danger);line-height:1.5}
 .zpm-dialog :is(button,input):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 @media(prefers-reduced-motion:no-preference){.zpm-dialog[open]{animation:zpm-dialog-in 180ms ease-out}@keyframes zpm-dialog-in{from{opacity:.5}to{opacity:1}}}
 @media(prefers-reduced-motion:reduce){.zpm-dialog,.zpm-dialog *{animation:none!important;transition:none!important}}
@@ -6063,7 +6148,7 @@ html video[data-zimi-native-video] { color: transparent; object-fit: contain !im
 <!-- Loaded as a classic script so its inline onclick handlers keep resolving globals. -->
 <script>
 window.ZIMI_DEMO = false;
-window.ZIMI_APP_VERSION = "1.2.7";
+window.ZIMI_APP_VERSION = "1.2.8";
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -12513,6 +12598,24 @@ document.addEventListener('aurora:navigate',()=>{
   if(pending&&(S.v!=='live'||Home.stream?.id!==pending.streamId||S.h!==pending.hostId))Home.dashboardCall=null;
 });
 function homeDashboardSkeleton(label='Loading creators',count=4){return contentSkeleton('cards',label,count)}
+function homeCoinPill(){
+  const member=DEMO?!isHost():S.loggedIn&&S.user?.serverRole==='user'&&!isHostWallet();
+  if(!member)return '';
+  const wallet=S.walletSnapshot?.owner===S.user?.id?S.walletSnapshot?.data:null;
+  const coins=DEMO?S.bal:wallet?.coins;
+  const known=Number.isSafeInteger(coins)&&coins>=0;
+  const balance=known?`${n(coins)} coins`:'Balance unavailable';
+  const visible=known?(coins<=99999?n(coins):`${(coins/1000).toFixed(1).replace(/\.0$/,'')}K`):'—';
+  const loading=!known&&contentPending('wallet')&&!ContentLoading.wallet.error;
+  return `<div class="zh-home-coins" role="group" aria-label="Coin balance">
+    ${coinIcon(18)}${loading?'<span class="zh-home-coin-count" role="status" aria-label="Loading balance" aria-busy="true">'+skeletonLine('42px',13)+'</span>':`<span class="zh-home-coin-count" title="${balance}"><span aria-hidden="true">${visible}</span><span class="zh-home-coin-exact">${balance}</span></span>`}
+    <button id="home-add-coins" class="zh-home-coin-add" type="button" aria-label="Add coins" onclick="go('coins')">${hi('plus',17)}</button>
+  </div>`;
+}
+function homeDashboardToolbar(){
+  const regions=homeRegionChips(),coins=homeCoinPill();
+  return regions||coins?`<div class="zh-home-toolbar">${regions?`<div class="zh-home-discovery">${regions}</div>`:''}${coins}</div>`:'';
+}
 function homeDashboardEmpty(){
   const following=Home.dashboardFilter==='following',region=homeRegionShown()&&Home.region;
   const title=following?'No followed creators yet':region?`No creators from ${esc(region)} right now`:'No hosts to show right now';
@@ -12530,7 +12633,7 @@ function homeDashboard(){
   const failure=!pending&&!more&&homeContentError(),moreError=ContentLoading.home.page>1?failure:'',error=moreError?'':failure;
   const hosts=homeDashboardHosts(),all=hosts.all,feed=HOME_FEEDS.find(([key])=>key===Home.dashboardFilter)||HOME_FEEDS[1];
   const grid=pending?homeDashboardSkeleton('Loading creators',6):error?'':all.length?`<div id="home-host-grid" class="zh-grid">${homeGridWithAd(all.map(homeTile),'home')}</div>`:homeDashboardEmpty()+(window.ZimiAds?.campaigns('home')||'')+(window.ZimiAds?.card('home')||'');
-  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${feed[0]}"><h1 class="zh-home-title">${feed[1]}</h1>${homeRegionChips()}${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}<section class="zh-discover" aria-label="${feed[1]} creators">${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!DEMO&&!pending&&!error&&Home.hasMore?'<div id="home-feed-next" class="zh-feed-next" aria-hidden="true"></div>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}${homeDashboardHostEntry()}</div>${homeGiftSheet()}`;
+  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${feed[0]}"><h1 class="zh-home-title">${feed[1]}</h1>${homeDashboardToolbar()}${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}<section class="zh-discover" aria-label="${feed[1]} creators">${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!DEMO&&!pending&&!error&&Home.hasMore?'<div id="home-feed-next" class="zh-feed-next" aria-hidden="true"></div>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}${homeDashboardHostEntry()}</div>${homeGiftSheet()}`;
 }
 
 /* Observe the actual app scroller. Keep one listener/observer, even when live
@@ -12973,7 +13076,7 @@ function coinPaymentView(){
  const p=Home.checkout;if(!p)return '';
  const status=p.status,pending=coinPendingPayment(),title=status==='SUCCESS'?'Payment confirmed':status==='FAILED'?'Payment not completed':status==='REVERTED'?'Payment reversed':'Your payment is pending';
  const copy=status==='SUCCESS'?'Your balance updates from your confirmed wallet.':status==='FAILED'?'No coins were added for this payment. You can try again.':status==='REVERTED'?'This payment was reversed. Your wallet reflects the reversal.':'Continue your existing payment, then check its status here.';
- return `<section class="zw-payment ${pending?'is-pending':''}" role="status"><span class="zw-payment-icon">${hi(status==='SUCCESS'?'check':pending?'clock':'info',20)}</span><div><h3>${title}</h3><p>${copy}</p>${p.coins?`<strong>${n(p.coins)} coins${p.payableAmountPaise!=null?' · '+coinPrice(p.payableAmountPaise):''}</strong>`:''}${pending?`<div class="zw-payment-actions">${Home.checkoutAttempt?`<button class="zh-soft" onclick="homeCheckout(true)" ${Home.checkoutBusy||CoinUI.verifyBusy?'disabled':''}>${Home.checkoutBusy?'Opening payment…':'Continue payment'}</button>`:''}<button class="zh-soft" onclick="homeVerifyPayment()" ${CoinUI.verifyBusy||Home.checkoutBusy||!p.merchantOrderId?'disabled':''}>${CoinUI.verifyBusy?'Checking payment…':'Check payment status'}</button></div>`:''}</div></section>`;
+ return `<section class="zw-payment ${pending?'is-pending':''}" role="status"><span class="zw-payment-icon">${hi(status==='SUCCESS'?'check':pending?'clock':'info',20)}</span><div><h3>${title}</h3><p>${copy}</p>${p.coins?`<strong>${n(p.coins)} coins${p.payableAmountPaise!=null?' · '+coinPrice(p.payableAmountPaise):''}</strong>`:''}${pending?`<div class="zw-payment-actions">${Home.checkoutAttempt?`<button class="zh-soft" onclick="homeCheckout(true)" ${Home.checkoutBusy||CoinUI.verifyBusy?'disabled':''}>${Home.checkoutBusy?'Preparing payment…':'Continue payment'}</button>`:''}<button class="zh-soft" onclick="homeVerifyPayment()" ${CoinUI.verifyBusy||Home.checkoutBusy||!p.merchantOrderId?'disabled':''}>${CoinUI.verifyBusy?'Checking payment…':'Check payment status'}</button></div>`:''}</div></section>`;
 }
 function coinWalletView(embedded){return `<div class="zw-wallet"><div class="zw-wallet-main" aria-label="Available coin balance"><h2>${coinIcon(19)} ${contentBalance()}</h2></div><span class="zw-currency" aria-label="Currency: Indian rupees">₹ INR<span aria-hidden="true"></span></span></div>`}
 function coinWalletError(){return !DEMO&&ContentLoading.wallet.error?'<div class="zw-error" data-coin-wallet-error role="alert">Balance unavailable. Refresh to try again.</div>':''}
@@ -12981,31 +13084,151 @@ function coinPackBonus(pack){return Number.isSafeInteger(pack.bonusPercent)&&pac
 function coinPackArtwork(){return `<svg class="zw-pack-art" width="76" height="66" viewBox="0 0 88 76" fill="none" aria-hidden="true">${[[25,49,21],[63,49,21],[44,28,23]].map(([x,y,r])=>`<g transform="translate(${x} ${y})"><circle cy="2" r="${r}" fill="#c48700"/><circle r="${r}" fill="#f6ae00"/><circle r="${r-3}" fill="#ffdb31" stroke="#ffe867" stroke-width="1.5"/><path d="M${-r+6} -4a${r-7} ${r-7} 0 0 1 ${r-8} ${-r+11}" stroke="#fff29b" stroke-width="2.5" stroke-linecap="round"/><path d="m0-10 3 6.5 7 .9-5.2 4.9 1.4 7L0 6l-6.2 3.3 1.4-7L-10-2.6l7-.9z" fill="#fff6ac"/></g>`).join('')}</svg>`}
 function coinPackView(pack,selected,pending){const bonus=coinPackBonus(pack),badge=['hot','popular'].includes(pack.badge)?pack.badge:'',subtitle=bonus?bonus+'% More':pack.name||'Coin pack';return `<button class="${selected?.id===pack.id?'selected':''}" aria-label="${esc((pack.name||'Coin pack')+', '+n(pack.coins)+' coins, '+coinPrice(pack.pricePaise)+(bonus?', '+bonus+'% more':''))}" aria-pressed="${selected?.id===pack.id}" onclick="coinSelectPack('${domId(pack.id)}')" ${Home.checkoutBusy||pending||Home.checkoutAttempt?'disabled':''}>${badge?`<span class="zw-pack-badge">${badge==='hot'?'🔥 Hot':'★ Popular'}</span>`:''}<span class="zw-pack-amount">${coinIcon(17)}<strong>${n(pack.coins)}</strong></span><span class="zw-pack-name">${esc(subtitle)}</span>${coinPackArtwork()}<b>${coinPrice(pack.pricePaise)}</b></button>`}
 function coinCheckoutOwner(){return DEMO?'preview':S.user?.id||''}
+const coinUPIApps=[
+ {method:'phonepe',label:'PhonePe'},
+ {method:'gpay',label:'Google Pay'},
+ {method:'paytm',label:'Paytm'},
+ {method:'other',label:'Other UPI'}
+];
+const coinHostedPayment={method:'hosted',label:'PayPlus checkout'};
+const coinPaymentIcons={"phonepe":"data:image/png;base64,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","gpay":"data:image/png;base64,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","paytm":"data:image/png;base64,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"};
+function coinPaymentIcon(method){
+ const source=coinPaymentIcons[method];
+ const mark=source?`<img src="${source}" alt="" width="36" height="36">`:method==='manual'?'@':hi(method==='other'?'plus':'lock',16);
+ return `<span class="zpm-app-icon zpm-icon-${method}" aria-hidden="true">${mark}</span>`;
+}
+function coinLastUPIApp(owner,method){
+ if(DEMO||!owner)return '';
+ try{
+  const key=`binzo.coins.last-upi.${owner}`;
+  if(method&&coinUPIApps.some(app=>app.method===method))localStorage.setItem(key,method);
+  return localStorage.getItem(key)||'';
+ }catch{return ''}
+}
+function coinPaymentUpiId(payment){
+ if(payment?.status!=='PENDING'||!payment.upiIntent||coinPaymentExpired(payment)||payment.isIntentSupported===false)return '';
+ try{
+  const intent=new URL(payment.upiIntent),id=intent.searchParams.get('pa');
+  if(intent.protocol==='upi:'&&intent.hostname==='pay'&&/^[\w.+-]{1,128}@[\w.-]{1,64}$/.test(id||''))return id;
+ }catch{}
+ return '';
+}
+function coinToggleUpiId(){
+ const prompt=CoinUI.checkoutPrompt;
+ if(!prompt?.ready||!coinPaymentUpiId(Home.checkout))return;
+ prompt.manual=!prompt.manual;prompt.copyStatus='';coinPaintCheckoutPrompt();
+ if(prompt.manual)document.getElementById('zpm-manual-panel')?.scrollIntoView({block:'nearest'});
+}
+async function coinCopyUpiId(){
+ const prompt=CoinUI.checkoutPrompt,id=coinPaymentUpiId(Home.checkout);
+ if(!prompt?.manual||!id)return;
+ let copied=false;
+ try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(id);copied=true}}catch{}
+ if(!copied&&prompt===CoinUI.checkoutPrompt){
+  const field=document.getElementById('zpm-upi-id');
+  if(field){field.select();try{copied=document.execCommand('copy')}catch{}}
+ }
+ if(prompt!==CoinUI.checkoutPrompt)return;
+ prompt.copyStatus=copied?'UPI ID copied.':'Select and copy the UPI ID above.';
+ const status=document.getElementById('zpm-copy-status');if(status)status.textContent=prompt.copyStatus;
+}
+function coinPaymentExpired(payment){return Date.parse(payment?.expiresAt||'')<=Date.now()}
+function coinPaymentMethods(payment){
+ if(DEMO)return coinUPIApps.map(app=>({...app,action:'pay'}));
+ if(!payment||payment.status!=='PENDING'||coinPaymentExpired(payment))return [];
+ const routing=payment.upiIntentRouting,platform=payment.upiPlatform,hosted=!!payment.paymentUrl;
+ const native=['android','ios'].includes(platform),intents=native&&payment.isIntentSupported!==false;
+ const generic=intents&&!!(routing?.generic||payment.upiIntent);
+ const apps=coinUPIApps.filter(app=>app.method!=='other'||generic).map(app=>{
+  let action=null;
+  if(app.method==='other')action='pay';
+  else if(native&&payment.upiAppsInstalled?.[app.method]===false)action='install';
+  else if(intents&&routing?.apps?.[app.method]?.[platform])action='pay';
+  else if(generic)action='upi';
+  else if(hosted)action='checkout';
+  return {...app,action};
+ });
+ return hosted?[...apps,{...coinHostedPayment,action:'pay'}]:apps;
+}
+function coinPaymentAppRows(apps,owner,disabled,hasBranded,preferCheckout){
+ const last=coinLastUPIApp(owner),payable=apps.filter(app=>app.action==='pay'),
+  preferred=payable.some(app=>app.method===last)?last:payable[0]?.method;
+ return `<section class="zpm-methods" aria-labelledby="zpm-upi-heading">
+  <header class="zpm-methods-heading"><h3 id="zpm-upi-heading">Pay using UPI app</h3><span aria-hidden="true">UPI</span></header>
+  <div class="zpm-app-list">${apps.map(({method,label,action})=>{
+   const name=method==='other'&&!hasBranded?'Pay with UPI app':label;
+   const cta={pay:'Pay',upi:'Use UPI',checkout:'Use checkout',install:'Install'}[action]||'Unavailable';
+   const accessible=method==='other'?(hasBranded?'Pay with another UPI app':name):{
+    pay:'Pay with '+label,upi:'Use UPI for '+label,checkout:'Use PayPlus checkout for '+label,install:'Install '+label
+   }[action]||label+' unavailable';
+   return `<button id="zpm-pay-${method}" class="zpm-method zpm-upi${action==='install'?' is-install':''}${!preferCheckout&&method===preferred?' is-preferred':''}" type="button" onclick="coinOpenPayment('${method}')" aria-label="${accessible}" ${disabled||!action?'disabled':''}>
+    ${coinPaymentIcon(method)}<span class="zpm-method-name"><strong>${name}</strong>${action==='pay'&&method===last?'<small>Last used</small>':''}</span><span class="zpm-pay-label">${cta}</span>
+   </button>`;
+  }).join('')}</div>
+  ${apps.some(app=>app.action==='upi')?'<p class="zpm-app-note">Use UPI opens a compatible app on your phone.</p>':''}
+ </section>`;
+}
+function coinPaymentUpiIdRow(prompt,id,amount,hosted,disabled){
+ return `<section class="zpm-manual">
+  <button id="zpm-pay-manual" class="zpm-method" type="button" aria-label="Pay with UPI ID" aria-controls="zpm-manual-panel" aria-expanded="${!!prompt.manual}" onclick="coinToggleUpiId()" ${disabled?'disabled':''}>
+   ${coinPaymentIcon('manual')}<span class="zpm-method-name"><strong>Pay with UPI ID</strong></span><span class="zpm-pay-label">${prompt.manual?'Hide':'Enter'}</span>
+  </button>
+  ${prompt.manual?`<div id="zpm-manual-panel" class="zpm-manual-panel">
+   <p>In your UPI app, enter this UPI ID and pay exactly <strong>${coinCheckoutPrice(amount)}</strong>.</p>
+   <label for="zpm-upi-id">PayPlus receiving UPI ID</label>
+   <div class="zpm-upi-id"><input id="zpm-upi-id" readonly value="${esc(id)}"><button type="button" onclick="coinCopyUpiId()" aria-label="Copy PayPlus receiving UPI ID">${hi('copy',16)} Copy</button></div>
+   <p id="zpm-copy-status" role="status">${esc(prompt.copyStatus||'')}</p>
+   <div class="zpm-manual-actions"><button type="button" class="zpm-recheck" onclick="homeVerifyPayment()" ${disabled?'disabled':''}>${CoinUI.verifyBusy?'Checking payment…':'Check payment status'}</button>${hosted?`<button type="button" class="zpm-recheck" onclick="coinOpenPayment('hosted')" ${disabled?'disabled':''}>Open PayPlus checkout</button>`:''}</div>
+   ${prompt.manualStatus?`<p role="status">${esc(prompt.manualStatus)}</p>`:''}
+  </div>`:''}
+ </section>`;
+}
+function coinHostedRow(label,disabled,preferred){
+ return `<button id="zpm-pay-hosted" class="zpm-method zpm-hosted${preferred?' is-preferred':''}" type="button" aria-label="${label}" onclick="coinOpenPayment('hosted')" ${disabled?'disabled':''}>
+  ${coinPaymentIcon('hosted')}<span class="zpm-method-name"><strong>${label}</strong></span><span class="zpm-pay-label">Open</span>
+ </button>`;
+}
+function coinCheckoutPrice(paise){return '₹'+(Number(paise||0)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function coinCloseCheckoutPrompt(restore=true){
  const prompt=CoinUI.checkoutPrompt,dialog=document.getElementById('zw-checkout-dialog');CoinUI.checkoutPrompt=null;
+ clearTimeout(prompt?.expiryTimer);
  if(dialog){dialog.close();dialog.remove()}
- if(restore){const target=prompt?.focus?.isConnected?prompt.focus:document.querySelector(Home.giftTo?'.zw-sheet .zw-buy':'.zw-buy');target?.focus({preventScroll:true})}
+ if(restore&&prompt){
+  coinPaint();
+  const target=prompt.focus?.isConnected&&!prompt.focus.disabled?prompt.focus:document.querySelector('.zw-payment-actions>button:not(:disabled),.zw-buy:not(:disabled)');
+  target?.focus({preventScroll:true});
+ }
 }
-function coinOpenCheckoutPrompt(){
- if(isHostWallet())return;
- if(CoinUI.checkoutPrompt||Home.checkoutBusy||Home.checkoutAttempt||coinHasPendingPayment())return;
- const pack=Home.packs.find(item=>item.id===Home.packId)||Home.packs[0],owner=coinCheckoutOwner();if(!pack||!owner||!DEMO&&!S.loggedIn)return;
- CoinUI.checkoutPrompt={owner,pack:{...pack},choice:null,error:'',focus:document.activeElement};
- paymentRouteEnsure();coinPaintCheckoutPrompt();
+function coinChangeCheckoutPack(){
+ const prompt=CoinUI.checkoutPrompt;if(!prompt||Home.checkoutBusy||CoinUI.verifyBusy||prompt.action)return;
+ // A provisioned but unopened order stays tracked for late confirmation. An
+ // uncertain prepare has no order ID yet and must keep its original attempt.
+ if(Home.checkoutAttempt&&!Home.checkout?.merchantOrderId){coinCloseCheckoutPrompt();return}
+ if(coinPendingPayment())CoinUI.dismissedOrders.add(Home.checkout.merchantOrderId);
+ if(Home.checkoutAttempt)Native.send('payments.checkout.closed',{kind:'coins',idempotencyKey:Home.checkoutAttempt.idempotencyKey});
+ Home.checkout=null;Home.checkoutAttempt=null;CoinUI.packSnapshot=null;CoinUI.paymentError='';
+ coinCloseCheckoutPrompt(false);coinPaint();
+ document.querySelector('.zw-packs>button[aria-pressed="true"]')?.focus({preventScroll:true});
 }
-function coinChoosePayment(route){
- const prompt=CoinUI.checkoutPrompt;if(!prompt||!paymentCoinOptions().some(option=>option.route===route))return;
- prompt.choice=route;prompt.error='';coinPaintCheckoutPrompt();
+function coinOpenCheckoutPrompt(pack){
+ const owner=coinCheckoutOwner();if(isHostWallet()||CoinUI.checkoutPrompt||!pack||!owner||!DEMO&&!S.loggedIn)return;
+ CoinUI.checkoutPrompt={owner,pack:{...pack},focus:document.activeElement,method:null,checking:false,ready:DEMO};
+ coinPaint();
 }
 function coinPaintCheckoutPrompt(){
  const prompt=CoinUI.checkoutPrompt;if(!prompt)return;
- if(isHostWallet()){coinCloseCheckoutPrompt(false);return}
- if(prompt.owner!==coinCheckoutOwner()||!['coins'].includes(S.v)&&!(Home.giftTo&&CoinUI.topup)||Home.checkoutAttempt||coinHasPendingPayment()){coinCloseCheckoutPrompt(false);return}
- const current=Home.packs.find(pack=>pack.id===prompt.pack.id);
- if(!current){prompt.choice=null;prompt.error='This coin pack is no longer available. Close this window and choose another pack.'}
- else if(current.coins!==prompt.pack.coins||current.pricePaise!==prompt.pack.pricePaise){prompt.pack={...current};prompt.choice=null;prompt.error='This coin pack has changed. Review the new amount before continuing.'}
- const options=paymentCoinOptions(),loading=!DEMO&&(!PaymentRoutes.loaded&&!PaymentRoutes.error||PaymentRoutes.loading),error=!DEMO&&PaymentRoutes.error;
- if(prompt.choice!==null&&!options.some(option=>option.route===prompt.choice))prompt.choice=null;
+ if(isHostWallet()||prompt.owner!==coinCheckoutOwner()||S.v!=='coins'&&!(Home.giftTo&&CoinUI.topup)){coinCloseCheckoutPrompt(false);return}
+ const pack=prompt.pack,payment=coinPendingPayment()?Home.checkout:null;
+ const coins=payment?.coins??pack.coins,amount=payment?.payableAmountPaise??payment?.amountPaise??pack.pricePaise;
+ const quoted=Number.isSafeInteger(payment?.payableAmountPaise)&&payment.payableAmountPaise>0;
+ clearTimeout(prompt.expiryTimer);
+ const expiresIn=Date.parse(payment?.expiresAt||'')-Date.now();
+ if(expiresIn>0&&expiresIn<2147483647)prompt.expiryTimer=setTimeout(coinPaintCheckoutPrompt,expiresIn+1);
+ const methods=prompt.ready&&!Home.checkoutBusy?coinPaymentMethods(payment):[],upi=methods.filter(option=>option.method!=='hosted'),hosted=methods.some(option=>option.method==='hosted');
+ const manualId=prompt.ready&&quoted?coinPaymentUpiId(payment):'';
+ const hasBranded=upi.some(app=>app.method!=='other'&&app.action==='pay');
+ const preferCheckout=hosted&&!!prompt.upiLaunchFailed;
+ const showHosted=hosted&&(!manualId||!hasBranded||preferCheckout);
  let dialog=document.getElementById('zw-checkout-dialog');const creating=!dialog,focused=document.activeElement?.id;
  if(!dialog){
   dialog=document.createElement('dialog');dialog.id='zw-checkout-dialog';dialog.className='zpm-dialog';dialog.setAttribute('aria-labelledby','zpm-checkout-title');
@@ -13014,38 +13237,70 @@ function coinPaintCheckoutPrompt(){
   dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)coinCloseCheckoutPrompt()});
   document.body.append(dialog);
  }
- dialog.innerHTML=`<header class="zpm-dialog-heading"><h2 id="zpm-checkout-title">Select payment method</h2><button type="button" class="zpm-close" aria-label="Close payment methods" onclick="coinCloseCheckoutPrompt()">${hi('close',20)}</button></header><p class="zpm-order-summary">${coinIcon(20)}<strong>${n(prompt.pack.coins)} coins</strong><span>${coinPrice(prompt.pack.pricePaise)}</span></p>${loading?`<div class="zpm-loading" role="status" aria-label="Loading payment methods" aria-busy="true">${skeletonLine('90%',16)}${skeletonLine('72%',16)}</div>`:error?'<div class="zpm-method-error" role="alert"><p>Payment methods could not be loaded. Please try again.</p><button type="button" onclick="paymentRoutesLoad()">Retry payment methods</button></div>':options.length?`<fieldset class="zpm-methods"><legend>Choose a payment method</legend>${options.map((option,index)=>`<label class="zpm-method ${prompt.choice===option.route?'is-selected':''}" for="zpm-method-${index}"><input type="radio" name="coin-payment-method" id="zpm-method-${index}" value="${esc(option.route)}" onchange="coinChoosePayment('${domId(option.route)}')" ${prompt.choice===option.route?'checked':''}><span><strong>${esc(option.label)}</strong><small>${esc(option.detail)}</small></span></label>`).join('')}</fieldset>`:'<div class="zpm-method-error" role="alert"><p>No payment methods are available right now.</p><button type="button" onclick="paymentRoutesLoad()">Retry payment methods</button></div>'}${prompt.error?`<p class="zpm-method-error" role="alert">${esc(prompt.error)}</p>`:''}<button type="button" id="zpm-confirm-coins" class="zh-primary zpm-confirm" onclick="coinConfirmCheckout()" ${loading||error||!current||prompt.choice===null||!options.length?'disabled':''}>Continue to payment ${hi('arrow',17)}</button><p class="zpm-security">${hi('lock',13)} ${DEMO?'Preview only. No payment is taken.':'Coins are added only after payment is confirmed.'}</p>`;
+ dialog.classList.toggle('is-opening',!!prompt.method);
+ dialog.classList.toggle('has-upi-apps',!prompt.method&&upi.length>0);
+ if(prompt.method){
+  const app=[...coinUPIApps,coinHostedPayment].find(option=>option.method===prompt.method);
+  const detail=prompt.checking?'Waiting for confirmation from PayPlus.':quoted?`Approve ${coinCheckoutPrice(amount)} for ${n(coins)} coins.`:`Complete your payment for ${n(coins)} coins.`;
+  dialog.innerHTML=`<div class="zpm-opening" role="status"><span class="zpm-opening-icon">${coinPaymentIcon(app.method)}</span><h2 id="zpm-checkout-title">${prompt.checking?'Checking your payment…':`Opening ${app.method==='other'?'your UPI app':app.label}…`}</h2><p>${detail}</p></div><button class="zpm-change" type="button" onclick="coinCloseCheckoutPrompt()">Cancel</button>`;
+ }else{
+  const disabled=Home.checkoutBusy||CoinUI.verifyBusy||!!prompt.action||window.ZimiOffline?.isOffline(),error=CoinUI.paymentError;
+  dialog.innerHTML=`<span class="zpm-grabber" aria-hidden="true"></span><header class="zpm-dialog-heading"><h2 id="zpm-checkout-title">Payment summary</h2><button type="button" id="zpm-close-checkout" class="zpm-close" aria-label="Close payment summary" onclick="coinCloseCheckoutPrompt()"><span>${hi('close',16)}</span></button></header><div class="zpm-body">
+  <section class="zpm-order-summary" aria-label="Selected coin pack"><div class="zpm-summary-pack"><span class="zpm-pack-art">${coinPackArtwork()}</span><div class="zpm-pack-info"><strong>${n(coins)} coins</strong><small>${esc(pack.name||'Coin pack')}</small></div><button class="zpm-change" type="button" onclick="coinChangeCheckoutPack()" aria-label="Change coin pack" ${Home.checkoutBusy||CoinUI.verifyBusy||prompt.action||Home.checkoutAttempt&&!payment?'disabled':''}><span>Change</span></button></div>
+  <div class="zpm-summary-row"><span>Coins credited</span><strong>${coinIcon(19)} ${n(coins)}</strong></div><div class="zpm-summary-row zpm-total"><span>${quoted||DEMO?'Total payable':'Pack price'}</span><strong>${coinCheckoutPrice(amount)}</strong></div></section>
+  ${error?`<p class="zpm-method-error" role="alert">${esc(error)}</p>`:''}
+  ${Home.checkoutBusy?`<div class="zpm-loading" role="status" aria-label="Preparing payment" aria-busy="true">${skeletonLine('92%',38)}${skeletonLine('92%',38)}</div>`:!prompt.ready&&!DEMO?`<button type="button" class="zh-primary zpm-confirm" onclick="coinPrepareCheckout()" ${disabled?'disabled':''}>Retry payment setup</button>`:''}
+  ${upi.length?coinPaymentAppRows(upi,prompt.owner,disabled,hasBranded,preferCheckout):''}
+  ${showHosted?coinHostedRow(upi.some(app=>app.action==='pay'||app.action==='upi')?'Open PayPlus checkout':'Continue on secure checkout',disabled,preferCheckout):''}
+  ${manualId?coinPaymentUpiIdRow(prompt,manualId,amount,hosted&&!showHosted,disabled):''}
+  ${payment&&prompt.ready&&!Home.checkoutBusy&&!methods.some(option=>option.action&&option.action!=='install')?`<p class="zpm-method-error" role="status">${coinPaymentExpired(payment)?'This payment link expired. Check its status or change your pack.':'Payment options are unavailable for this order.'}</p><button type="button" class="zpm-recheck" onclick="homeVerifyPayment()" ${disabled?'disabled':''}>${CoinUI.verifyBusy?'Checking payment…':'Check payment status'}</button>`:''}
+  <p class="zpm-security">${hi('lock',12)} ${DEMO?'Preview only. No payment is taken.':'Secure UPI payment'}</p></div>`;
+ }
  if(creating)dialog.showModal();else if(focused&&dialog.querySelector('#'+CSS.escape(focused)))dialog.querySelector('#'+CSS.escape(focused)).focus({preventScroll:true});
 }
-function coinConfirmCheckout(){
- if(isHostWallet())return;
- const prompt=CoinUI.checkoutPrompt;if(!prompt||prompt.owner!==coinCheckoutOwner()||Home.checkoutBusy||CoinUI.verifyBusy||Home.checkoutAttempt||coinHasPendingPayment()||window.ZimiOffline?.isOffline())return;
- const pack=Home.packs.find(item=>item.id===prompt.pack.id),option=paymentCoinOptions().find(item=>item.route===prompt.choice);
- if(!pack||!option||pack.coins!==prompt.pack.coins||pack.pricePaise!==prompt.pack.pricePaise){coinPaintCheckoutPrompt();return}
- if(!DEMO&&(contentPending('catalog')||ContentLoading.catalog.error||!Home.paymentsAvailable))return;
- if(DEMO){coinCloseCheckoutPrompt(false);S.bal+=pack.coins;coinPaint();appNotice('Preview coins added');return}
- PaymentRoutes.choices.coins=option.route;Home.packId=pack.id;
- Home.checkoutAttempt={packId:pack.id,idempotencyKey:crypto.randomUUID(),...paymentRoutePayload('coins')};CoinUI.packSnapshot={...pack};Home.checkout=null;
- coinCloseCheckoutPrompt(false);homeCheckout();
+function coinPrepareCheckout(){
+ const prompt=CoinUI.checkoutPrompt;if(isHostWallet()||!prompt||prompt.owner!==coinCheckoutOwner()||Home.checkoutBusy||CoinUI.verifyBusy||window.ZimiOffline?.isOffline()||DEMO)return;
+ if(!Home.checkoutAttempt&&(contentPending('catalog')||ContentLoading.catalog.error||!Home.paymentsAvailable))return;
+ const pack=prompt.pack,resumeOrderId=coinPendingPayment()?Home.checkout.merchantOrderId:null;Home.packId=pack.id;
+ if(!Home.checkoutAttempt){Home.checkoutAttempt={packId:pack.id,idempotencyKey:crypto.randomUUID()};CoinUI.packSnapshot={...pack};Home.checkout=null}
+ const {packId,idempotencyKey}=Home.checkoutAttempt;
+ prompt.ready=false;Home.checkoutBusy=true;CoinUI.paymentError='';
+ Native.send('wallet.checkout',{packId,idempotencyKey,prepareOnly:true,...(resumeOrderId?{resumeOrderId}:{})});coinPaint();
+}
+function coinOpenPayment(method){
+ const prompt=CoinUI.checkoutPrompt,payment=Home.checkout;
+ if(isHostWallet()||!prompt||prompt.owner!==coinCheckoutOwner()||!prompt.ready||prompt.action||Home.checkoutBusy||CoinUI.verifyBusy||window.ZimiOffline?.isOffline())return;
+ const option=coinPaymentMethods(payment).find(item=>item.method===method);
+ if(!option?.action)return;
+ if(DEMO){const coins=prompt.pack.coins;coinCloseCheckoutPrompt(false);S.bal+=coins;coinPaint();appNotice('Preview coins added');return}
+ if(!payment?.merchantOrderId)return;
+ prompt.action=option;CoinUI.paymentError='';coinPaintCheckoutPrompt();
+ Native.send('wallet.payment.open',{merchantOrderId:payment.merchantOrderId,method});
 }
 function homeCoins(embedded=false){
  if(isHostWallet())return '<section class="zw-coins"><p>Your host account earns diamonds. View your balance in Wallet &amp; Activity.</p><button type="button" class="zh-primary" onclick="go(\'wallet\')">Open diamond wallet</button></section>';
  const selected=(Home.checkoutAttempt&&CoinUI.packSnapshot)||Home.packs.find(x=>x.id===(Home.checkoutAttempt?.packId||Home.packId))||Home.packs[0],surface=DEMO?null:contentSurface('catalog','packs','Loading coin packs'),pending=coinHasPendingPayment();
- return `<section class="zw-coins zw-compact zw-reference ${embedded?'zw-embedded':''}" aria-label="BinzoLive Coins">${!embedded?window.ZimiCallInvitations?.coinsContext()||'':''}${coinWalletView(embedded)}${coinWalletError()}${coinPaymentView()}${coinOtherPayments()}<div class="zw-section-heading"><h2>${DEMO||Home.packs.some(coinPackBonus)?'Welcome Bonus for You!':'Choose your coin pack'}</h2></div>${surface??(Home.packs.length?`<div class="zh-packs zw-packs" role="group" aria-label="Coin packs">${Home.packs.map(x=>coinPackView(x,selected,pending)).join('')}</div>`:'<div class="zw-empty">Coin packs are currently unavailable. Please check again later.</div>')}${CoinUI.paymentError?`<p class="zw-error" role="alert">${esc(CoinUI.paymentError)}</p>`:''}<p class="zw-note">${DEMO?'Design preview · sample coins only':'Coins are used for calls and gifts. Select a pack, then continue securely.'}</p>${!surface&&!Home.paymentsAvailable?'<p class="zw-empty">Payments are temporarily unavailable. Your existing coins are still safe.</p>':''}${!surface&&selected&&!pending?`<footer class="zw-checkout-footer"><button class="zh-primary zw-buy" aria-label="${Home.checkoutBusy?'Opening checkout':Home.paymentsAvailable?'Get '+n(selected.coins)+' coins':'Checkout unavailable'}" onclick="homeCheckout()" ${Home.checkoutBusy||!Home.paymentsAvailable?'disabled':''}>${coinIcon(19)} ${Home.checkoutBusy?'Opening checkout…':Home.paymentsAvailable?`Get ${n(selected.coins)} coins`:'Checkout unavailable'}${Home.paymentsAvailable&&!Home.checkoutBusy?`<span>${coinPrice(selected.pricePaise)}</span>`:''}</button></footer>`:''}</section>`;
+ return `<section class="zw-coins zw-compact zw-reference ${embedded?'zw-embedded':''}" aria-label="BinzoLive Coins">${!embedded?window.ZimiCallInvitations?.coinsContext()||'':''}${coinWalletView(embedded)}${coinWalletError()}${CoinUI.checkoutPrompt?'':coinPaymentView()+coinOtherPayments()}<div class="zw-section-heading"><h2>${DEMO||Home.packs.some(coinPackBonus)?'Welcome Bonus for You!':'Choose your coin pack'}</h2></div>${surface??(Home.packs.length?`<div class="zh-packs zw-packs" role="group" aria-label="Coin packs">${Home.packs.map(x=>coinPackView(x,selected,pending)).join('')}</div>`:'<div class="zw-empty">Coin packs are currently unavailable. Please check again later.</div>')}${CoinUI.paymentError&&!CoinUI.checkoutPrompt?`<p class="zw-error" role="alert">${esc(CoinUI.paymentError)}</p>`:''}<p class="zw-note">${DEMO?'Design preview · sample coins only':'Coins are used for calls and gifts. Select a pack, then continue securely.'}</p>${!surface&&!Home.paymentsAvailable?'<p class="zw-empty">Payments are temporarily unavailable. Your existing coins are still safe.</p>':''}${!surface&&selected&&(!pending||CoinUI.checkoutPrompt)?`<footer class="zw-checkout-footer"><button class="zh-primary zw-buy" aria-label="${Home.checkoutBusy?'Opening checkout':Home.paymentsAvailable?'Get '+n(selected.coins)+' coins':'Checkout unavailable'}" onclick="homeCheckout()" ${Home.checkoutBusy||!Home.paymentsAvailable||CoinUI.checkoutPrompt?'disabled':''}>${coinIcon(19)} ${Home.checkoutBusy?'Opening checkout…':Home.paymentsAvailable?`Get ${n(selected.coins)} coins`:'Checkout unavailable'}${Home.paymentsAvailable&&!Home.checkoutBusy?`<span>${coinPrice(selected.pricePaise)}</span>`:''}</button></footer>`:''}</section>`;
 }
 function homeCheckout(resume=false){
  if(isHostWallet())return;
  if(Home.checkoutBusy||CoinUI.verifyBusy||window.ZimiOffline?.isOffline())return;
  if(coinHasPendingPayment()&&!resume)return;
  if(!resume&&!DEMO&&(contentPending('catalog')||ContentLoading.catalog.error||!Home.paymentsAvailable))return;
- if(!Home.checkoutAttempt){if(!resume)coinOpenCheckoutPrompt();return}
- Home.checkoutBusy=true;CoinUI.paymentError='';Native.send('wallet.checkout',{...Home.checkoutAttempt});coinPaint();
+ if(resume&&!Home.checkoutAttempt)return;
+ const pack=(Home.checkoutAttempt&&CoinUI.packSnapshot)||Home.packs.find(item=>item.id===(Home.checkoutAttempt?.packId||Home.packId))||Home.packs[0];
+ coinOpenCheckoutPrompt(pack);coinPrepareCheckout();
 }
-function homeVerifyPayment(){if(!Home.checkout?.merchantOrderId||CoinUI.verifyBusy||Home.checkoutBusy||window.ZimiOffline?.isOffline())return;CoinUI.verifyBusy=true;CoinUI.paymentError='';Native.send('wallet.verify',{merchantOrderId:Home.checkout.merchantOrderId});coinPaint()}
+function homeVerifyPayment(){
+ if(!Home.checkout?.merchantOrderId||CoinUI.verifyBusy||Home.checkoutBusy||window.ZimiOffline?.isOffline())return;
+ if(CoinUI.checkoutPrompt)CoinUI.checkoutPrompt.manualStatus='';
+ CoinUI.verifyBusy=true;CoinUI.paymentError='';Native.send('wallet.verify',{merchantOrderId:Home.checkout.merchantOrderId});coinPaint();
+}
 function coinClosePurchase(){
  if(DEMO)return;
  if(Home.checkoutAttempt?.idempotencyKey)Native.send('payments.checkout.closed',{kind:'coins',idempotencyKey:Home.checkoutAttempt.idempotencyKey});
  for(const payment of [Home.checkout,...CoinUI.orders.values()])if(payment?.status==='PENDING'&&payment.merchantOrderId)Native.send('payments.checkout.closed',{kind:'coins',merchantOrderId:payment.merchantOrderId});
+ Home.checkoutBusy=false;
 }
 function coinLeaveTopup(){coinClosePurchase();CoinUI.topup=false;coinPaint()}
 function coinPaymentReturned(d){
@@ -13059,7 +13314,7 @@ function coinPaymentReturned(d){
  if(!active&&(Home.checkout||Home.checkoutAttempt||Home.checkoutBusy||CoinUI.checkoutPrompt)){coinPaint();return}
  Home.checkout=null;Home.checkoutAttempt=null;Home.checkoutBusy=false;
  CoinUI.verifyBusy=false;CoinUI.paymentError='';CoinUI.packSnapshot=null;
- coinCloseCheckoutPrompt(false);PaymentRoutes.choices.coins='';
+ coinCloseCheckoutPrompt(false);
  if(!DEMO){contentStart('wallet');contentStart('catalog');Native.send('wallet.load');Native.send('catalog.load')}
  coinPaint();if(S.v==='coins')window.zimiScrollTo?.(0);
  appNotice('Your payment failed. You can try again.');
@@ -13070,7 +13325,11 @@ function coinAcceptPayment(d,checkout=false){
  if(known&&['SUCCESS','FAILED','REVERTED'].includes(known.status)&&d.status==='PENDING')return;
  if(known?.status==='REVERTED'&&d.status!=='REVERTED')return;
  if(known?.status==='SUCCESS'&&d.status==='FAILED')return;
- if(d.merchantOrderId)CoinUI.orders.set(d.merchantOrderId,{...known,...d});
+ const snapshot={...known,...d};
+ // A status response may withdraw expired or unavailable payment directions.
+ // Keep the order and the device platform, but never reuse omitted links.
+ if(!checkout)for(const key of ['upiIntent','upiIntentRouting','isIntentSupported','paymentUrl'])if(!Object.hasOwn(d,key))delete snapshot[key];
+ if(d.merchantOrderId)CoinUI.orders.set(d.merchantOrderId,snapshot);
  // A restored order is history, not the checkout the user is starting now.
  // Keep it for reconciliation without interrupting a fresh package/method.
  if(d.status==='PENDING'&&Home.checkout?.merchantOrderId!==d.merchantOrderId&&(!d.idempotencyKey||Home.checkoutAttempt?.idempotencyKey!==d.idempotencyKey))CoinUI.dismissedOrders.add(d.merchantOrderId);
@@ -13080,9 +13339,23 @@ function coinAcceptPayment(d,checkout=false){
  if(checkout&&Home.checkoutAttempt&&d.idempotencyKey!==Home.checkoutAttempt.idempotencyKey)return;
  if(!checkout&&Home.checkout?.merchantOrderId&&d.merchantOrderId!==Home.checkout.merchantOrderId){if(coinPendingPayment()||Home.checkoutAttempt||d.status!=='PENDING'){coinPaint();return}}
  if(!checkout&&!Home.checkout&&Home.checkoutAttempt&&d.idempotencyKey!==Home.checkoutAttempt.idempotencyKey)return;
- Home.checkoutBusy=false;CoinUI.verifyBusy=false;CoinUI.paymentError='';Home.checkout={...Home.checkout,...d};
- if(['SUCCESS','FAILED','REVERTED'].includes(d.status))Home.checkoutAttempt=null;
- else if(d.idempotencyKey&&d.packId){Home.checkoutAttempt={packId:d.packId,idempotencyKey:d.idempotencyKey,...paymentRestoredRoute(d,Home.checkoutAttempt)};if(d.coins!=null)CoinUI.packSnapshot={id:d.packId,coins:d.coins,pricePaise:d.amountPaise??d.payableAmountPaise??0,name:'Pending coin pack'}}
+ if(d.status==='SUCCESS'&&d.merchantOrderId===Home.checkout?.merchantOrderId&&CoinUI.checkoutPrompt?.method){
+  const {owner,method}=CoinUI.checkoutPrompt;coinLastUPIApp(owner,method);
+ }
+ if(!checkout&&CoinUI.verifyBusy&&CoinUI.checkoutPrompt?.manual&&d.status==='PENDING'){
+  CoinUI.checkoutPrompt.manualStatus=d.paymentUrl?'Payment is awaiting confirmation. Open PayPlus checkout if asked for a UTR.':'Payment is awaiting confirmation. Check again shortly.';
+ }
+ if(checkout||d.status!=='PENDING'||!CoinUI.checkoutPrompt)Home.checkoutBusy=false;
+ CoinUI.verifyBusy=false;CoinUI.paymentError='';Home.checkout=snapshot;
+ if(['SUCCESS','FAILED','REVERTED'].includes(d.status)){Home.checkoutAttempt=null;coinCloseCheckoutPrompt(false)}
+ else if(d.idempotencyKey&&d.packId){
+  Home.checkoutAttempt={packId:d.packId,idempotencyKey:d.idempotencyKey,...paymentRestoredRoute(d,Home.checkoutAttempt)};
+  if(checkout&&CoinUI.checkoutPrompt?.pack.id===d.packId)CoinUI.checkoutPrompt.ready=true;
+  if(d.coins!=null){
+   const pack=CoinUI.packSnapshot?.id===d.packId?CoinUI.packSnapshot:Home.packs.find(item=>item.id===d.packId);
+   CoinUI.packSnapshot={id:d.packId,coins:d.coins,pricePaise:d.amountPaise??d.payableAmountPaise??pack?.pricePaise??0,name:pack?.name||'Pending coin pack'};
+  }
+ }
  coinPaint();
 }
 function homeGifts(id,selectedGiftId=''){
@@ -13170,6 +13443,28 @@ Native.on('gift.sent',d=>{
 Native.on('wallet.checkout',d=>coinAcceptPayment(d,true));
 Native.on('wallet.purchase',d=>coinAcceptPayment(d));
 Native.on('wallet.payment-returned',coinPaymentReturned);
+Native.on('wallet.payment.opening',d=>{
+ const prompt=CoinUI.checkoutPrompt;
+ if(prompt?.action?.method!==d.method||d.merchantOrderId!==Home.checkout?.merchantOrderId)return;
+ prompt.method=d.launchMethod||d.method;prompt.checking=false;coinPaintCheckoutPrompt();
+ document.querySelector('#zw-checkout-dialog.is-opening>button')?.focus({preventScroll:true});
+});
+Native.on('wallet.payment.store',d=>{
+ const prompt=CoinUI.checkoutPrompt;
+ if(prompt?.action?.method!==d.method||d.merchantOrderId!==Home.checkout?.merchantOrderId)return;
+ prompt.action=null;prompt.method=null;prompt.checking=false;coinPaintCheckoutPrompt();
+ document.getElementById('zpm-pay-'+d.method)?.focus({preventScroll:true});
+});
+Native.on('wallet.payment.apps',d=>{
+ const payment=Home.checkout;
+ if(d.merchantOrderId!==payment?.merchantOrderId||!coinPendingPayment())return;
+ const updated={...payment,upiAppsInstalled:{...payment.upiAppsInstalled,...d.upiAppsInstalled}};
+ Home.checkout=updated;CoinUI.orders.set(d.merchantOrderId,updated);
+ coinPaintCheckoutPrompt();
+});
+Native.on('app.foreground',()=>{
+ const prompt=CoinUI.checkoutPrompt;if(prompt?.method){prompt.checking=true;coinPaintCheckoutPrompt()}
+});
 Native.on('operation.error',d=>{
  if(d.action==='gift.send'&&coinGiftMatches(d)){
   const attempt=Home.giftAttempt,saved=CoinUI.receipts.get(attempt.idempotencyKey);
@@ -13182,7 +13477,22 @@ Native.on('operation.error',d=>{
   }
   r();
  }
- if(d.action==='wallet.checkout'&&Home.checkoutAttempt?.idempotencyKey===d.idempotencyKey){Home.checkoutBusy=false;CoinUI.paymentError=d.message;const routeRejected=['PAYMENT_ROUTE_CHOICE_DISABLED','PAYMENT_ROUTE_UNAVAILABLE'].includes(d.code),uncertainRoute=['PAYIN_ROUTE_UNAVAILABLE','PAYMENT_ROUTE_CONFLICT'].includes(d.code);if(routeRejected||d.code==='PAYIN_PROVISIONING_FAILED'||(!uncertainRoute&&[400,404].includes(d.status)&&!coinPendingPayment())){Home.checkoutAttempt=null;Home.checkout=null;CoinUI.packSnapshot=null}coinPaint();if(routeRejected)paymentRoutesLoad()}
+ if(d.action==='wallet.checkout'&&Home.checkoutAttempt?.idempotencyKey===d.idempotencyKey){
+  Home.checkoutBusy=false;CoinUI.paymentError=d.message;
+  const routeRejected=['PAYMENT_ROUTE_CHOICE_DISABLED','PAYMENT_ROUTE_UNAVAILABLE'].includes(d.code),uncertainRoute=['PAYIN_ROUTE_UNAVAILABLE','PAYMENT_ROUTE_CONFLICT'].includes(d.code);
+  if(routeRejected||d.code==='PAYIN_PROVISIONING_FAILED'||(!uncertainRoute&&[400,404].includes(d.status)&&!coinPendingPayment())){
+   Home.checkoutAttempt=null;Home.checkout=null;CoinUI.packSnapshot=null;coinCloseCheckoutPrompt(false)
+  }
+  coinPaint();
+ }
+ if(d.action==='wallet.payment.open'&&d.merchantOrderId===Home.checkout?.merchantOrderId){
+  const prompt=CoinUI.checkoutPrompt;
+  const genericFailed=(prompt?.method==='other'||prompt?.action?.method==='other'||prompt?.action?.action==='upi')&&d.code==='PAYMENT_OPEN_FAILED';
+  if(prompt){prompt.action=null;prompt.method=null;prompt.checking=false;if(genericFailed)prompt.upiLaunchFailed=true}
+  const canOpenCheckout=genericFailed&&coinPaymentMethods(Home.checkout).some(option=>option.method==='hosted');
+  CoinUI.paymentError=canOpenCheckout?"Your phone couldn't open a UPI app for this order. Continue with PayPlus checkout.":d.message||'Could not open this payment app. Try another option.';
+  coinPaint();if(canOpenCheckout)document.getElementById('zpm-pay-hosted')?.focus({preventScroll:true});
+ }
  if(d.action==='wallet.verify'&&Home.checkout?.merchantOrderId===d.merchantOrderId){CoinUI.verifyBusy=false;CoinUI.paymentError=d.message;coinPaint()}
 });
 Native.on('call.failed',d=>{if(d.code==='INSUFFICIENT_COINS'&&!isHost())coinRequireRecharge()});
@@ -22564,6 +22874,8 @@ Native.on('data.home',d=>{
   if(!peer)return;
   // Live discovery events may update availability without replacing profile
   // counts, a pending relationship write, or the current gallery selection.
+  // An explicit presence snapshot can omit the manual availability override.
+  if(typeof peer.online==='boolean'&&!Object.hasOwn(peer,'onlineForCalls'))delete Zu.profile.onlineForCalls;
   for(const key of ['online','onlineForCalls','availableForCall','verified','ratePerMin','stream'])if(Object.hasOwn(peer,key))Zu.profile[key]=peer[key];
   zuShownPresence(Zu.profile);zuPaint();
 });
@@ -23161,37 +23473,28 @@ ZimiPullRefresh.register('host-statistics',{refresh:()=>zhsLoad(),busy:()=>HostS
 ZimiHome.views['host-statistics']=zhsView;
 window.ZimiHostStatistics={open:zhsOpen,back:zhsBack,load:zhsLoad,render:zhsView,reset:zhsReset};
 
-/* Server-owned payment capabilities. Premium keeps its optional Automatic
-   selector; coins explicitly review a method before creating a new order.
-   Requested routes belong to an attempt; receipt routes are metadata only. */
-const PaymentRoutes={accountId:'',sequence:0,requestId:0,requested:false,loading:false,loaded:false,error:'',mode:'ROTATION',routeChoice:false,routes:[],choices:{coins:'',premium:''}};
+/* Premium keeps its separate route selector. The coin summary uses the
+   payment apps offered by its own checkout. */
+const PaymentRoutes={accountId:'',sequence:0,requestId:0,requested:false,loading:false,loaded:false,error:'',mode:'ROTATION',routeChoice:false,routes:[],choices:{premium:''}};
 function paymentRouteSafe(route){return typeof route==='string'&&/^[A-Za-z0-9_-]{1,100}$/.test(route)}
 function paymentRouteLabel(route){return route?route.replace(/[_-]+/g,' ').split(' ').map(word=>['upi','qr','inr'].includes(word.toLowerCase())?word.toUpperCase():word.charAt(0).toUpperCase()+word.slice(1).toLowerCase()).join(' '):'Automatic (recommended)'}
-function paymentRoutePaint(){if(S.v==='themes')ztPaint();else if(S.v==='coins'||Home.giftTo&&CoinUI.topup)coinPaint()}
+function paymentRoutePaint(){if(S.v==='themes')ztPaint()}
 function paymentRouteOwner(){return !!S.loggedIn&&!!PaymentRoutes.accountId&&PaymentRoutes.accountId===S.user?.id}
-function paymentRoutesLoad(){if(DEMO||PaymentRoutes.loading||!paymentRouteOwner())return;const p=PaymentRoutes;p.requested=true;p.loading=true;p.loaded=false;p.error='';p.routeChoice=false;p.routes=[];p.choices={coins:'',premium:''};p.requestId=++p.sequence;paymentRoutePaint();Native.send('payments.routes.load',{requestId:p.requestId})}
+function paymentRoutesLoad(){if(DEMO||PaymentRoutes.loading||!paymentRouteOwner())return;const p=PaymentRoutes;p.requested=true;p.loading=true;p.loaded=false;p.error='';p.routeChoice=false;p.routes=[];p.choices={premium:''};p.requestId=++p.sequence;paymentRoutePaint();Native.send('payments.routes.load',{requestId:p.requestId})}
 function paymentRouteEnsure(){if(DEMO||PaymentRoutes.requested||!paymentRouteOwner())return;PaymentRoutes.requested=true;const owner=PaymentRoutes.accountId;queueMicrotask(()=>{if(PaymentRoutes.accountId===owner)paymentRoutesLoad()})}
-function paymentRouteAttempt(kind){return kind==='coins'?Home.checkoutAttempt:ZThemes.attempt?{idempotencyKey:ZThemes.attempt,route:ZThemes.requestedRoute}:null}
-function paymentRouteLocked(kind){return kind==='coins'?!!Home.checkoutAttempt||Home.checkoutBusy||CoinUI.verifyBusy||coinHasPendingPayment():!!ZThemes.attempt||ZThemes.checkoutBusy||ZThemes.checkout?.status==='PENDING'}
-function paymentRouteSelect(kind,route){if(!['coins','premium'].includes(kind)||paymentRouteLocked(kind))return;if(route&&(!PaymentRoutes.routeChoice||!PaymentRoutes.routes.some(item=>item.route===route)))return;PaymentRoutes.choices[kind]=route;paymentRoutePaint()}
+function paymentRouteAttempt(){return ZThemes.attempt?{idempotencyKey:ZThemes.attempt,route:ZThemes.requestedRoute}:null}
+function paymentRouteLocked(){return !!ZThemes.attempt||ZThemes.checkoutBusy||ZThemes.checkout?.status==='PENDING'}
+function paymentRouteSelect(kind,route){if(kind!=='premium'||paymentRouteLocked())return;if(route&&(!PaymentRoutes.routeChoice||!PaymentRoutes.routes.some(item=>item.route===route)))return;PaymentRoutes.choices.premium=route;paymentRoutePaint()}
 function paymentRoutePayload(kind){const route=PaymentRoutes.choices[kind];return !PaymentRoutes.loading&&!PaymentRoutes.error&&PaymentRoutes.routeChoice&&PaymentRoutes.routes.some(item=>item.route===route)?{route}:{}}
 function paymentRestoredRoute(payment,previous){if(Object.hasOwn(payment,'requestedRoute'))return paymentRouteSafe(payment.requestedRoute)?{route:payment.requestedRoute}:{};return previous?.idempotencyKey===payment.idempotencyKey&&paymentRouteSafe(previous.route)?{route:previous.route}:{}}
-/* Coin checkout requires an explicit choice before creating an order. Route
-   names and UPI support come only from the current server-owned capabilities. */
-function paymentCoinOptions(){
- if(DEMO)return [{route:'',label:'Secure checkout',detail:'Design preview. No payment is taken.'}];
- const p=PaymentRoutes;if(!paymentRouteOwner()||!p.loaded||p.loading||p.error)return [];
- if(p.routeChoice&&!p.routes.length)return [];
- return [{route:'',label:'Secure checkout',detail:'Choose from supported payment options on the next screen.'},...(p.routeChoice?p.routes.map(item=>({route:item.route,label:paymentRouteLabel(item.route),detail:item.upiIntent?'UPI checkout supported':'Continue securely with this payment provider.'})):[])];
-}
 function paymentRouteView(kind){
  if(DEMO)return '';paymentRouteEnsure();const p=PaymentRoutes,locked=paymentRouteLocked(kind),attempt=paymentRouteAttempt(kind),selected=locked?(attempt?.route||''):(p.choices[kind]||'');
  if(locked)return `<section class="zpm-choice zpm-locked" aria-label="Payment method"><span>Payment method</span><strong>${esc(paymentRouteLabel(paymentRouteSafe(selected)?selected:''))}</strong><small>Kept for this checkout and any retry.</small></section>`;
  return `<section class="zpm-choice" aria-label="Payment method"><label for="zpm-${kind}">Payment method</label><select id="zpm-${kind}" onchange="paymentRouteSelect('${kind}',this.value)"><option value="">Automatic (recommended)</option>${p.routeChoice?p.routes.map(item=>`<option value="${esc(item.route)}" ${selected===item.route?'selected':''}>${esc(paymentRouteLabel(item.route))}</option>`).join(''):''}</select>${p.loading?`<div class="zpm-loading" role="status" aria-label="Loading payment options" aria-busy="true">${skeletonLine('82%',12)}${skeletonLine('59%',12)}</div>`:p.error?'<p class="zpm-error" role="alert">Payment options could not be loaded. Automatic is still available.</p><button type="button" onclick="paymentRoutesLoad()">Retry payment options</button>':'<small>Automatic chooses an available payment method for you.</small>'}</section>`;
 }
-function paymentRoutesReset(){const sequence=PaymentRoutes.sequence+1;Object.assign(PaymentRoutes,{accountId:'',sequence,requestId:0,requested:false,loading:false,loaded:false,error:'',mode:'ROTATION',routeChoice:false,routes:[],choices:{coins:'',premium:''}})}
-Native.on('payments.routes',data=>{const p=PaymentRoutes;if(!paymentRouteOwner()||!p.loading||data.requestId!==p.requestId)return;p.loading=false;p.loaded=true;p.error='';p.mode=data.mode==='SINGLE'?'SINGLE':'ROTATION';p.routeChoice=data.routeChoice===true;const seen=new Set();p.routes=p.routeChoice&&Array.isArray(data.routes)?data.routes.filter(item=>{if(!item||!paymentRouteSafe(item.route)||item.takingPayments!==true||item.currency!=='INR'||seen.has(item.route))return false;seen.add(item.route);return true}):[];for(const kind of ['coins','premium'])if(!p.routes.some(item=>item.route===p.choices[kind]))p.choices[kind]='';paymentRoutePaint()});
-Native.on('operation.error',data=>{if(data.action!=='payments.routes.load'||!paymentRouteOwner()||!PaymentRoutes.loading||data.requestId!==PaymentRoutes.requestId)return;PaymentRoutes.loading=false;PaymentRoutes.loaded=false;PaymentRoutes.error=data.message||'Payment options unavailable';PaymentRoutes.routeChoice=false;PaymentRoutes.routes=[];PaymentRoutes.choices={coins:'',premium:''};paymentRoutePaint()});
+function paymentRoutesReset(){const sequence=PaymentRoutes.sequence+1;Object.assign(PaymentRoutes,{accountId:'',sequence,requestId:0,requested:false,loading:false,loaded:false,error:'',mode:'ROTATION',routeChoice:false,routes:[],choices:{premium:''}})}
+Native.on('payments.routes',data=>{const p=PaymentRoutes;if(!paymentRouteOwner()||!p.loading||data.requestId!==p.requestId)return;p.loading=false;p.loaded=true;p.error='';p.mode=data.mode==='SINGLE'?'SINGLE':'ROTATION';p.routeChoice=data.routeChoice===true;const seen=new Set();p.routes=p.routeChoice&&Array.isArray(data.routes)?data.routes.filter(item=>{if(!item||!paymentRouteSafe(item.route)||item.takingPayments!==true||item.currency!=='INR'||seen.has(item.route))return false;seen.add(item.route);return true}):[];if(!p.routes.some(item=>item.route===p.choices.premium))p.choices.premium='';paymentRoutePaint()});
+Native.on('operation.error',data=>{if(data.action!=='payments.routes.load'||!paymentRouteOwner()||!PaymentRoutes.loading||data.requestId!==PaymentRoutes.requestId)return;PaymentRoutes.loading=false;PaymentRoutes.loaded=false;PaymentRoutes.error=data.message||'Payment options unavailable';PaymentRoutes.routeChoice=false;PaymentRoutes.routes=[];PaymentRoutes.choices={premium:''};paymentRoutePaint()});
 for(const event of ['session.none','session.expired'])Native.on(event,paymentRoutesReset);
 for(const event of ['session','auth.ok'])Native.on(event,data=>{const id=data.user?.id||'';if(id!==PaymentRoutes.accountId){paymentRoutesReset();PaymentRoutes.accountId=id}});
 

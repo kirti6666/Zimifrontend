@@ -1,0 +1,8 @@
+.zh-home-coins{display:flex;align-items:center;flex:none;gap:5px;margin-inline-start:auto;min-height:34px;padding:2px 3px 2px 8px;border:1px solid var(--line);background:var(--raised);color:var(--ink);white-space:nowrap}
+:root .zh-home-coins,:root .zh-home-coins>.zh-home-coin-add{border-radius:999px!important}
+.zh-home-coins>.zc-coin{flex:none}
+.zh-home-coin-count{font-size:calc(14px * var(--theme-font-scale,1));font-weight:750;font-variant-numeric:tabular-nums}
+.zh-home-coin-exact{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.zh-home-coin-add{position:relative;display:grid;place-items:center;flex:none;width:28px;height:28px;border:0;background:var(--accent);color:var(--cta-ink)}
+.zh-home-coin-add::before{content:"";position:absolute;inset:-8px}
+.zh-home-coin-add:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}

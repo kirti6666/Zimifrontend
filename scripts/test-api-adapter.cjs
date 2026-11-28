@@ -58,7 +58,7 @@ function load(relative) {
     if (name === 'socket.io-client') return { io };
     return load(path.relative(root, path.resolve(path.dirname(filename), `${name}.ts`)));
   };
-  const context = { module, exports: module.exports, require: localRequire, console, URL, AbortController, setTimeout, clearTimeout, __DEV__: true,
+  const context = { module, exports: module.exports, require: localRequire, console, URL, URLSearchParams, AbortController, setTimeout, clearTimeout, __DEV__: true,
     expo: { uuidv4: () => `00000000-0000-4000-8000-${String(++context.signalSequence).padStart(12, '0')}` }, signalSequence: 0,
     fetch: async (url, options) => { uploads.push({ url, options }); if (uploadError) throw uploadError; return { ok: true, status: 200 }; },
   };
@@ -1184,6 +1184,30 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(requests.length, requestsBeforeInvalidRoutes, 'Malformed methods never reach checkout HTTP calls');
   for (const paymentUrl of ['https://user:secret@checkout.example.test/pay', 'https://checkout.example.test\n.evil.test/pay', 'http://checkout.example.test/pay', 'javascript:steal()']) assert.throws(() => adapters.purchaseFrom({ paymentUrl }), /secure payment/);
   for (const patch of [{ requestedRoute: '../UPI' }, { route: 'UPI<>' }, { pageStyle: 'x'.repeat(101) }, { currency: 'USD' }]) assert.throws(() => adapters.purchaseFrom({ ...routedOrder, ...patch }), /payment method|currency/);
+  const upiQuery = '?pa=merchant%40upi&am=99.37&cu=INR&tr=940221062886';
+  const upiIntent = 'upi://pay' + upiQuery;
+  const jsonOrder = { ...routedOrder, kind: 'coins', status: 'created', currency: 'INR', payableAmountPaise: 9937, upiIntent,
+    upiIntentRouting: { generic: upiIntent, apps: {
+      phonepe: { android: 'phonepe://native?id=p2ppayment&data=Zml4dHVyZQ%3D%3D', ios: 'phonepe://upi/pay' + upiQuery },
+      paytm: { android: 'paytmmp://cash_wallet' + upiQuery, ios: 'paytmmp://cash_wallet' + upiQuery.replace('99.37','99.38') },
+      gpay: { android: 'intent://upi/pay' + upiQuery },
+    } } };
+  const parsedIntent = adapters.purchaseFrom(jsonOrder);
+  assert.equal(parsedIntent.upiIntent, upiIntent);
+  assert.deepEqual(plain(parsedIntent.upiIntentRouting.apps), { phonepe: jsonOrder.upiIntentRouting.apps.phonepe,
+    paytm: { android: jsonOrder.upiIntentRouting.apps.paytm.android } });
+  const verapayIntent = 'upi://pay?pa=merchant%40upi&pn=Merchant&am=99.37&tr=redacted-ref&tn=Coin%20recharge&mc=0000&mam=99.37&mode=02';
+  const verapayOrder = { ...jsonOrder, route: 'VERAPAY', pageStyle: 'JSON', upiIntent: verapayIntent, upiIntentRouting: undefined };
+  assert.equal(adapters.purchaseFrom(verapayOrder).upiIntent, verapayIntent, 'The actual PayPlus VERAPAY JSON shape preserves its generic link without cu');
+  for (const patch of [{ route: 'LOCAL_UPI' }, { pageStyle: 'DEFAULT' }, { currency: undefined },
+    ...['', 'USD'].map(unit => ({ upiIntent: verapayIntent + '&cu=' + unit })), { upiIntent: verapayIntent + '&CU=INR' },
+    { upiIntent: verapayIntent.replace('mam=99.37', 'mam=29.37') }]) {
+    assert.equal(adapters.purchaseFrom({ ...verapayOrder, ...patch }).upiIntent, undefined);
+  }
+  for (const patch of [{ isIntentSupported: false }, { payableAmountPaise: 10000 }, { status: 'paid' }, { kind: 'premium' },
+    { upiIntent: upiIntent + '&am=10.00' }, { upiIntent: upiIntent.replace('upi://pay', 'javascript:pay') }]) {
+    assert.equal(adapters.purchaseFrom({ ...jsonOrder, ...patch }).upiIntent, undefined, 'Only a pending coin order may expose its exact quoted intent');
+  }
   expect('POST', '/coins/purchase/verify', { _id: 'purchase-id', merchantOrderId: 'binzolive_order', status: 'paid' });
   assert.equal((await api.verifyPurchase('binzolive_order')).status, 'SUCCESS');
   assert.throws(() => adapters.purchaseFrom({ paymentUrl: 'javascript:steal()' }), /secure payment/);

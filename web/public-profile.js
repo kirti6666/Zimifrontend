@@ -569,6 +569,8 @@ Native.on('data.home',d=>{
   if(!peer)return;
   // Live discovery events may update availability without replacing profile
   // counts, a pending relationship write, or the current gallery selection.
+  // An explicit presence snapshot can omit the manual availability override.
+  if(typeof peer.online==='boolean'&&!Object.hasOwn(peer,'onlineForCalls'))delete Zu.profile.onlineForCalls;
   for(const key of ['online','onlineForCalls','availableForCall','verified','ratePerMin','stream'])if(Object.hasOwn(peer,key))Zu.profile[key]=peer[key];
   zuShownPresence(Zu.profile);zuPaint();
 });

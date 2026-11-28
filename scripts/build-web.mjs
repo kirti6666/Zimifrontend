@@ -21,6 +21,9 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
 const brandLogo = "data:image/webp;base64," + readFileSync(join(root, "web/binzolive-logo.webp")).toString("base64");
 const brandIcon = "data:image/png;base64," + readFileSync(join(root, "web/favicon/favicon-96x96.png")).toString("base64");
+// Published app icons are bundled so the payment sheet works offline.
+const paymentIcons = Object.fromEntries(["phonepe", "gpay", "paytm"].map(name =>
+  [name, "data:image/png;base64," + readFileSync(join(root, `web/payment-icons/${name}.png`)).toString("base64")]));
 // __GIFT_STICKER_name__ in web/gift-stickers.js becomes web/stickers/name.webp.
 // The page reaches the WebView as one HTML string. Keep the user's 3 MiB
 // per-sticker size guard, and serve oversized originals from immutable CDN keys
@@ -127,6 +130,7 @@ const page = (demo, hosted = false) =>
   read("web/post-create.css") +
   read("web/post-view.css") +
   read("web/home-dashboard.css") +
+  read("web/home-balance.css") +
   read("web/coins.css") +
   read("web/notifications.css") +
   read("web/payouts.css") +
@@ -180,7 +184,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/leaderboard.js") +
   "\n" + read("web/referral.js") +
   "\n" + read("web/agency.js") +
-  "\n" + read("web/coins.js") +
+  "\n" + read("web/coins.js").replace("__PAYMENT_ICONS__", () => JSON.stringify(paymentIcons)) +
   "\n" + read("node_modules/facebetter/dist/facebetter.js").replace(/[ \t]+$/gm, "") +
   "\nwindow.ZIMI_FACEBETTER_WORKER_SOURCE=" + JSON.stringify(read("node_modules/facebetter/dist/facebetter.js") + "\n" + read("web/beauty-worker.js")) + ";\n" +
   "\n" + read("web/beauty-catalog.js") +

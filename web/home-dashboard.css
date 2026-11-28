@@ -38,10 +38,12 @@
 @media(max-width:380px){.zh-header.zh-home-header{padding-left:12px}:is(.zh-feed-tabs,.zh-host-tabs){gap:10px}:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]{font-size:calc(14px * var(--theme-font-scale,1))}:is(.zh-feed-tabs,.zh-host-tabs)>[aria-selected="true"]{font-size:calc(19px * var(--theme-font-scale,1))}.zh-home-header .zh-icon{width:34px}}
 @media(max-width:340px){:is(.zh-feed-tabs,.zh-host-tabs){gap:8px}:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]{font-size:calc(13px * var(--theme-font-scale,1))}:is(.zh-feed-tabs,.zh-host-tabs)>[aria-selected="true"]{font-size:calc(17px * var(--theme-font-scale,1))}.zh-home-header .zh-icon{width:32px}}
 @media(prefers-reduced-motion:reduce){:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]{transition:none}}
-/* Country chips under the header: Popular, then India (the only country for now). */
-.zh-region-chips{display:flex;gap:8px;margin:0 0 12px;overflow-x:auto;scrollbar-width:none}
+/* Keep the country filters and account action on the same line. */
+.zh-home-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:34px;margin:0 0 8px}
+.zh-home-discovery{flex:1 1 auto;min-width:0}
+.zh-region-chips{display:flex;gap:8px;margin:0;min-width:0;overflow-x:auto;scrollbar-width:none}
 .zh-region-chips::-webkit-scrollbar{display:none}
-.zh-region-chips>button{display:inline-flex;align-items:center;gap:7px;flex:none;min-height:36px;padding:0 16px;border:0;background:var(--raised);color:var(--muted);font-size:calc(14px * var(--theme-font-scale,1));font-weight:500;white-space:nowrap}
+.zh-region-chips>button{display:inline-flex;align-items:center;gap:7px;flex:none;min-height:34px;padding:0 15px;border:0;background:var(--raised);color:var(--ink);font-size:calc(14px * var(--theme-font-scale,1));font-weight:500;white-space:nowrap}
 .zh-region-chips>button:has(.zh-flag){padding-left:9px}
 .zh-region-chips>button[aria-pressed="true"]{background:var(--accent);color:var(--cta-ink);font-weight:600}
 /* An approved host's availability floats over Home where the reference places its LIVE button. */

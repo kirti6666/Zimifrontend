@@ -327,7 +327,15 @@ export interface ProfileSettings {
 }
 export interface ProfileSettingsPatch { pushNotifications?: boolean; notificationPreferences?: import("../notification-preferences").NotificationPreferencesPatch; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; country?: string; }
 export interface BlockedUsers { users: Host[]; total: number; page: number; limit: number; }
-export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; kind?: "coins" | "premium"; packId?: string; idempotencyKey?: string; requestedRoute?: string; route?: string; pageStyle?: string; currency?: "INR"; coins?: number; amountPaise?: number; payableAmountPaise?: number; expiresAt?: string; }
+export type UpiApp = "phonepe" | "gpay" | "paytm";
+export type UpiAppsInstalled = Partial<Record<UpiApp, boolean>>;
+export type UpiPlatform = "android" | "ios";
+export type CoinPaymentMethod = UpiApp | "other" | "hosted";
+export interface UpiIntentRouting {
+  generic: string;
+  apps?: Partial<Record<UpiApp, Partial<Record<UpiPlatform, string>>>>;
+}
+export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; kind?: "coins" | "premium"; packId?: string; idempotencyKey?: string; requestedRoute?: string; route?: string; pageStyle?: string; currency?: "INR"; coins?: number; amountPaise?: number; payableAmountPaise?: number; expiresAt?: string; upiIntent?: string; upiIntentRouting?: UpiIntentRouting; isIntentSupported?: boolean; upiPlatform?: UpiPlatform; upiAppsInstalled?: UpiAppsInstalled; }
 export interface RtcPayload {
   description?: { type: "offer" | "answer"; sdp: string };
   candidate?: { candidate: string; sdpMid?: string | null; sdpMLineIndex?: number | null; usernameFragment?: string };

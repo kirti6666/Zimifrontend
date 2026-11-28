@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 import type WebView from "react-native-webview";
-import { AppState, Linking, Share } from "react-native";
+import { AppState, Linking, Platform, Share } from "react-native";
 
 import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnectionChanged } from "./api/client";
 import { api } from "./api/endpoints";
@@ -9,6 +9,8 @@ import { createCallRinging } from "./call-ringing";
 import { clearIncomingCallAction, getVerifiedIncomingCall, onIncomingCallAction, type NativeCallAction } from "./incoming-call-actions";
 import { messageFrom } from "./api/adapters";
 import type { LeaderboardPeriod, ProfileMvpPeriod, RelationshipKind, Relationships } from "./api/types";
+import type { CoinPaymentMethod, UpiApp, UpiAppsInstalled, UpiPlatform } from "./api/types";
+import { installedUpiApps, openUpiAppStore } from "./upi-apps";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
 import type { Account, AdFeed, AdPlacement, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, ProfileMvps, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet, PostComment, PostComments } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
@@ -68,7 +70,8 @@ export type WebMessage =
   | { type: "stream.message"; data: { streamId: string; text: string } }
   | { type: "stream.requests.load" | "stream.request" | "stream.react"; data: { streamId: string } }
   | { type: "stream.request.cancel" | "stream.request.decline" | "stream.request.accept"; data: { streamId: string; id: string } }
-  | { type: "wallet.checkout"; data: { packId: string; idempotencyKey: string; route?: string } }
+  | { type: "wallet.checkout"; data: { packId: string; idempotencyKey: string; route?: string; prepareOnly?: true; resumeOrderId?: string } }
+  | { type: "wallet.payment.open"; data: { merchantOrderId: string; method: CoinPaymentMethod } }
   | { type: "payments.routes.load"; data: { requestId: number } }
   | { type: "wallet.load"; data: Record<string, never> }
   | { type: "transactions.load"; data: Record<string, never> }
@@ -276,6 +279,9 @@ export type AppMessage =
   | { type: "call.targets"; data: import("./api/types").CallTargets }
   | { type: "wallet.checkout" | "wallet.purchase"; data: Purchase }
   | { type: "wallet.payment-returned"; data: { merchantOrderId: string; status: "PENDING" | "FAILED" | "REVERTED" | "SUCCESS" | "UNKNOWN"; idempotencyKey?: string; packId?: string } }
+  | { type: "wallet.payment.opening"; data: { merchantOrderId: string; method: CoinPaymentMethod; launchMethod?: "other" | "hosted" } }
+  | { type: "wallet.payment.apps"; data: { merchantOrderId: string; upiAppsInstalled: UpiAppsInstalled } }
+  | { type: "wallet.payment.store"; data: { merchantOrderId: string; method: UpiApp } }
   | { type: "data.chats"; data: Awaited<ReturnType<typeof api.chats>> }
   | { type: "chats.readAll"; data: { updated: number; readAt: string } }
   | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string; hiddenIds?: string[] } }
@@ -406,6 +412,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const verifyingPurchases = new Map<string, Promise<Purchase | undefined>>();
   type CoinReturn = { payment: PendingPayment; owner?: string; epoch: number; sessionVersion: number; document: number; departed: boolean; settling: boolean; terminal?: Purchase; activity?: PurchaseActivity; generation?: number };
   const externalCoinCheckouts = new Map<string, CoinReturn>();
+  type PreparedCoinCheckout = { purchase: Purchase; activity: PurchaseActivity; document: number; generation: number };
+  let preparedCoinCheckout: PreparedCoinCheckout | undefined;
+  let coinLaunch: PreparedCoinCheckout | undefined;
+  let coinStore: { prepared: PreparedCoinCheckout; departed: boolean } | undefined;
   const operations = new Set<string>();
   const authWork = new Set<string>();
   type UpdateLease = { finished: boolean; finish: () => void };
@@ -434,7 +444,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const finishCallActivity = (callId: string) => callActivities.get(callId)?.finish();
   const purchaseActivityCurrent = (entry: PurchaseActivity) => !closed && entry.epoch === epoch && entry.session === getSessionVersion() && entry.owner === accountId;
   const purchaseActivity = (kind: PurchaseKind, attempt?: string, orderId?: string) => {
-    const existing = [...purchaseActivities].find(entry => purchaseActivityCurrent(entry) && entry.kind === kind &&
+    const existing = [...purchaseActivities].find(entry => purchaseActivityCurrent(entry) && !entry.dismissed && entry.kind === kind &&
       (orderId ? entry.orderId === orderId : attempt && entry.attempt === attempt));
     if (existing && !existing.lease.finished) return existing;
     const entry: PurchaseActivity = { lease: holdUpdateActivity("purchase", `${kind}:${attempt ?? orderId}`), kind, attempt, orderId, epoch, session: getSessionVersion(), owner: accountId, generation: 0, inFlight: 0, dismissed: false, uiClosed: false };
@@ -442,8 +452,26 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const finishPurchaseActivity = (entry: PurchaseActivity) => {
     entry.dismissed = true;
+    if (preparedCoinCheckout?.activity === entry) preparedCoinCheckout = undefined;
+    if (coinStore?.prepared.activity === entry) coinStore = undefined;
     clearTimeout(entry.timer); entry.timer = undefined;
     if (!entry.inFlight) { entry.lease.finish(); purchaseActivities.delete(entry); }
+  };
+  const preparedCoinCheckoutCurrent = (prepared: PreparedCoinCheckout) => prepared === preparedCoinCheckout &&
+    prepared.document === documentRevision && purchaseActivityCurrent(prepared.activity) &&
+    prepared.generation === prepared.activity.generation && !prepared.activity.dismissed && !prepared.activity.uiClosed;
+  const refreshUpiApps = async (prepared: PreparedCoinCheckout) => {
+    const platform = prepared.purchase.upiPlatform;
+    if (!platform) return;
+    const installed = await installedUpiApps(platform);
+    if (!preparedCoinCheckoutCurrent(prepared)) return;
+    const previous = prepared.purchase.upiAppsInstalled;
+    const upiAppsInstalled = { ...previous, ...installed };
+    prepared.purchase.upiAppsInstalled = upiAppsInstalled;
+    if ((Object.keys(installed) as UpiApp[]).some(app => installed[app] !== previous?.[app])) {
+      emit({ type: "wallet.payment.apps", data: { merchantOrderId: prepared.purchase.merchantOrderId, upiAppsInstalled } });
+    }
+    return upiAppsInstalled;
   };
   const expirePurchaseActivity = (entry: PurchaseActivity, expiresAt?: string) => {
     const deadline = expiresAt ? Date.parse(expiresAt) : NaN;
@@ -458,6 +486,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const resetUpdateActivities = () => {
     callRecovery?.reset();
+    preparedCoinCheckout = undefined;
     for (const entry of purchaseActivities) { entry.dismissed = true; clearTimeout(entry.timer); }
     purchaseActivities.clear();
     for (const lease of updateActivities) lease.finish();
@@ -1010,7 +1039,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const verifyPurchase = (orderId: string, kind: PurchaseKind = "coins", protect = true): Promise<Purchase | undefined> => {
     const version = epoch, sessionVersion = getSessionVersion(), owner = accountId, key = `${version}:${sessionVersion}:${kind}:${orderId}`;
     const existing = verifyingPurchases.get(key);
-    const held = [...purchaseActivities].find(entry => purchaseActivityCurrent(entry) && entry.kind === kind && entry.orderId === orderId);
+    const held = [...purchaseActivities].find(entry => purchaseActivityCurrent(entry) && !entry.dismissed && entry.kind === kind && entry.orderId === orderId);
     if (existing) {
       if (!protect || held) return existing;
       const activity = purchaseActivity(kind, undefined, orderId); activity.inFlight++;
@@ -1025,6 +1054,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const resolvedKind = purchase.kind ?? kind;
         const pending = pendingPurchases.get(orderId);
         const external = externalCoinCheckouts.get(orderId);
+        if (resolvedKind === "coins" && preparedCoinCheckout?.purchase.merchantOrderId === orderId) {
+          if (purchase.status !== "PENDING") preparedCoinCheckout = undefined;
+          else preparedCoinCheckout.purchase = { ...preparedCoinCheckout.purchase, ...purchase,
+            paymentUrl: purchase.paymentUrl, upiIntent: purchase.upiIntent,
+            upiIntentRouting: purchase.upiIntentRouting, isIntentSupported: purchase.isIntentSupported };
+        }
         if (resolvedKind === "coins" && external && purchase.status !== "PENDING") external.terminal = purchase;
         emit({ type: resolvedKind === "premium" ? "themes.premium.purchase" : "wallet.purchase", data: { ...(pending?.packId ? { packId: pending.packId } : {}), ...(pending?.idempotencyKey ? { idempotencyKey: pending.idempotencyKey } : {}), ...(pending?.requestedRoute ? { requestedRoute: pending.requestedRoute } : {}), ...purchase, merchantOrderId: orderId } });
         if (purchase.status !== "PENDING") {
@@ -1079,6 +1114,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (!current(version) || accountId !== owner || sessionVersion !== getSessionVersion()) return;
     for (const payment of payments) {
       pendingPurchases.set(payment.orderId, { ...payment, epoch: version, sessionVersion });
+      if (payment.awaitingHandoff) {
+        void verifyPurchase(payment.orderId, "coins", false);
+        continue;
+      }
       // These restored controls are visible again; abandon/terminal signals,
       // not a durable local order ID, determine the protected UI lifetime.
       const activity = purchaseActivity(payment.kind, payment.idempotencyKey, payment.orderId);
@@ -1102,14 +1141,27 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (chatLease) { chatLease.revision++; flushChatActivity(); }
     if (!appActive) {
       clearTimeout(homeRefreshTimer); homeRefreshTimer = undefined;
-      for (const external of externalCoinCheckouts.values()) if (!external.settling) external.departed = true;
+      if (coinStore) coinStore.departed = true;
+      for (const external of externalCoinCheckouts.values()) {
+        if (external.settling || external.departed) continue;
+        external.departed = true;
+        const pending = pendingPurchases.get(external.payment.orderId);
+        if (external.owner && pending?.awaitingHandoff) {
+          pending.awaitingHandoff = undefined;
+          void rememberPendingPayment(external.owner, external.payment);
+        }
+      }
       return;
     }
     callRecovery?.sync(true);
     if (homeInvalidated && accountId && getCachedToken()) { lastHomeRefresh = 0; invalidateHome(); }
+    const returningFromStore = coinStore?.departed && preparedCoinCheckoutCurrent(coinStore.prepared)
+      ? coinStore.prepared.purchase.merchantOrderId : undefined;
+    if (coinStore?.departed) coinStore = undefined;
+    if (preparedCoinCheckout && preparedCoinCheckoutCurrent(preparedCoinCheckout)) void refreshUpiApps(preparedCoinCheckout);
     for (const external of externalCoinCheckouts.values()) if (external.departed) void coinPaymentReturned(external);
     for (const pending of pendingPurchases.values()) {
-      if (pending.epoch === epoch && pending.sessionVersion === getSessionVersion()) {
+      if (pending.orderId !== returningFromStore && pending.epoch === epoch && pending.sessionVersion === getSessionVersion()) {
         quietly(verifyPurchase(pending.orderId, pending.kind, false), pending.kind === "premium" ? "themes.premium.verify" : "wallet.verify");
       }
     }
@@ -1602,11 +1654,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       case "wallet.checkout": case "themes.premium.checkout": {
         const kind: PurchaseKind = msg.type === "themes.premium.checkout" ? "premium" : "coins", sessionVersion = getSessionVersion(), document = documentRevision;
+        const prepareOnly = msg.type === "wallet.checkout" && msg.data.prepareOnly === true;
         let owner = accountId;
         const sessionCurrent = () => current(version) && sessionVersion === getSessionVersion() && (!owner || owner === accountId);
-        const applicable = () => sessionCurrent() && document === documentRevision;
         const activity = purchaseActivity(kind, msg.data.idempotencyKey);
         const checkoutGeneration = ++activity.generation;
+        const applicable = () => sessionCurrent() && document === documentRevision &&
+          checkoutGeneration === activity.generation && !activity.dismissed;
         activity.inFlight++;
         let retained = !!activity.orderId;
         try {
@@ -1620,20 +1674,32 @@ export function createBridge(post: (msg: AppMessage) => void) {
           const role = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
           if (role !== "user") throw new ApiError("Coins are for user accounts. Hosts use diamonds.", 403, "COINS_MEMBERS_ONLY");
         }
-        const result = await (msg.type === "wallet.checkout" ? api.checkout(msg.data.packId, msg.data.idempotencyKey, msg.data.route) : api.checkoutPremium(msg.data.idempotencyKey, msg.data.route));
-        const purchase = { ...result, idempotencyKey: msg.data.idempotencyKey, ...(msg.data.route ? { requestedRoute: msg.data.route } : {}), ...(msg.type === "wallet.checkout" ? { packId: msg.data.packId } : {}) };
-        if (!sessionCurrent()) return;
+        const resumeOrderId = msg.type === "wallet.checkout" && msg.data.resumeOrderId;
+        const result = await (msg.type === "themes.premium.checkout"
+          ? api.checkoutPremium(msg.data.idempotencyKey, msg.data.route)
+          : resumeOrderId ? api.verifyPurchase(resumeOrderId) : api.checkout(msg.data.packId, msg.data.idempotencyKey, msg.data.route));
+        if (resumeOrderId && msg.type === "wallet.checkout" && (result.kind === "premium" || result.merchantOrderId !== resumeOrderId ||
+            result.packId !== msg.data.packId || result.idempotencyKey !== msg.data.idempotencyKey))
+          throw new ApiError("This payment does not match the selected coin pack.", 409, "PAYMENT_ORDER_MISMATCH");
+        const platform: UpiPlatform | undefined = Platform?.OS === "android" || Platform?.OS === "ios" ? Platform.OS : undefined;
+        const upiAppsInstalled = prepareOnly && platform && result.status === "PENDING" ? await installedUpiApps(platform) : undefined;
+        const purchase = { ...result, idempotencyKey: msg.data.idempotencyKey, ...(msg.data.route ? { requestedRoute: msg.data.route } : {}), ...(msg.type === "wallet.checkout" ? { packId: msg.data.packId, ...(prepareOnly && platform ? { upiPlatform: platform, upiAppsInstalled } : {}) } : {}) };
+        if (!sessionCurrent() || checkoutGeneration !== activity.generation) return;
         if (purchase.status === "PENDING" && purchase.merchantOrderId) {
           activity.orderId = purchase.merchantOrderId; retained = true;
           expirePurchaseActivity(activity, purchase.expiresAt);
-          const pending = { orderId: purchase.merchantOrderId, kind, idempotencyKey: purchase.idempotencyKey, ...(purchase.requestedRoute ? { requestedRoute: purchase.requestedRoute } : {}), ...(msg.type === "wallet.checkout" ? { packId: msg.data.packId } : {}) };
+          const previous = pendingPurchases.get(purchase.merchantOrderId);
+          const awaitingHandoff = previous ? previous.awaitingHandoff : prepareOnly && !resumeOrderId;
+          const pending: PendingPayment = { orderId: purchase.merchantOrderId, kind, idempotencyKey: purchase.idempotencyKey, ...(purchase.requestedRoute ? { requestedRoute: purchase.requestedRoute } : {}), ...(msg.type === "wallet.checkout" ? { packId: msg.data.packId } : {}), ...(awaitingHandoff ? { awaitingHandoff: true } : {}) };
           pendingPurchases.set(purchase.merchantOrderId, { ...pending, epoch: version, sessionVersion });
           if (owner) await rememberPendingPayment(owner, pending);
         } else if (purchase.merchantOrderId) {
           pendingPurchases.delete(purchase.merchantOrderId);
           if (owner) void forgetPendingPayment(owner, purchase.merchantOrderId);
         }
-        if (!applicable() || activity.dismissed) return;
+        if (!applicable()) return;
+        if (prepareOnly && retained && purchase.status === "PENDING")
+          preparedCoinCheckout = { purchase, activity, document, generation: checkoutGeneration };
         // Deliver the owned order before opening a provider app. A failed launch
         // or app restart can then resume exactly this checkout without paying twice.
         emit({ type: kind === "premium" ? "themes.premium.checkout" : "wallet.checkout", data: purchase });
@@ -1642,7 +1708,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (kind === "premium") quietly(loadThemes(), "themes.load"); else quietly(refreshWallet(), "wallet.load");
         }
         // Payment pages stay outside the privileged application WebView.
-        if (purchase.status === "PENDING" && purchase.paymentUrl) {
+        if (!prepareOnly && purchase.status === "PENDING" && purchase.paymentUrl) {
           const external: CoinReturn | undefined = kind === "coins" ? { payment: { orderId: purchase.merchantOrderId, kind, packId: purchase.packId, idempotencyKey: purchase.idempotencyKey }, owner, epoch: version, sessionVersion, document: documentRevision, departed: !appActive, settling: false, activity, generation: checkoutGeneration } : undefined;
           if (external) externalCoinCheckouts.set(purchase.merchantOrderId, external);
           try { await Linking.openURL(purchase.paymentUrl); }
@@ -1656,7 +1722,60 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (applicable()) throw error;
         } finally {
           activity.inFlight--;
-          if (!retained || activity.dismissed || !purchaseActivityCurrent(activity)) finishPurchaseActivity(activity);
+          if ((!retained && checkoutGeneration === activity.generation) || activity.dismissed || !purchaseActivityCurrent(activity)) finishPurchaseActivity(activity);
+        }
+        return;
+      }
+      case "wallet.payment.open": {
+        const { merchantOrderId, method } = msg.data, prepared = preparedCoinCheckout;
+        if (!prepared || prepared.purchase.merchantOrderId !== merchantOrderId || !preparedCoinCheckoutCurrent(prepared)) {
+          throw new ApiError("Reopen the payment summary to continue this checkout.", 409, "PAYMENT_NOT_READY");
+        }
+        if (!appActive || coinLaunch === prepared || externalCoinCheckouts.has(merchantOrderId)) return;
+        coinLaunch = prepared;
+        const applicable = () => preparedCoinCheckoutCurrent(prepared);
+        try {
+          const brand = method !== "other" && method !== "hosted" ? method : undefined;
+          const installed = brand ? await refreshUpiApps(prepared) : undefined;
+          if (!applicable() || !appActive) return;
+          const { purchase, activity, document, generation } = prepared;
+          if (purchase.expiresAt && Date.parse(purchase.expiresAt) <= Date.now())
+            throw new ApiError("This payment expired. Choose a coin pack to start again.", 409, "PAYMENT_EXPIRED");
+          const platform = purchase.upiPlatform;
+          if (brand && platform && installed?.[brand] === false) {
+            const store = { prepared, departed: false };
+            coinStore = store;
+            try {
+              await openUpiAppStore(platform, brand);
+              if (applicable()) emit({ type: "wallet.payment.store", data: { merchantOrderId, method: brand } });
+            }
+            catch {
+              if (coinStore === store) coinStore = undefined;
+              if (applicable()) throw new ApiError("Couldn't open the app store. Try again.", 0, "PAYMENT_STORE_OPEN_FAILED");
+            }
+            return;
+          }
+          const intentsAvailable = platform && purchase.isIntentSupported !== false;
+          const direct = intentsAvailable && brand ? purchase.upiIntentRouting?.apps?.[brand]?.[platform] : undefined;
+          const generic = intentsAvailable ? purchase.upiIntent : undefined;
+          const fallback = brand && !direct ? (generic ? "other" : "hosted") : undefined;
+          const launchMethod = fallback ?? method;
+          const target = launchMethod === "hosted" ? purchase.paymentUrl : launchMethod === "other" ? generic : direct;
+          if (!target) throw new ApiError("This payment option is unavailable. Choose another option.", 409, "PAYMENT_METHOD_UNAVAILABLE");
+          if (coinStore?.prepared === prepared) coinStore = undefined;
+          const external: CoinReturn = {
+            payment: { kind: "coins", orderId: merchantOrderId, packId: purchase.packId, idempotencyKey: purchase.idempotencyKey, requestedRoute: purchase.requestedRoute },
+            owner: activity.owner, epoch: version, sessionVersion: activity.session, document, departed: false, settling: false, activity, generation,
+          };
+          externalCoinCheckouts.set(merchantOrderId, external);
+          emit({ type: "wallet.payment.opening", data: { merchantOrderId, method, ...(fallback ? { launchMethod: fallback } : {}) } });
+          try { await Linking.openURL(target); }
+          catch {
+            if (externalCoinCheckouts.get(merchantOrderId) === external) externalCoinCheckouts.delete(merchantOrderId);
+            if (applicable()) throw new ApiError("Couldn't open this payment app. Choose another option or try again.", 0, "PAYMENT_OPEN_FAILED");
+          }
+        } finally {
+          if (coinLaunch === prepared) coinLaunch = undefined;
         }
         return;
       }
@@ -2508,13 +2627,14 @@ export function createBridge(post: (msg: AppMessage) => void) {
   });
 
   return {
-    documentLoading: () => { ringing.reset(); support.reset(); official.reset(); callRecovery?.reset(); setChatActivity(); webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
+    documentLoading: () => { ringing.reset(); support.reset(); official.reset(); callRecovery?.reset(); setChatActivity(); preparedCoinCheckout = undefined; webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       ringing.handle(msg as unknown as { type: string; data: Record<string, unknown> });
       const version = epoch;
       const notificationWrite = (msg.type === "notifications.read" || msg.type === "notifications.unread" || msg.type === "notifications.readAll") && msg.data.requestId !== undefined;
-      const serialized = notificationWrite || ((msg.type === "chat.send" || msg.type === "chat.photo") && !!msg.data.clientId) || ["account.deactivate", "creator.card.save", "profile.cover.save", "media.post.delete", "call.start", "call.invitation.connect", "call.invitation.dismiss", "call.topup.hold", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "payout.kyc.submit", "host.callRate.save", "host.reward.restart", "ads.click"].includes(msg.type);
+      const serialized = notificationWrite || ((msg.type === "chat.send" || msg.type === "chat.photo") && !!msg.data.clientId) ||
+        (msg.type === "wallet.checkout" && !msg.data.prepareOnly) || ["account.deactivate", "creator.card.save", "profile.cover.save", "media.post.delete", "call.start", "call.invitation.connect", "call.invitation.dismiss", "call.topup.hold", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "payout.kyc.submit", "host.callRate.save", "host.reward.restart", "ads.click"].includes(msg.type);
       const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" || ((msg.type === "chat.send" || msg.type === "chat.photo") && msg.data.clientId) ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" || msg.type === "payout.kyc.submit" || msg.type === "host.callRate.save" || msg.type === "profile.cover.save" || msg.type === "creator.card.save" ? `:${documentRevision}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
@@ -2525,7 +2645,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const context = msg.type === "gift.send" ? { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey }
           : msg.type === "chat.voice" || ((msg.type === "chat.send" || msg.type === "chat.photo") && msg.data.clientId) ? { to: msg.data.to, clientId: msg.data.clientId }
           : msg.type === "wallet.checkout" ? { packId: msg.data.packId, idempotencyKey: msg.data.idempotencyKey }
-          : msg.type === "wallet.verify" ? { merchantOrderId: msg.data.merchantOrderId }
+          : msg.type === "wallet.verify" || msg.type === "wallet.payment.open" ? { merchantOrderId: msg.data.merchantOrderId }
           : msg.type === "ads.click" ? { id: msg.data.id }
           : msg.type === "users.load" || msg.type === "hosts.active.load" ? { q: msg.data.q.trim(), page: msg.data.page ?? 1 }
           : msg.type === "referral.apply" ? { requestId: msg.data.requestId } : {};

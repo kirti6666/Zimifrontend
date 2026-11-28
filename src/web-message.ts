@@ -156,7 +156,13 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "stream.message": valid = identifier(d.streamId) && text(d.text, 500); break;
     case "stream.requests.load": case "stream.request": case "stream.react": valid = identifier(d.streamId); break;
     case "stream.request.cancel": case "stream.request.decline": case "stream.request.accept": valid = identifier(d.streamId) && identifier(d.id); break;
-    case "wallet.checkout": valid = identifier(d.packId) && idempotency(d.idempotencyKey) && paymentRoute(d.route) && Object.keys(d).every(key => ["packId", "idempotencyKey", "route"].includes(key)); break;
+    case "wallet.checkout": valid = identifier(d.packId) && idempotency(d.idempotencyKey) && paymentRoute(d.route) &&
+      (d.prepareOnly === undefined || (d.prepareOnly === true && d.route === undefined)) &&
+      (d.resumeOrderId === undefined || (d.prepareOnly === true && identifier(d.resumeOrderId))) &&
+      Object.keys(d).every(key => ["packId", "idempotencyKey", "route", "prepareOnly", "resumeOrderId"].includes(key)); break;
+    case "wallet.payment.open": valid = identifier(d.merchantOrderId) &&
+      typeof d.method === "string" && ["phonepe", "gpay", "paytm", "other", "hosted"].includes(d.method) &&
+      Object.keys(d).every(key => ["merchantOrderId", "method"].includes(key)); break;
     case "wallet.verify": case "themes.premium.verify": valid = text(d.merchantOrderId, 100) && /^[a-zA-Z0-9_-]+$/.test(String(d.merchantOrderId)) && Object.keys(d).every(key => key === "merchantOrderId"); break;
     case "payments.checkout.closed": valid = (d.kind === "coins" || d.kind === "premium") &&
       (d.merchantOrderId !== undefined || d.idempotencyKey !== undefined) &&

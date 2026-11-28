@@ -46,14 +46,17 @@ async function audit(page, label) {
       filledActiveBubble:painted && parseFloat(before.height) > 4,
       wrong:[...document.querySelectorAll('body *')].filter(el => el.getClientRects().length).flatMap(el => {
         const c = getComputedStyle(el), name = el.id || el.className || el.tagName;
-        const radiusOK=c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round)||c.borderRadius==='0px'&&el.matches(straight);
+        const homeRadius=el.matches('.zh-home.zh-dashboard .zh-creator-card')?'14px'
+          :el.matches('.zh-home-toolbar>.zh-home-coins,.zh-home-toolbar .zh-home-coin-add')?'999px':null;
+        const radiusOK=homeRadius?c.borderRadius===homeRadius
+          :c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round)||c.borderRadius==='0px'&&el.matches(straight);
         return [!radiusOK && `${name}: radius ${c.borderRadius}`, c.boxShadow !== 'none' && `${name}: box shadow`, c.textShadow !== 'none' && `${name}: text shadow`, c.filter.includes('drop-shadow') && `${name}: filter shadow`].filter(Boolean);
       })
     };
   }, {round:ROUND,straight:STRAIGHT});
   assert.equal(result.overflow, false, `${label}: fits the viewport`);
   assert.equal(result.canvas, 'rgb(255, 255, 255)', `${label}: pure white canvas`);
-  assert.deepEqual(result.wrong, [], `${label}: flat styling with 10px corners except the round Back, call, avatar and switch controls`);
+  assert.deepEqual(result.wrong, [], `${label}: flat styling with scoped reference geometry`);
   assert.ok(Math.abs(result.height - 58) < .6, `${label}: compact shared tab height`);
   assert.ok(Math.abs(result.bottom - result.appBottom) < .6, `${label}: no gap below tabs`);
   assert.equal(result.filledActiveBubble, false, `${label}: no decorative filled tab bubble`);
